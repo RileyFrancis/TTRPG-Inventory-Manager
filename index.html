@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>D&D Inventory Manager</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ===== HEADER ===== -->
+  <header id="header">
+    <div id="char-summary">
+      <span id="char-name-display">Unnamed Hero</span>
+      <span id="char-str-display">STR 10</span>
+      <button id="edit-character-btn" class="btn-sm">Edit Character</button>
+    </div>
+    <div id="weight-bar-wrap">
+      <div id="weight-bar-track">
+        <div id="weight-bar-fill"></div>
+        <div id="weight-enc-marker" class="weight-marker"></div>
+        <div id="weight-heavy-marker" class="weight-marker heavy"></div>
+      </div>
+      <div id="weight-labels">
+        <span id="weight-carried">0 lb carried</span>
+        <span id="encumbrance-status"></span>
+        <span id="weight-limits"></span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== MAIN LAYOUT ===== -->
+  <div id="main-layout">
+
+    <!-- ===== INVENTORY PANEL ===== -->
+    <div id="inventory-panel">
+      <div id="grid-scroll">
+        <div id="inventory-grid">
+          <!-- cells injected by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== SIDEBAR ===== -->
+    <aside id="sidebar">
+      <div id="sidebar-tabs">
+        <button class="tab-btn active" data-tab="browse">Browse</button>
+        <button class="tab-btn" data-tab="details">Details</button>
+      </div>
+
+      <!-- Browse Tab -->
+      <div id="tab-browse" class="tab-pane active">
+        <div id="browser-controls">
+          <input type="text" id="item-search" placeholder="Search items…" autocomplete="off">
+          <div id="filter-row">
+            <select id="rarity-filter">
+              <option value="">All Rarities</option>
+              <option value="common">Common</option>
+              <option value="uncommon">Uncommon</option>
+              <option value="rare">Rare</option>
+              <option value="very_rare">Very Rare</option>
+              <option value="legendary">Legendary</option>
+              <option value="artifact">Artifact</option>
+            </select>
+            <select id="tag-filter">
+              <option value="">All Tags</option>
+            </select>
+          </div>
+        </div>
+        <div id="item-list">
+          <!-- item cards injected by JS -->
+        </div>
+        <div id="browser-footer">
+          <button id="new-item-btn" class="btn-primary">+ New Item</button>
+          <button id="save-btn" class="btn-sm">Save</button>
+          <button id="load-btn" class="btn-sm">Load</button>
+        </div>
+      </div>
+
+      <!-- Details Tab -->
+      <div id="tab-details" class="tab-pane">
+        <div id="details-placeholder">
+          <p>Click an item in the inventory<br>or browse panel to see details.</p>
+        </div>
+        <div id="details-content" class="hidden">
+          <div id="details-header">
+            <span id="details-name"></span>
+            <span id="details-rarity-badge"></span>
+          </div>
+          <div id="details-shape-preview"></div>
+          <div id="details-image-wrap">
+            <img id="details-image" src="" alt="" class="hidden">
+          </div>
+          <div id="details-meta">
+            <div class="meta-row"><span class="meta-label">Weight</span><span id="details-weight"></span></div>
+            <div class="meta-row"><span class="meta-label">Cost</span><span id="details-cost"></span></div>
+            <div class="meta-row" id="details-stack-row">
+              <span class="meta-label">Stack</span><span id="details-stack"></span>
+            </div>
+          </div>
+          <div id="details-tags"></div>
+          <div id="details-desc"></div>
+          <div id="details-actions">
+            <button id="details-place-btn" class="btn-primary">Place in Inventory</button>
+            <button id="details-edit-btn" class="btn-sm">Edit</button>
+            <button id="details-delete-btn" class="btn-sm danger">Delete</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+  </div>
+</div>
+
+<!-- ===== DRAG GHOST ===== -->
+<div id="drag-ghost" class="hidden"></div>
+
+<!-- ===== CONTEXT MENU ===== -->
+<div id="context-menu" class="hidden">
+  <button id="ctx-rotate">Rotate (R)</button>
+  <button id="ctx-edit">Edit Item</button>
+  <button id="ctx-remove">Remove</button>
+</div>
+
+<!-- ===== MODAL BACKDROP ===== -->
+<div id="modal-backdrop" class="hidden"></div>
+
+<!-- ===== CHARACTER MODAL ===== -->
+<div id="character-modal" class="modal hidden">
+  <div class="modal-box">
+    <h2>Character Setup</h2>
+    <label class="field">
+      <span>Name</span>
+      <input type="text" id="char-name-input" maxlength="40" value="Unnamed Hero">
+    </label>
+    <label class="field">
+      <span>Strength Score</span>
+      <input type="number" id="char-str-input" min="1" max="30" value="10">
+    </label>
+    <p class="modal-note">
+      Normal capacity: <strong id="modal-capacity-normal">150 slots</strong><br>
+      Total grid size: <strong id="modal-capacity-total">450 slots</strong> (3 zones of 15 × STR)
+    </p>
+    <div class="modal-footer">
+      <button id="save-char-btn" class="btn-primary">Save</button>
+      <button class="cancel-btn btn-sm">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ITEM EDITOR MODAL ===== -->
+<div id="item-modal" class="modal hidden">
+  <div class="modal-box wide">
+    <h2 id="item-modal-title">New Item</h2>
+    <div id="item-form">
+
+      <div class="form-two-col">
+        <label class="field">
+          <span>Name *</span>
+          <input type="text" id="f-name" maxlength="60">
+        </label>
+        <label class="field">
+          <span>Rarity</span>
+          <select id="f-rarity">
+            <option value="common">Common</option>
+            <option value="uncommon">Uncommon</option>
+            <option value="rare">Rare</option>
+            <option value="very_rare">Very Rare</option>
+            <option value="legendary">Legendary</option>
+            <option value="artifact">Artifact</option>
+          </select>
+        </label>
+      </div>
+
+      <label class="field">
+        <span>Description</span>
+        <textarea id="f-desc" rows="2"></textarea>
+      </label>
+
+      <div class="form-two-col">
+        <label class="field">
+          <span>Cost (gp)</span>
+          <input type="number" id="f-cost" min="0" step="0.01" value="0">
+        </label>
+        <label class="field">
+          <span>Tags (comma separated)</span>
+          <input type="text" id="f-tags" placeholder="weapon, melee, …">
+        </label>
+      </div>
+
+      <div class="field">
+        <span>Image URL (optional)</span>
+        <input type="text" id="f-image" placeholder="https://…">
+      </div>
+
+      <div class="field-group">
+        <label class="checkbox-label">
+          <input type="checkbox" id="f-stackable">
+          <span>Stackable (item weighs less than 1 lb each)</span>
+        </label>
+        <div id="stackable-fields" class="hidden">
+          <label class="field">
+            <span>Weight per item (lb) — must divide evenly into 1</span>
+            <input type="number" id="f-weight-each" min="0.01" max="0.99" step="0.01" value="0.1">
+          </label>
+          <p class="modal-note">Max stack: <strong id="f-max-stack-display">10</strong> items (= 1 lb = 1 cell)</p>
+        </div>
+      </div>
+
+      <div id="shape-editor-section">
+        <div id="shape-editor-header">
+          <span class="field-label">Shape (click cells to draw)</span>
+          <span id="shape-weight-display">Weight: <strong id="shape-weight-val">1</strong> lb</span>
+        </div>
+        <div id="shape-controls">
+          <button type="button" id="sc-add-col">+ Col</button>
+          <button type="button" id="sc-rem-col">− Col</button>
+          <button type="button" id="sc-add-row">+ Row</button>
+          <button type="button" id="sc-rem-row">− Row</button>
+          <button type="button" id="sc-clear">Clear</button>
+          <button type="button" id="sc-fill">Fill All</button>
+        </div>
+        <div id="shape-editor-grid"></div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button id="save-item-btn" class="btn-primary">Save Item</button>
+      <button class="cancel-btn btn-sm">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== STACK MODAL ===== -->
+<div id="stack-modal" class="modal hidden">
+  <div class="modal-box narrow">
+    <h2>How many?</h2>
+    <p id="stack-modal-desc"></p>
+    <div class="field">
+      <input type="number" id="stack-count-input" min="1" value="1">
+    </div>
+    <div class="modal-footer">
+      <button id="stack-confirm-btn" class="btn-primary">Place</button>
+      <button class="cancel-btn btn-sm">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
