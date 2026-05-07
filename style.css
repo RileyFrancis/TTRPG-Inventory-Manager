@@ -2,7 +2,6 @@
    D&D INVENTORY MANAGER — style.css
    Dark fantasy theme
    ============================================================ */
- 
 
 :root {
   --cell: 44px;
@@ -169,11 +168,12 @@ textarea { resize: vertical; }
 /* ─── INVENTORY PANEL ────────────────────────────────────── */
 #inventory-panel {
   display: flex;
+  flex-direction: column;
   flex: 1;
   overflow: hidden;
+  position: relative;
   border-right: 1px solid var(--border);
 }
-
 
 #grid-scroll {
   flex: 1;
@@ -680,11 +680,6 @@ textarea { resize: vertical; }
 }
 
 /* ─── PARTY — INVENTORY PANEL ────────────────────────────── */
-#inventory-panel {
-  flex-direction: column;
-  position: relative;
-}
-
 #viewing-banner {
   display: flex;
   align-items: center;

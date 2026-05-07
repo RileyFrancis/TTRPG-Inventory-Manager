@@ -1707,10 +1707,6 @@ function flashButton(btn, text) {
 
 // =============================================================================
 // FIREBASE CONFIGURATION
-// Fill in your project values from:
-// Firebase Console → Project Settings → Your apps → SDK setup and configuration
-// After filling this in, go to Firebase Console → Realtime Database → Rules and set:
-//   { "rules": { "parties": { ".read": true, ".write": true } } }
 // =============================================================================
 const FIREBASE_CONFIG = {
   apiKey:            'AIzaSyBz3kP5_LPo8gnMyDmRAYPC9k0KKMuDDGw',
@@ -1729,7 +1725,6 @@ let firebaseDb = null;
 let partyPlayersRef = null;
 
 function initFirebase() {
-  if (FIREBASE_CONFIG.apiKey === 'YOUR_API_KEY') return; // Not yet configured
   try {
     firebase.initializeApp(FIREBASE_CONFIG);
     firebaseDb = firebase.database();
@@ -1892,11 +1887,11 @@ function leaveParty() {
   switchTab('browse');
 }
 
-let _syncTimeout = null;
+let syncTimer = null;
 function debouncedSync() {
   if (!state.party.active) return;
-  clearTimeout(_syncTimeout);
-  _syncTimeout = setTimeout(syncPartyState, 400);
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(syncPartyState, 400);
 }
 
 function syncPartyState() {
