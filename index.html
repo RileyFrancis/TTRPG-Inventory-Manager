@@ -37,6 +37,9 @@
   <!-- ===== MAIN LAYOUT ===== -->
   <div id="main-layout">
 
+    <!-- ===== EQUIP PANEL ===== -->
+    <div id="equip-panel"><!-- rendered by renderEquipPanel() --></div>
+
     <!-- ===== INVENTORY PANEL ===== -->
     <div id="inventory-panel">
       <div id="viewing-banner" class="hidden">
@@ -111,6 +114,12 @@
           <div id="details-meta">
             <div class="meta-row"><span class="meta-label">Weight</span><span id="details-weight"></span></div>
             <div class="meta-row"><span class="meta-label">Cost</span><span id="details-cost"></span></div>
+            <div class="meta-row hidden" id="details-damage-row">
+              <span class="meta-label">Damage</span><span id="details-damage"></span>
+            </div>
+            <div class="meta-row hidden" id="details-attunement-row">
+              <span class="meta-label">Attunement</span><span id="details-attunement-val">Required</span>
+            </div>
             <div class="meta-row" id="details-stack-row">
               <span class="meta-label">Stack</span><span id="details-stack"></span>
             </div>
@@ -161,6 +170,8 @@
 <!-- ===== CONTEXT MENU ===== -->
 <div id="context-menu" class="hidden">
   <button id="ctx-rotate">Rotate (R)</button>
+  <button id="ctx-equip">Equip…</button>
+  <button id="ctx-unequip">Unequip</button>
   <button id="ctx-edit">Edit Item</button>
   <button id="ctx-remove">Remove</button>
 </div>
@@ -231,6 +242,32 @@
         </label>
       </div>
 
+      <div class="form-two-col">
+        <label class="field">
+          <span>Damage (optional)</span>
+          <input type="text" id="f-damage" placeholder="e.g. 1d8, 2d6+3">
+        </label>
+        <label class="field">
+          <span>Damage Type</span>
+          <select id="f-damage-type">
+            <option value="">— None —</option>
+            <option value="slashing">Slashing</option>
+            <option value="piercing">Piercing</option>
+            <option value="bludgeoning">Bludgeoning</option>
+            <option value="fire">Fire</option>
+            <option value="cold">Cold</option>
+            <option value="lightning">Lightning</option>
+            <option value="acid">Acid</option>
+            <option value="poison">Poison</option>
+            <option value="psychic">Psychic</option>
+            <option value="radiant">Radiant</option>
+            <option value="necrotic">Necrotic</option>
+            <option value="thunder">Thunder</option>
+            <option value="force">Force</option>
+          </select>
+        </label>
+      </div>
+
       <div class="field">
         <span>Image URL (optional)</span>
         <input type="text" id="f-image" placeholder="https://…">
@@ -248,6 +285,10 @@
           </label>
           <p class="modal-note">Max stack: <strong id="f-max-stack-display">10</strong> items (= 1 lb = 1 cell)</p>
         </div>
+        <label class="checkbox-label">
+          <input type="checkbox" id="f-attunement">
+          <span>Requires Attunement</span>
+        </label>
       </div>
 
       <div id="shape-editor-section">
@@ -289,6 +330,17 @@
   </div>
 </div>
 
+<!-- ===== EQUIP MODAL ===== -->
+<div id="equip-modal" class="modal hidden">
+  <div class="modal-box narrow">
+    <h2>Equip to Slot</h2>
+    <div id="equip-slot-picker"></div>
+    <div class="modal-footer">
+      <button class="cancel-btn btn-sm">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== PARTY MODAL ===== -->
 <div id="party-modal" class="modal hidden">
   <div class="modal-box narrow">
@@ -320,6 +372,9 @@
     </div>
   </div>
 </div>
+
+<!-- ===== ITEM TOOLTIP ===== -->
+<div id="item-tooltip" class="hidden"></div>
 
 <!-- ===== FIREBASE ===== -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>

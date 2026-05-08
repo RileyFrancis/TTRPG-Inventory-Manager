@@ -20,6 +20,23 @@ const RARITY_META = {
 
 const RARITY_ORDER = ['common','uncommon','rare','very_rare','legendary','artifact'];
 
+const EQUIP_SLOTS = [
+  // Body — rendered top to bottom in equip panel
+  { id: 'head',     label: 'Headgear',  group: 'body'     },
+  { id: 'armor',    label: 'Armor',     group: 'body'     },
+  { id: 'cloak',    label: 'Cloak',     group: 'body'     },
+  { id: 'gloves',   label: 'Gloves',    group: 'body'     },
+  { id: 'boots',    label: 'Footwear',  group: 'body'     },
+  // Weapons — rendered in a row
+  { id: 'mainHand', label: 'Main Hand', panelLabel: 'Main',   group: 'weapons' },
+  { id: 'offHand',  label: 'Off Hand',  panelLabel: 'Off',    group: 'weapons' },
+  { id: 'ranged',   label: 'Ranged',    panelLabel: 'Ranged', group: 'weapons' },
+  // Wondrous — only items that require attunement (max 3 per D&D 5e rules)
+  { id: 'attune1',  label: 'Slot I',    group: 'wondrous', attuneOnly: true },
+  { id: 'attune2',  label: 'Slot II',   group: 'wondrous', attuneOnly: true },
+  { id: 'attune3',  label: 'Slot III',  group: 'wondrous', attuneOnly: true },
+];
+
 // =============================================================================
 // DEFAULT ITEM DATABASE
 // =============================================================================
@@ -476,6 +493,8 @@ const state = {
   // Shape editor state (inside item modal)
   editorShape: [[1]],
   editingItemId: null, // null = new item
+  // Equipped items: { [slotId]: instanceId | null }
+  equipped: {},
   // Party session
   party: {
     active: false,
@@ -627,9 +646,9 @@ function buildGrid() {
 // RENDERING — PLACED ITEMS
 // =============================================================================
 function renderAllItems() {
-  // Remove old item divs
   gridEl.querySelectorAll('.placed-item').forEach(el => el.remove());
   Object.values(state.instances).forEach(inst => renderPlacedItem(inst));
+  renderEquipPanel();
 }
 
 function buildItemEl(template, shape, rarity) {
@@ -708,6 +727,20 @@ function renderPlacedItem(inst) {
     el.appendChild(badge);
   }
 
+  // Equipped badge
+  if (getEquippedSlot(inst.id)) {
+    const equipBadge = document.createElement('div');
+    equipBadge.className = 'equip-badge';
+    equipBadge.textContent = '⚔';
+    el.appendChild(equipBadge);
+  }
+
+  // Hover tooltip
+  el.querySelectorAll('.item-cell.filled').forEach(cell => {
+    cell.addEventListener('pointerenter', e => startTooltipTimer(inst.id, e.clientX, e.clientY));
+    cell.addEventListener('pointerleave', clearTooltip);
+  });
+
   el.addEventListener('pointerdown', onItemPointerDown);
   el.addEventListener('contextmenu', onItemContextMenu);
   el.addEventListener('click', onItemClick);
@@ -772,7 +805,73 @@ function renderItemList() {
     card.appendChild(info);
     card.appendChild(shapePreview);
 
-    card.addEventListener('click', () => startPlacing(t.id));
+    card.addEventListener('pointerdown', e => {
+      if (e.button !== 0 || isReadOnly()) return;
+      e.preventDefault(); // prevent text selection on mousedown
+      const tid = t.id;
+      const startX = e.clientX, startY = e.clientY;
+      let dragging = false;
+
+      const onMove = me => {
+        if (!dragging && Math.hypot(me.clientX - startX, me.clientY - startY) < 5) return;
+        if (!dragging) {
+          dragging = true;
+          document.body.style.userSelect = 'none';
+          cancelPlacing(); // exit any existing placing mode cleanly
+        }
+        const tmpl = state.db[tid];
+        if (!tmpl) return;
+        const shape = getRotatedShape(tmpl.shape, 0);
+        initGhostEl(shape, tmpl.rarity);
+
+        const pos = cursorToGridPos(me.clientX, me.clientY, 0, 0);
+        if (pos) {
+          const sp = getGhostScreenPos(0, 0, pos.row, pos.col);
+          const valid = canPlace(shape, pos.row, pos.col);
+          setGhostVisibility(true);
+          moveGhost(sp.x, sp.y, valid);
+          highlightCells(shape, pos.row, pos.col, valid);
+        } else {
+          setGhostVisibility(false);
+          clearHighlights();
+        }
+        // No equip-slot highlighting for new items (not yet placed)
+        document.querySelectorAll('.eq-card.drag-hover').forEach(c => c.classList.remove('drag-hover'));
+      };
+
+      const onUp = ue => {
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+        document.body.style.userSelect = '';
+        if (!dragging) {
+          // Treat as click → enter placing mode as before
+          startPlacing(tid);
+          return;
+        }
+        // End of drag: restore ghost visibility and clean up
+        setGhostVisibility(true);
+        hideGhost();
+        clearHighlights();
+        document.querySelectorAll('.eq-card.drag-hover').forEach(c => c.classList.remove('drag-hover'));
+
+        const tmpl = state.db[tid];
+        if (!tmpl) return;
+        const shape = getRotatedShape(tmpl.shape, 0);
+        const pos = cursorToGridPos(ue.clientX, ue.clientY, 0, 0);
+        if (pos && canPlace(shape, pos.row, pos.col)) {
+          if (tmpl.stackable) {
+            openStackModal(computeMaxStack(tmpl.weightEach),
+              count => finalizePlacement(tmpl, shape, 0, pos.row, pos.col, count));
+          } else {
+            finalizePlacement(tmpl, shape, 0, pos.row, pos.col, 1);
+          }
+        }
+        // If dropped outside/invalid, silently cancel — no placing mode
+      };
+
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
+    });
     card.addEventListener('contextmenu', e => {
       e.preventDefault();
       showTemplateContextMenu(t.id, e.clientX, e.clientY);
@@ -858,6 +957,18 @@ function showTemplateDetails(templateId) {
   } else {
     stackRow.classList.add('hidden');
   }
+
+  const damageRow = document.getElementById('details-damage-row');
+  if (t.damage) {
+    damageRow.classList.remove('hidden');
+    const dmgType = t.damageType ? ` ${t.damageType}` : '';
+    document.getElementById('details-damage').textContent = `${t.damage}${dmgType}`;
+  } else {
+    damageRow.classList.add('hidden');
+  }
+
+  document.getElementById('details-attunement-row')
+    .classList.toggle('hidden', !t.attunement);
 
   const tagsEl = document.getElementById('details-tags');
   tagsEl.innerHTML = '';
@@ -978,6 +1089,7 @@ function initGhostEl(shape, rarity) {
 
 function showGhost(shape, rarity, x, y) {
   initGhostEl(shape, rarity);
+  ghostEl.style.display = ''; // ensure visible (clears any setGhostVisibility(false))
   ghostEl.style.left = x + 'px';
   ghostEl.style.top  = y + 'px';
 }
@@ -992,6 +1104,7 @@ function moveGhost(x, y, valid) {
 
 function hideGhost() {
   ghostEl.className = 'hidden';
+  ghostEl.style.display = ''; // reset any inline visibility set by setGhostVisibility
   ghostShape = null;
   ghostShapeKey = '';
 }
@@ -1002,6 +1115,21 @@ function getGhostScreenPos(anchorRow, anchorCol, gridRow, gridCol) {
     x: rect.left + gridCol * CELL,
     y: rect.top  + gridRow * CELL,
   };
+}
+
+// Show/hide ghost without clearing its shape state (use before/after grid area)
+function setGhostVisibility(visible) {
+  ghostEl.style.display = visible ? '' : 'none';
+}
+
+// Find the equip slot card at a screen point using bounding-rect checks.
+// Avoids elementFromPoint which can return the ghost div even with pointer-events:none.
+function getEquipCardAtPoint(x, y) {
+  for (const card of document.querySelectorAll('.eq-card')) {
+    const r = card.getBoundingClientRect();
+    if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return card;
+  }
+  return null;
 }
 
 // Highlight / unhighlight cells
@@ -1028,6 +1156,7 @@ function startPlacing(templateId) {
   state.mode = 'placing';
   state.placing = { templateId, rotation: 0 };
   document.body.style.cursor = 'crosshair';
+  document.body.style.userSelect = 'none';
   renderItemList();
   showTemplateDetails(templateId);
 
@@ -1042,6 +1171,7 @@ function cancelPlacing() {
   state.mode = 'idle';
   state.placing = null;
   document.body.style.cursor = '';
+  document.body.style.userSelect = '';
   hideGhost();
   clearHighlights();
   document.removeEventListener('mousemove', onPlacingMouseMove);
@@ -1066,11 +1196,11 @@ function onPlacingMouseMove(e) {
     const { row: gr, col: gc } = pos;
     const screenPos = getGhostScreenPos(0, 0, gr, gc);
     const valid = canPlace(shape, gr, gc);
+    setGhostVisibility(true);
     moveGhost(screenPos.x, screenPos.y, valid);
     highlightCells(shape, gr, gc, valid);
   } else {
-    // Outside grid scroll area — ghost follows cursor freely (centered)
-    moveGhost(e.clientX - dims.cols * CELL / 2, e.clientY - dims.rows * CELL / 2, null);
+    setGhostVisibility(false);
     clearHighlights();
   }
 }
@@ -1120,10 +1250,12 @@ function finalizePlacement(template, shape, rotation, row, col, stackCount) {
 // INTERACTION — DRAGGING PLACED ITEMS
 // =============================================================================
 let dragPointerCapture = null;
+let dragHoverSlotId = null; // slot id the drag ghost is currently hovering over
 
 function onItemPointerDown(e) {
   if (e.button !== 0) return;
   if (isReadOnly()) return;
+  clearTooltip();
   if (state.mode === 'placing') { cancelPlacing(); return; }
 
   const el = e.currentTarget;
@@ -1166,6 +1298,7 @@ function onItemPointerDown(e) {
   const initY = e.clientY - state.dragging.anchorRow * CELL;
   showGhost(shape, template.rarity, initX, initY);
 
+  document.body.style.userSelect = 'none';
   document.addEventListener('pointermove', onDragMove);
   document.addEventListener('pointerup', onDragEnd);
   e.preventDefault();
@@ -1183,12 +1316,24 @@ function onDragMove(e) {
     const { row: gr, col: gc } = pos;
     const screenPos = getGhostScreenPos(0, 0, gr, gc);
     const valid = canPlace(shape, gr, gc, drag.instanceId);
+    setGhostVisibility(true);
     moveGhost(screenPos.x, screenPos.y, valid);
     highlightCells(shape, gr, gc, valid);
   } else {
+    setGhostVisibility(false);
     clearHighlights();
-    const dims = shapeDims(shape);
-    moveGhost(e.clientX - drag.anchorCol * CELL, e.clientY - drag.anchorRow * CELL, null);
+  }
+
+  // Highlight equip slot using bounding-rect check; track hovered slot for onDragEnd
+  document.querySelectorAll('.eq-card.drag-hover').forEach(c => c.classList.remove('drag-hover'));
+  dragHoverSlotId = null;
+  const equipCard = getEquipCardAtPoint(e.clientX, e.clientY);
+  if (equipCard) {
+    const slot = EQUIP_SLOTS.find(s => s.id === equipCard.dataset.slotId);
+    if (slot && !(slot.attuneOnly && !template.attunement)) {
+      equipCard.classList.add('drag-hover');
+      dragHoverSlotId = slot.id;
+    }
   }
 }
 
@@ -1196,27 +1341,45 @@ function onDragEnd(e) {
   if (state.mode !== 'dragging') return;
   document.removeEventListener('pointermove', onDragMove);
   document.removeEventListener('pointerup', onDragEnd);
+  document.body.style.userSelect = '';
 
   const drag = state.dragging;
   const inst = state.instances[drag.instanceId];
   const template = state.db[inst.templateId];
   const shape = getRotatedShape(template.shape, inst.rotation);
 
-  const pos = cursorToGridPos(e.clientX, e.clientY, drag.anchorRow, drag.anchorCol);
   let placed = false;
 
-  if (pos) {
-    const { row: gr, col: gc } = pos;
-    if (canPlace(shape, gr, gc, drag.instanceId)) {
-      inst.row = gr;
-      inst.col = gc;
-      placeOnGrid(inst.id, shape, gr, gc);
-      placed = true;
+  // Try to drop onto the equip slot that was highlighted during the drag.
+  // Using the tracked dragHoverSlotId is more reliable than re-checking at pointerup
+  // because pointer coordinates can be stale or imprecise at release time.
+  if (dragHoverSlotId) {
+    inst.row = drag.origRow;
+    inst.col = drag.origCol;
+    inst.rotation = drag.origRotation;
+    const restoreShape = getRotatedShape(template.shape, inst.rotation);
+    placeOnGrid(inst.id, restoreShape, inst.row, inst.col);
+    state.equipped[dragHoverSlotId] = drag.instanceId;
+    placed = true;
+    dragHoverSlotId = null;
+  }
+
+  // Otherwise try to drop on the inventory grid
+  if (!placed) {
+    const pos = cursorToGridPos(e.clientX, e.clientY, drag.anchorRow, drag.anchorCol);
+    if (pos) {
+      const { row: gr, col: gc } = pos;
+      if (canPlace(shape, gr, gc, drag.instanceId)) {
+        inst.row = gr;
+        inst.col = gc;
+        placeOnGrid(inst.id, shape, gr, gc);
+        placed = true;
+      }
     }
   }
 
   if (!placed) {
-    // Restore
+    // Restore original position
     inst.row = drag.origRow;
     inst.col = drag.origCol;
     inst.rotation = drag.origRotation;
@@ -1226,8 +1389,11 @@ function onDragEnd(e) {
 
   state.mode = 'idle';
   state.dragging = null;
+  dragHoverSlotId = null;
+  setGhostVisibility(true);
   hideGhost();
   clearHighlights();
+  document.querySelectorAll('.eq-card.drag-hover').forEach(c => c.classList.remove('drag-hover'));
   renderAllItems();
   updateWeightDisplay();
   debouncedSync();
@@ -1270,10 +1436,8 @@ document.addEventListener('keydown', e => {
           showGhost(ns, tp.rarity, sp.x, sp.y);
           moveGhost(sp.x, sp.y, vv);
           highlightCells(ns, pp.row, pp.col, vv);
-        } else {
-          const dims = shapeDims(ns);
-          showGhost(ns, tp.rarity, lastPointerX - dims.cols * CELL / 2, lastPointerY - dims.rows * CELL / 2);
         }
+        // If cursor is outside grid, leave ghost hidden — next mousemove will show it
       }
       return;
     }
@@ -1358,6 +1522,9 @@ let ctxInstanceId = null;
 
 function showInstanceContextMenu(instanceId, x, y) {
   ctxInstanceId = instanceId;
+  const equipped = !!getEquippedSlot(instanceId);
+  document.getElementById('ctx-equip').style.display   = equipped ? 'none' : '';
+  document.getElementById('ctx-unequip').style.display = equipped ? '' : 'none';
   ctxMenu.style.left = x + 'px';
   ctxMenu.style.top  = y + 'px';
   ctxMenu.classList.remove('hidden');
@@ -1377,11 +1544,23 @@ function showTemplateContextMenu(templateId, x, y) {
 function hideContextMenu() {
   ctxMenu.classList.add('hidden');
   document.getElementById('ctx-rotate').style.display = '';
+  document.getElementById('ctx-equip').style.display  = '';
+  document.getElementById('ctx-unequip').style.display = 'none';
 }
 
 document.getElementById('ctx-rotate').addEventListener('click', () => {
   if (!ctxInstanceId) return;
   rotateInstance(ctxInstanceId);
+  hideContextMenu();
+});
+document.getElementById('ctx-equip').addEventListener('click', () => {
+  if (!ctxInstanceId) return;
+  openEquipModal(ctxInstanceId);
+  hideContextMenu();
+});
+document.getElementById('ctx-unequip').addEventListener('click', () => {
+  if (!ctxInstanceId) return;
+  unequipInstance(ctxInstanceId);
   hideContextMenu();
 });
 document.getElementById('ctx-edit').addEventListener('click', () => {
@@ -1503,7 +1682,10 @@ function openItemModal(templateId) {
   document.getElementById('f-desc').value    = t?.description ?? '';
   document.getElementById('f-cost').value    = t?.cost ?? 0;
   document.getElementById('f-tags').value    = t?.tags.join(', ') ?? '';
-  document.getElementById('f-image').value   = t?.image ?? '';
+  document.getElementById('f-image').value        = t?.image ?? '';
+  document.getElementById('f-damage').value       = t?.damage ?? '';
+  document.getElementById('f-damage-type').value  = t?.damageType ?? '';
+  document.getElementById('f-attunement').checked = t?.attunement ?? false;
 
   const stackable = t?.stackable ?? false;
   document.getElementById('f-stackable').checked = stackable;
@@ -1601,6 +1783,9 @@ document.getElementById('save-item-btn').addEventListener('click', () => {
     cost:        parseFloat(document.getElementById('f-cost').value) || 0,
     tags,
     image:       document.getElementById('f-image').value.trim(),
+    damage:      document.getElementById('f-damage').value.trim() || undefined,
+    damageType:  document.getElementById('f-damage-type').value || undefined,
+    attunement:  document.getElementById('f-attunement').checked || undefined,
     stackable,
     weightEach:  stackable ? weightEach : undefined,
     shape:       stackable ? [[1]] : state.editorShape.map(r => [...r]),
@@ -1674,6 +1859,7 @@ function saveState() {
   const data = {
     character: state.character,
     instances: state.instances,
+    equipped:  state.equipped,
     db: Object.fromEntries(
       Object.entries(state.db).filter(([id]) => !DEFAULT_ITEMS.find(t => t.id === id))
     ),
@@ -1688,9 +1874,9 @@ function loadState() {
   try {
     const data = JSON.parse(raw);
     state.character = data.character ?? state.character;
-    // Merge custom items
     Object.assign(state.db, data.db ?? {});
     state.instances = data.instances ?? {};
+    state.equipped  = data.equipped  ?? {};
     rebuildGrid();
     renderItemList();
     flashButton(document.getElementById('load-btn'), 'Loaded!');
@@ -1821,6 +2007,7 @@ async function joinParty(code, playerName) {
       character: state.character,
       instances: getSerializableInstances(),
       customDb: getCustomDb(),
+      equipped: state.equipped,
       _writtenBy: playerId,
     });
     playerRef.onDisconnect().update({ connected: false });
@@ -1910,6 +2097,7 @@ function syncPartyState() {
     character: state.character,
     instances: getSerializableInstances(),
     customDb: getCustomDb(),
+    equipped: state.equipped,
     _writtenBy: state.party.playerId,
   });
 }
@@ -1925,6 +2113,7 @@ function loadPlayerStateIntoView(playerData) {
   if (playerData.customDb) Object.assign(state.db, playerData.customDb);
 
   state.instances = playerData.instances ? { ...playerData.instances } : {};
+  state.equipped  = playerData.equipped  ? { ...playerData.equipped  } : {};
 
   rebuildGrid();
   renderItemList();
@@ -1933,6 +2122,7 @@ function loadPlayerStateIntoView(playerData) {
 
 function applyRemoteEditToOwnState(playerData) {
   if (playerData.instances !== undefined) state.instances = { ...playerData.instances };
+  if (playerData.equipped  !== undefined) state.equipped  = { ...playerData.equipped  };
   if (playerData.customDb) Object.assign(state.db, playerData.customDb);
   rebuildGrid();
   renderItemList();
@@ -1943,7 +2133,8 @@ function saveOwnState() {
   state.party.ownState = {
     character: { ...state.character },
     instances: JSON.parse(JSON.stringify(state.instances)),
-    customDb: JSON.parse(JSON.stringify(getCustomDb())),
+    equipped:  { ...state.equipped },
+    customDb:  JSON.parse(JSON.stringify(getCustomDb())),
   };
 }
 
@@ -1952,6 +2143,7 @@ function restoreOwnState() {
   if (!own) return;
   state.character = { ...own.character };
   state.instances = { ...own.instances };
+  state.equipped  = { ...(own.equipped ?? {}) };
   state.db = {};
   DEFAULT_ITEMS.forEach(t => { state.db[t.id] = t; });
   Object.assign(state.db, own.customDb);
@@ -2189,6 +2381,269 @@ document.getElementById('leave-party-btn').addEventListener('click', () => {
 document.getElementById('return-to-own-btn').addEventListener('click', switchViewToOwn);
 
 // =============================================================================
+// EQUIPMENT
+// =============================================================================
+function getEquippedSlot(instanceId) {
+  return Object.entries(state.equipped).find(([, id]) => id === instanceId)?.[0] ?? null;
+}
+
+function equipItem(instanceId, slotId) {
+  state.equipped[slotId] = instanceId;
+  renderAllItems();
+  debouncedSync();
+}
+
+function unequipItem(slotId) {
+  delete state.equipped[slotId];
+  renderAllItems();
+  debouncedSync();
+}
+
+function unequipInstance(instanceId) {
+  const slotId = getEquippedSlot(instanceId);
+  if (slotId) unequipItem(slotId);
+}
+
+function renderEquipPanel() {
+  const panel = document.getElementById('equip-panel');
+  if (!panel) return;
+  panel.innerHTML = '';
+
+  function makeSlotCard(slot) {
+    const instId = state.equipped[slot.id] ?? null;
+    const inst   = instId ? state.instances[instId] : null;
+    const t      = inst ? state.db[inst.templateId] : null;
+
+    const card = document.createElement('div');
+    card.className = 'eq-card' + (t ? ' filled' : '');
+    card.dataset.slotId = slot.id;
+
+    const labelEl = document.createElement('span');
+    labelEl.className = 'eq-card-label';
+    labelEl.textContent = slot.panelLabel ?? slot.label;
+
+    const itemEl = document.createElement('span');
+    itemEl.className = 'eq-card-item';
+    itemEl.textContent = t ? t.name : '—';
+
+    card.appendChild(labelEl);
+    card.appendChild(itemEl);
+
+    if (t && !isReadOnly()) {
+      const unequipBtn = document.createElement('button');
+      unequipBtn.className = 'eq-card-unequip';
+      unequipBtn.textContent = '×';
+      unequipBtn.title = 'Unequip';
+      unequipBtn.addEventListener('click', e => { e.stopPropagation(); unequipItem(slot.id); });
+      card.appendChild(unequipBtn);
+    }
+
+    // Tooltip for equipped item
+    if (inst) {
+      card.addEventListener('pointerenter', e => startTooltipTimer(inst.id, e.clientX, e.clientY));
+      card.addEventListener('pointerleave', clearTooltip);
+    }
+
+    if (!isReadOnly()) {
+      card.addEventListener('click', () => openSlotPicker(slot.id));
+    }
+
+    return card;
+  }
+
+  // Body section
+  const bodySection = document.createElement('div');
+  bodySection.className = 'eq-section';
+  EQUIP_SLOTS.filter(s => s.group === 'body').forEach(slot => bodySection.appendChild(makeSlotCard(slot)));
+  panel.appendChild(bodySection);
+
+  // Weapons section
+  const weaponSection = document.createElement('div');
+  weaponSection.className = 'eq-section';
+  const weaponHeader = document.createElement('div');
+  weaponHeader.className = 'eq-section-header';
+  weaponHeader.textContent = 'Weapons';
+  const weaponRow = document.createElement('div');
+  weaponRow.className = 'eq-weapons-row';
+  EQUIP_SLOTS.filter(s => s.group === 'weapons').forEach(slot => weaponRow.appendChild(makeSlotCard(slot)));
+  weaponSection.appendChild(weaponHeader);
+  weaponSection.appendChild(weaponRow);
+  panel.appendChild(weaponSection);
+
+  // Wondrous / attunement section
+  const wondrousSlots = EQUIP_SLOTS.filter(s => s.group === 'wondrous');
+  const attuneCount   = wondrousSlots.filter(s => state.equipped[s.id]).length;
+  const wondrousSection = document.createElement('div');
+  wondrousSection.className = 'eq-section';
+  const wondrousHeader = document.createElement('div');
+  wondrousHeader.className = 'eq-section-header';
+  wondrousHeader.textContent = `Wondrous (${attuneCount}/3)`;
+  wondrousSection.appendChild(wondrousHeader);
+  wondrousSlots.forEach(slot => wondrousSection.appendChild(makeSlotCard(slot)));
+  panel.appendChild(wondrousSection);
+}
+
+let equipModalInstanceId = null;
+
+// Called from context menu "Equip…" — picks a slot for the given item
+function openEquipModal(instanceId) {
+  equipModalInstanceId = instanceId;
+  const inst = state.instances[instanceId];
+  const t    = inst ? state.db[inst.templateId] : null;
+
+  document.getElementById('equip-modal').querySelector('h2').textContent = 'Equip to Slot';
+
+  const picker = document.getElementById('equip-slot-picker');
+  picker.innerHTML = '';
+
+  // attuneOnly slots are only offered if the item requires attunement
+  const eligibleSlots = EQUIP_SLOTS.filter(slot => !(slot.attuneOnly && !t?.attunement));
+
+  eligibleSlots.forEach(slot => {
+    const occupantId   = state.equipped[slot.id];
+    const occupantInst = occupantId ? state.instances[occupantId] : null;
+    const occupantName = occupantInst ? state.db[occupantInst.templateId]?.name : null;
+
+    const btn = document.createElement('button');
+    btn.className = 'btn-sm equip-slot-pick-btn';
+    btn.textContent = slot.label + (occupantName ? ` (${occupantName})` : '');
+    btn.addEventListener('click', () => { equipItem(instanceId, slot.id); hideModal('equip-modal'); });
+    picker.appendChild(btn);
+  });
+
+  showModal('equip-modal');
+}
+
+// Called from clicking a slot in the equip panel — picks an item for the given slot
+function openSlotPicker(slotId) {
+  clearTooltip();
+  const slot = EQUIP_SLOTS.find(s => s.id === slotId);
+  if (!slot) return;
+
+  document.getElementById('equip-modal').querySelector('h2').textContent = slot.label;
+
+  const picker = document.getElementById('equip-slot-picker');
+  picker.innerHTML = '';
+
+  // Unequip option when slot is occupied
+  const currentId = state.equipped[slotId];
+  if (currentId) {
+    const unequipBtn = document.createElement('button');
+    unequipBtn.className = 'btn-sm equip-slot-pick-btn danger';
+    unequipBtn.textContent = 'Unequip';
+    unequipBtn.addEventListener('click', () => { unequipItem(slotId); hideModal('equip-modal'); });
+    picker.appendChild(unequipBtn);
+  }
+
+  const candidates = Object.values(state.instances).filter(inst => {
+    const tmpl = state.db[inst.templateId];
+    if (!tmpl) return false;
+    if (slot.attuneOnly && !tmpl.attunement) return false;
+    return true;
+  });
+
+  if (candidates.length === 0) {
+    const msg = document.createElement('p');
+    msg.className = 'modal-note';
+    msg.textContent = slot.attuneOnly
+      ? 'No items requiring attunement in your inventory.'
+      : 'No items in your inventory.';
+    picker.appendChild(msg);
+  } else {
+    candidates.forEach(inst => {
+      const tmpl         = state.db[inst.templateId];
+      const alreadyHere  = state.equipped[slotId] === inst.id;
+      const btn = document.createElement('button');
+      btn.className = 'btn-sm equip-slot-pick-btn' + (alreadyHere ? ' active' : '');
+      btn.textContent = tmpl.name
+        + (inst.stackCount > 1 ? ` ×${inst.stackCount}` : '')
+        + (alreadyHere ? ' (equipped)' : '');
+      btn.addEventListener('click', () => { equipItem(inst.id, slotId); hideModal('equip-modal'); });
+      picker.appendChild(btn);
+    });
+  }
+
+  showModal('equip-modal');
+}
+
+// =============================================================================
+// TOOLTIP
+// =============================================================================
+let tooltipTimer = null;
+
+function startTooltipTimer(instanceId, x, y) {
+  clearTooltip();
+  tooltipTimer = setTimeout(() => showItemTooltip(instanceId, x, y), 1200);
+}
+
+function clearTooltip() {
+  clearTimeout(tooltipTimer);
+  tooltipTimer = null;
+  const el = document.getElementById('item-tooltip');
+  el.classList.add('hidden');
+  el.innerHTML = '';
+}
+
+function showItemTooltip(instanceId, x, y) {
+  const inst = state.instances[instanceId];
+  if (!inst) return;
+  const t = state.db[inst.templateId];
+  if (!t) return;
+
+  const el    = document.getElementById('item-tooltip');
+  const color = RARITY_META[t.rarity]?.color ?? '#888';
+
+  const weight = t.stackable
+    ? `${Math.round(t.weightEach * (inst.stackCount ?? 1) * 100) / 100} lb (×${inst.stackCount ?? 1})`
+    : `${shapeWeight(getRotatedShape(t.shape, inst.rotation))} lb`;
+
+  const dmgHtml      = t.damage
+    ? `<div class="tip-row"><span>Damage</span><span>${t.damage}${t.damageType ? ' ' + t.damageType : ''}</span></div>`
+    : '';
+  const costHtml     = t.cost
+    ? `<div class="tip-row"><span>Cost</span><span>${t.cost.toLocaleString()} gp</span></div>`
+    : '';
+  const attuneHtml   = t.attunement
+    ? `<div class="tip-attune">Requires Attunement</div>`
+    : '';
+  const descHtml     = t.description
+    ? `<div class="tip-desc">${t.description}</div>`
+    : '';
+  const tagsHtml     = t.tags?.length
+    ? `<div class="tip-tags">${t.tags.map(tag => `<span class="tag-pill">${tag}</span>`).join('')}</div>`
+    : '';
+
+  el.innerHTML = `
+    <div class="tip-header">
+      <span class="tip-name">${t.name}</span>
+      <span class="tip-rarity" style="color:${color}">${RARITY_META[t.rarity]?.label ?? ''}</span>
+    </div>
+    ${attuneHtml}
+    ${dmgHtml}
+    <div class="tip-row"><span>Weight</span><span>${weight}</span></div>
+    ${costHtml}
+    ${descHtml}
+    ${tagsHtml}
+  `;
+
+  el.classList.remove('hidden');
+
+  // Position tooltip, flipping left/up if it would overflow the viewport
+  const pad = 12;
+  const tipW = 240;
+  let left = x + pad;
+  let top  = y + pad;
+  if (left + tipW > window.innerWidth - pad) left = x - tipW - pad;
+  el.style.left = left + 'px';
+  el.style.top  = top + 'px';
+  // Now that it's visible we can measure height and correct vertical overflow
+  if (top + el.offsetHeight > window.innerHeight - pad) {
+    top = window.innerHeight - el.offsetHeight - pad;
+    el.style.top = top + 'px';
+  }
+}
+
+// =============================================================================
 // INITIALIZATION
 // =============================================================================
 function init() {
@@ -2196,6 +2651,7 @@ function init() {
   initGrid();
   buildGrid();
   renderItemList();
+  renderEquipPanel();
   updateWeightDisplay();
   initFirebase();
 }
