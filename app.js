@@ -38,440 +38,8 @@ const EQUIP_SLOTS = [
 ];
 
 // =============================================================================
-// DEFAULT ITEM DATABASE
+// DEFAULT ITEM DATABASE  (defined in items.js, loaded before this script)
 // =============================================================================
-// Shapes: 2D arrays, 1 = filled cell (1 lb each), 0 = empty.
-// For stackable items: weightEach < 1, maxStack = 1/weightEach (must divide evenly)
-// Stackable items always use shape [[1]] and occupy one cell per stack.
-
-const DEFAULT_ITEMS = [
-  // ── CURRENCY ──────────────────────────────────────────────────────────────
-  {
-    id: 'gold_coin', name: 'Gold Coin', rarity: 'common',
-    description: 'Standard currency of the realm. 50 coins weigh 1 lb.',
-    shape: [[1]], stackable: true, weightEach: 0.02, cost: 1,
-    tags: ['currency'], image: '',
-  },
-  {
-    id: 'silver_coin', name: 'Silver Coin', rarity: 'common',
-    description: '10 silver pieces equal 1 gold piece.',
-    shape: [[1]], stackable: true, weightEach: 0.02, cost: 0.1,
-    tags: ['currency'], image: '',
-  },
-  {
-    id: 'gem_small', name: 'Gemstone', rarity: 'uncommon',
-    description: 'A polished gem suitable for trade or arcane focus.',
-    shape: [[1]], stackable: false, cost: 50,
-    tags: ['gem', 'trade'], image: '',
-  },
-  // ── AMMUNITION ────────────────────────────────────────────────────────────
-  {
-    id: 'arrow', name: 'Arrow', rarity: 'common',
-    description: 'A standard arrow for shortbows and longbows. 20 arrows weigh 1 lb.',
-    shape: [[1]], stackable: true, weightEach: 0.05, cost: 0.05,
-    tags: ['ammunition', 'ranged'], image: '',
-  },
-  {
-    id: 'crossbow_bolt', name: 'Crossbow Bolt', rarity: 'common',
-    description: 'A bolt for crossbows. 20 bolts weigh 1 lb.',
-    shape: [[1]], stackable: true, weightEach: 0.05, cost: 0.05,
-    tags: ['ammunition', 'ranged'], image: '',
-  },
-  {
-    id: 'sling_bullet', name: 'Sling Bullet', rarity: 'common',
-    description: 'Heavy lead bullets for a sling. 20 per pound.',
-    shape: [[1]], stackable: true, weightEach: 0.05, cost: 0.01,
-    tags: ['ammunition', 'ranged'], image: '',
-  },
-  // ── DAGGERS & SMALL BLADES ───────────────────────────────────────────────
-  {
-    id: 'dagger', name: 'Dagger', rarity: 'common',
-    description: 'A small piercing blade, concealable and light. Finesse, thrown (20/60 ft).',
-    shape: [[1],[1]], stackable: false, cost: 2,
-    tags: ['weapon', 'melee', 'finesse', 'thrown', 'martial'], image: '',
-  },
-  {
-    id: 'handaxe', name: 'Handaxe', rarity: 'common',
-    description: 'A small axe that can be thrown. Thrown (20/60 ft).',
-    shape: [[1],[1],[1]], stackable: false, cost: 5,
-    tags: ['weapon', 'melee', 'thrown', 'simple'], image: '',
-  },
-  // ── SWORDS ────────────────────────────────────────────────────────────────
-  {
-    id: 'short_sword', name: 'Short Sword', rarity: 'common',
-    description: 'A nimble martial blade. Finesse, light.',
-    shape: [[1],[1],[1]], stackable: false, cost: 10,
-    tags: ['weapon', 'melee', 'finesse', 'light', 'martial'], image: '',
-  },
-  {
-    id: 'longsword', name: 'Longsword', rarity: 'common',
-    description: 'A versatile martial sword. Can be wielded one- or two-handed.',
-    shape: [[1],[1],[1],[1]], stackable: false, cost: 15,
-    tags: ['weapon', 'melee', 'versatile', 'martial'], image: '',
-  },
-  {
-    id: 'rapier', name: 'Rapier', rarity: 'common',
-    description: 'An elegant piercing blade with unmatched finesse.',
-    shape: [[1],[1],[1],[1]], stackable: false, cost: 25,
-    tags: ['weapon', 'melee', 'finesse', 'martial'], image: '',
-  },
-  {
-    id: 'greatsword', name: 'Greatsword', rarity: 'common',
-    description: 'A massive two-handed blade that deals tremendous damage.',
-    shape: [[1,1],[1,1],[1,1],[1,1],[1,1]], stackable: false, cost: 50,
-    tags: ['weapon', 'melee', 'heavy', 'two-handed', 'martial'], image: '',
-  },
-  {
-    id: 'scimitar', name: 'Scimitar', rarity: 'common',
-    description: 'A curved, slashing blade favored by desert warriors.',
-    shape: [[0,1],[1,1],[1,0],[1,0]], stackable: false, cost: 25,
-    tags: ['weapon', 'melee', 'finesse', 'light', 'martial'], image: '',
-  },
-  // ── AXES ──────────────────────────────────────────────────────────────────
-  {
-    id: 'battleaxe', name: 'Battleaxe', rarity: 'common',
-    description: 'A war axe usable with one or two hands.',
-    shape: [[1,1,0],[0,1,0],[0,1,0],[0,1,1]], stackable: false, cost: 10,
-    tags: ['weapon', 'melee', 'versatile', 'martial'], image: '',
-  },
-  {
-    id: 'greataxe', name: 'Greataxe', rarity: 'common',
-    description: 'A massive two-handed axe dealing 1d12 damage.',
-    shape: [[1,1,1],[1,1,1],[0,1,0],[0,1,0],[0,1,0],[0,1,1]], stackable: false, cost: 30,
-    tags: ['weapon', 'melee', 'heavy', 'two-handed', 'martial'], image: '',
-  },
-  // ── POLEARMS & STAVES ─────────────────────────────────────────────────────
-  {
-    id: 'quarterstaff', name: 'Quarterstaff', rarity: 'common',
-    description: 'A simple wooden staff, versatile in a trained hand.',
-    shape: [[1],[1],[1],[1],[1]], stackable: false, cost: 0.2,
-    tags: ['weapon', 'melee', 'versatile', 'simple'], image: '',
-  },
-  {
-    id: 'spear', name: 'Spear', rarity: 'common',
-    description: 'A wooden shaft tipped with iron. Thrown (20/60 ft).',
-    shape: [[1],[1],[1],[1]], stackable: false, cost: 1,
-    tags: ['weapon', 'melee', 'thrown', 'simple'], image: '',
-  },
-  {
-    id: 'halberd', name: 'Halberd', rarity: 'common',
-    description: 'A polearm with an axe-blade and a spike. Reach.',
-    shape: [[1,1],[0,1],[0,1],[0,1],[0,1],[0,1]], stackable: false, cost: 20,
-    tags: ['weapon', 'melee', 'heavy', 'reach', 'two-handed', 'martial'], image: '',
-  },
-  {
-    id: 'glaive', name: 'Glaive', rarity: 'common',
-    description: 'A blade on a long pole. Heavy, reach, two-handed.',
-    shape: [[1,0],[1,1],[0,1],[0,1],[0,1],[0,1]], stackable: false, cost: 20,
-    tags: ['weapon', 'melee', 'heavy', 'reach', 'two-handed', 'martial'], image: '',
-  },
-  // ── MACES & HAMMERS ───────────────────────────────────────────────────────
-  {
-    id: 'mace', name: 'Mace', rarity: 'common',
-    description: 'A bludgeoning weapon effective against armor.',
-    shape: [[1,1],[0,1],[0,1],[0,1]], stackable: false, cost: 5,
-    tags: ['weapon', 'melee', 'bludgeoning', 'simple'], image: '',
-  },
-  {
-    id: 'warhammer', name: 'Warhammer', rarity: 'common',
-    description: 'A heavy bludgeoning weapon. Versatile.',
-    shape: [[1,1,1],[0,1,0],[0,1,0],[0,1,0]], stackable: false, cost: 15,
-    tags: ['weapon', 'melee', 'bludgeoning', 'versatile', 'martial'], image: '',
-  },
-  {
-    id: 'maul', name: 'Maul', rarity: 'common',
-    description: 'A two-handed war hammer. Heavy.',
-    shape: [[1,1,1],[1,1,1],[0,1,0],[0,1,0],[0,1,0]], stackable: false, cost: 10,
-    tags: ['weapon', 'melee', 'bludgeoning', 'heavy', 'two-handed', 'martial'], image: '',
-  },
-  // ── RANGED WEAPONS ────────────────────────────────────────────────────────
-  {
-    id: 'shortbow', name: 'Shortbow', rarity: 'common',
-    description: 'A compact bow with 80/320 ft range.',
-    shape: [[1,0],[1,1],[1,0],[1,0]], stackable: false, cost: 25,
-    tags: ['weapon', 'ranged', 'two-handed', 'simple'], image: '',
-  },
-  {
-    id: 'longbow', name: 'Longbow', rarity: 'common',
-    description: 'A powerful bow with 150/600 ft range.',
-    shape: [[1,0],[1,1],[1,0],[1,0],[1,0],[1,0]], stackable: false, cost: 50,
-    tags: ['weapon', 'ranged', 'two-handed', 'heavy', 'martial'], image: '',
-  },
-  {
-    id: 'hand_crossbow', name: 'Hand Crossbow', rarity: 'common',
-    description: 'A compact crossbow, light and concealable.',
-    shape: [[1,1,1],[0,1,0],[0,1,0]], stackable: false, cost: 75,
-    tags: ['weapon', 'ranged', 'light', 'martial'], image: '',
-  },
-  {
-    id: 'heavy_crossbow', name: 'Heavy Crossbow', rarity: 'common',
-    description: 'A powerful crossbow with 100/400 ft range.',
-    shape: [[1,1,1,1],[0,1,1,0],[0,0,1,0],[0,0,1,0]], stackable: false, cost: 50,
-    tags: ['weapon', 'ranged', 'two-handed', 'heavy', 'martial'], image: '',
-  },
-  // ── SHIELDS & ARMOR ───────────────────────────────────────────────────────
-  {
-    id: 'shield', name: 'Shield', rarity: 'common',
-    description: '+2 to AC. Must be wielded to gain bonus.',
-    shape: [[1,1],[1,1],[1,1]], stackable: false, cost: 10,
-    tags: ['armor', 'shield'], image: '',
-  },
-  {
-    id: 'leather_armor', name: 'Leather Armor', rarity: 'common',
-    description: 'Light armor made from stiffened leather. AC 11 + DEX.',
-    shape: [[1,1,1],[1,1,1],[1,1,1],[1,0,1]], stackable: false, cost: 10,
-    tags: ['armor', 'light'], image: '',
-  },
-  {
-    id: 'chain_shirt', name: 'Chain Shirt', rarity: 'common',
-    description: 'Medium armor, AC 13 + DEX (max 2).',
-    shape: [[1,1,1,1],[1,1,1,1],[1,1,1,1],[1,0,0,1]], stackable: false, cost: 50,
-    tags: ['armor', 'medium'], image: '',
-  },
-  {
-    id: 'plate_armor', name: 'Plate Armor', rarity: 'uncommon',
-    description: 'Heavy full-plate armor, AC 18. Strength 15 required.',
-    shape: [
-      [1,1,1,1,1],[1,1,1,1,1],[1,1,1,1,1],[1,1,1,1,1],
-      [1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1]
-    ],
-    stackable: false, cost: 1500,
-    tags: ['armor', 'heavy'], image: '',
-  },
-  // ── POTIONS ───────────────────────────────────────────────────────────────
-  {
-    id: 'potion_healing', name: 'Potion of Healing', rarity: 'common',
-    description: 'Restores 2d4+2 hit points when consumed.',
-    shape: [[1],[1]], stackable: false, cost: 50,
-    tags: ['potion', 'consumable', 'healing'], image: '',
-  },
-  {
-    id: 'potion_greater_healing', name: 'Greater Healing Potion', rarity: 'uncommon',
-    description: 'Restores 4d4+4 hit points.',
-    shape: [[1],[1]], stackable: false, cost: 150,
-    tags: ['potion', 'consumable', 'healing'], image: '',
-  },
-  {
-    id: 'potion_superior_healing', name: 'Superior Healing Potion', rarity: 'rare',
-    description: 'Restores 8d4+8 hit points.',
-    shape: [[1],[1]], stackable: false, cost: 450,
-    tags: ['potion', 'consumable', 'healing'], image: '',
-  },
-  {
-    id: 'potion_supreme_healing', name: 'Supreme Healing Potion', rarity: 'very_rare',
-    description: 'Restores 10d4+20 hit points.',
-    shape: [[1],[1]], stackable: false, cost: 1350,
-    tags: ['potion', 'consumable', 'healing'], image: '',
-  },
-  {
-    id: 'potion_giant_strength', name: 'Potion of Giant Strength', rarity: 'rare',
-    description: 'Sets your Strength to 21 for 1 hour.',
-    shape: [[1,1],[0,1]], stackable: false, cost: 500,
-    tags: ['potion', 'consumable', 'buff'], image: '',
-  },
-  {
-    id: 'potion_invisibility', name: 'Potion of Invisibility', rarity: 'very_rare',
-    description: 'You become invisible for up to 1 hour.',
-    shape: [[1],[1]], stackable: false, cost: 2000,
-    tags: ['potion', 'consumable', 'stealth'], image: '',
-  },
-  {
-    id: 'antitoxin', name: 'Antitoxin', rarity: 'uncommon',
-    description: 'Advantage on saving throws against poison for 1 hour.',
-    shape: [[1]], stackable: false, cost: 50,
-    tags: ['potion', 'consumable'], image: '',
-  },
-  // ── SCROLLS ───────────────────────────────────────────────────────────────
-  {
-    id: 'spell_scroll_cantrip', name: 'Spell Scroll (Cantrip)', rarity: 'common',
-    description: 'A scroll containing a single cantrip spell.',
-    shape: [[1],[1]], stackable: false, cost: 25,
-    tags: ['scroll', 'consumable', 'magic'], image: '',
-  },
-  {
-    id: 'spell_scroll_1st', name: 'Spell Scroll (1st Level)', rarity: 'common',
-    description: 'A scroll with a 1st-level spell inscription.',
-    shape: [[1],[1]], stackable: false, cost: 75,
-    tags: ['scroll', 'consumable', 'magic'], image: '',
-  },
-  {
-    id: 'spell_scroll_5th', name: 'Spell Scroll (5th Level)', rarity: 'rare',
-    description: 'A scroll imbued with a powerful 5th-level spell.',
-    shape: [[1],[1]], stackable: false, cost: 1500,
-    tags: ['scroll', 'consumable', 'magic'], image: '',
-  },
-  {
-    id: 'spell_scroll_9th', name: 'Spell Scroll (9th Level)', rarity: 'legendary',
-    description: 'A scroll containing a legendary 9th-level spell.',
-    shape: [[1],[1]], stackable: false, cost: 50000,
-    tags: ['scroll', 'consumable', 'magic'], image: '',
-  },
-  // ── MAGIC ITEMS ───────────────────────────────────────────────────────────
-  {
-    id: 'ring_protection', name: 'Ring of Protection', rarity: 'rare',
-    description: '+1 bonus to AC and saving throws.',
-    shape: [[1]], stackable: false, cost: 3500,
-    tags: ['ring', 'magic', 'attuned'], image: '',
-  },
-  {
-    id: 'ring_spell_storing', name: 'Ring of Spell Storing', rarity: 'rare',
-    description: 'Stores up to 5 levels of spells for later casting.',
-    shape: [[1]], stackable: false, cost: 24000,
-    tags: ['ring', 'magic', 'attuned'], image: '',
-  },
-  {
-    id: 'amulet_natural_armor', name: 'Amulet of Natural Armor', rarity: 'uncommon',
-    description: '+1 bonus to natural armor class.',
-    shape: [[1]], stackable: false, cost: 5000,
-    tags: ['amulet', 'magic', 'attuned'], image: '',
-  },
-  {
-    id: 'cloak_displacement', name: 'Cloak of Displacement', rarity: 'rare',
-    description: 'Attackers have disadvantage on their first attack each turn.',
-    shape: [[1,1],[1,1],[1,1]], stackable: false, cost: 24000,
-    tags: ['cloak', 'magic', 'attuned'], image: '',
-  },
-  {
-    id: 'bag_holding', name: 'Bag of Holding', rarity: 'uncommon',
-    description: 'Holds 500 lbs in a 64 cubic foot space, weighs only 15 lbs.',
-    shape: [[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1]], stackable: false, cost: 4000,
-    tags: ['magic', 'container'], image: '',
-  },
-  {
-    id: 'wand_magic_missiles', name: 'Wand of Magic Missiles', rarity: 'uncommon',
-    description: 'Has 7 charges. Expend 1–3 charges to cast Magic Missile.',
-    shape: [[1],[1],[1]], stackable: false, cost: 2000,
-    tags: ['wand', 'magic', 'arcane', 'attuned'], image: '',
-  },
-  {
-    id: 'staff_power', name: 'Staff of Power', rarity: 'very_rare',
-    description: '20 charges. Grants +2 to attack, damage, saving throws, and AC.',
-    shape: [[1],[1],[1],[1],[1],[1],[1]], stackable: false, cost: 95500,
-    tags: ['staff', 'magic', 'arcane', 'attuned'], image: '',
-  },
-  {
-    id: 'holy_avenger', name: 'Holy Avenger', rarity: 'legendary',
-    description: 'A paladin\'s sacred sword. +3, radiant damage, magical aura.',
-    shape: [[1],[1],[1],[1],[1]], stackable: false, cost: 165000,
-    tags: ['weapon', 'melee', 'magic', 'attuned', 'legendary'], image: '',
-  },
-  {
-    id: 'deck_many_things', name: 'Deck of Many Things', rarity: 'artifact',
-    description: 'A deck of 22 cards, each with wild magical effects. Use with caution.',
-    shape: [[1,1],[1,1]], stackable: false, cost: 0,
-    tags: ['artifact', 'magic', 'dangerous'], image: '',
-  },
-  // ── ADVENTURING GEAR ──────────────────────────────────────────────────────
-  {
-    id: 'rope_hemp', name: 'Rope (Hemp, 50ft)', rarity: 'common',
-    description: '50 feet of hemp rope. Holds up to 1,500 lbs.',
-    shape: [[1,1],[1,1],[1,1],[1,1],[1,1]], stackable: false, cost: 1,
-    tags: ['gear', 'utility'], image: '',
-  },
-  {
-    id: 'torch', name: 'Torch', rarity: 'common',
-    description: 'Sheds bright light in a 20-ft radius for 1 hour.',
-    shape: [[1],[1]], stackable: false, cost: 0.01,
-    tags: ['gear', 'light', 'consumable'], image: '',
-  },
-  {
-    id: 'lantern_hooded', name: 'Hooded Lantern', rarity: 'common',
-    description: 'Bright light 30 ft, dim 60 ft. Can be shuttered to dark.',
-    shape: [[1,1],[1,1]], stackable: false, cost: 5,
-    tags: ['gear', 'light'], image: '',
-  },
-  {
-    id: 'crowbar', name: 'Crowbar', rarity: 'common',
-    description: 'Advantage on Strength checks to pry things open.',
-    shape: [[1],[1],[1],[1],[1]], stackable: false, cost: 2,
-    tags: ['gear', 'tool'], image: '',
-  },
-  {
-    id: 'grappling_hook', name: 'Grappling Hook', rarity: 'common',
-    description: 'A hook to anchor a rope, enabling climbing.',
-    shape: [[1,1],[1,1]], stackable: false, cost: 2,
-    tags: ['gear', 'tool', 'utility'], image: '',
-  },
-  {
-    id: 'healers_kit', name: "Healer's Kit", rarity: 'common',
-    description: '10 uses. Stabilize a dying creature without a Medicine check.',
-    shape: [[1,1],[1,1]], stackable: false, cost: 5,
-    tags: ['gear', 'healing', 'consumable'], image: '',
-  },
-  {
-    id: 'tinderbox', name: 'Tinderbox', rarity: 'common',
-    description: 'Strike flint and steel to light torches or start fires.',
-    shape: [[1]], stackable: false, cost: 0.5,
-    tags: ['gear', 'tool', 'light'], image: '',
-  },
-  {
-    id: 'rations', name: 'Rations (1 day)', rarity: 'common',
-    description: 'Dry food for one day: jerky, dried fruit, hardtack.',
-    shape: [[1],[1]], stackable: false, cost: 0.5,
-    tags: ['gear', 'food', 'consumable'], image: '',
-  },
-  {
-    id: 'waterskin', name: 'Waterskin', rarity: 'common',
-    description: 'Holds up to 4 pints of liquid when full.',
-    shape: [[1,1],[0,1],[0,1]], stackable: false, cost: 0.2,
-    tags: ['gear', 'container'], image: '',
-  },
-  {
-    id: 'thieves_tools', name: "Thieves' Tools", rarity: 'common',
-    description: 'Small file, picks, mirrors, and clamps. Proficiency required.',
-    shape: [[1,1],[1,1]], stackable: false, cost: 25,
-    tags: ['gear', 'tool', 'thieves'], image: '',
-  },
-  {
-    id: 'spellbook', name: 'Spellbook', rarity: 'uncommon',
-    description: 'An essential tome for wizards, containing their known spells.',
-    shape: [[1,1,1],[1,1,1],[1,1,1],[1,1,1]], stackable: false, cost: 50,
-    tags: ['gear', 'arcane', 'book'], image: '',
-  },
-  {
-    id: 'component_pouch', name: 'Component Pouch', rarity: 'common',
-    description: 'A small pouch with common spell components.',
-    shape: [[1],[1]], stackable: false, cost: 25,
-    tags: ['gear', 'arcane'], image: '',
-  },
-  {
-    id: 'orb', name: 'Orb (Arcane Focus)', rarity: 'common',
-    description: 'A crystal orb used as an arcane focus for spellcasting.',
-    shape: [[1,1],[1,1]], stackable: false, cost: 20,
-    tags: ['gear', 'arcane', 'focus'], image: '',
-  },
-  {
-    id: 'holy_symbol', name: 'Holy Symbol', rarity: 'common',
-    description: 'A sacred symbol used as a divine focus by clerics and paladins.',
-    shape: [[1],[1]], stackable: false, cost: 5,
-    tags: ['gear', 'divine', 'focus'], image: '',
-  },
-  {
-    id: 'poison_basic', name: 'Basic Poison (vial)', rarity: 'uncommon',
-    description: 'Applied to a weapon. On hit, target must succeed DC 10 CON or take 1d4 poison.',
-    shape: [[1]], stackable: false, cost: 100,
-    tags: ['gear', 'consumable', 'poison'], image: '',
-  },
-  // ── TREASURE ──────────────────────────────────────────────────────────────
-  {
-    id: 'diamond', name: 'Diamond', rarity: 'legendary',
-    description: 'A flawless gem. Required component for Raise Dead and similar spells.',
-    shape: [[1]], stackable: false, cost: 5000,
-    tags: ['gem', 'treasure', 'spell-component'], image: '',
-  },
-  {
-    id: 'ruby', name: 'Ruby', rarity: 'rare',
-    description: 'A deep red gem of significant value.',
-    shape: [[1]], stackable: false, cost: 1000,
-    tags: ['gem', 'treasure'], image: '',
-  },
-  {
-    id: 'sapphire', name: 'Sapphire', rarity: 'very_rare',
-    description: 'A magnificent blue gem.',
-    shape: [[1]], stackable: false, cost: 2500,
-    tags: ['gem', 'treasure'], image: '',
-  },
-];
 
 // =============================================================================
 // STATE
@@ -495,6 +63,8 @@ const state = {
   editingItemId: null, // null = new item
   // Equipped items: { [slotId]: instanceId | null }
   equipped: {},
+  // Slot ids hidden from the equip panel (persisted separately)
+  disabledSlots: [],
   // Party session
   party: {
     active: false,
@@ -872,6 +442,10 @@ function renderItemList() {
       document.addEventListener('pointermove', onMove);
       document.addEventListener('pointerup', onUp);
     });
+    card.addEventListener('pointerenter', e => {
+      tooltipTimer = setTimeout(() => showTemplateTooltip(t.id, e.clientX, e.clientY), 1000);
+    });
+    card.addEventListener('pointerleave', clearTooltip);
     card.addEventListener('contextmenu', e => {
       e.preventDefault();
       showTemplateContextMenu(t.id, e.clientX, e.clientY);
@@ -1855,7 +1429,7 @@ const SAVE_KEY = 'dnd_inventory_v1';
 document.getElementById('save-btn').addEventListener('click', saveState);
 document.getElementById('load-btn').addEventListener('click', loadState);
 
-function saveState() {
+function autoSave() {
   const data = {
     character: state.character,
     instances: state.instances,
@@ -1865,6 +1439,22 @@ function saveState() {
     ),
   };
   localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+}
+
+function autoLoad() {
+  const raw = localStorage.getItem(SAVE_KEY);
+  if (!raw) return;
+  try {
+    const data = JSON.parse(raw);
+    if (data.character) state.character = data.character;
+    if (data.db)        Object.assign(state.db, data.db);
+    if (data.instances) state.instances = data.instances;
+    if (data.equipped)  state.equipped  = data.equipped;
+  } catch {}
+}
+
+function saveState() {
+  autoSave();
   flashButton(document.getElementById('save-btn'), 'Saved!');
 }
 
@@ -1879,6 +1469,7 @@ function loadState() {
     state.equipped  = data.equipped  ?? {};
     rebuildGrid();
     renderItemList();
+    renderEquipPanel();
     flashButton(document.getElementById('load-btn'), 'Loaded!');
   } catch {
     alert('Failed to load save data.');
@@ -2076,6 +1667,9 @@ function leaveParty() {
 
 let syncTimer = null;
 function debouncedSync() {
+  // Don't overwrite own save while a GM is editing a player's inventory
+  const gmEditing = state.party.active && state.party.role === 'gm' && state.party.viewingPlayerId !== null;
+  if (!gmEditing) autoSave();
   if (!state.party.active) return;
   clearTimeout(syncTimer);
   syncTimer = setTimeout(syncPartyState, 400);
@@ -2409,6 +2003,11 @@ function renderEquipPanel() {
   if (!panel) return;
   panel.innerHTML = '';
 
+  const scrollArea = document.createElement('div');
+  scrollArea.id = 'equip-slots-scroll';
+
+  const isVisible = s => !state.disabledSlots.includes(s.id);
+
   function makeSlotCard(slot) {
     const instId = state.equipped[slot.id] ?? null;
     const inst   = instId ? state.instances[instId] : null;
@@ -2438,7 +2037,6 @@ function renderEquipPanel() {
       card.appendChild(unequipBtn);
     }
 
-    // Tooltip for equipped item
     if (inst) {
       card.addEventListener('pointerenter', e => startTooltipTimer(inst.id, e.clientX, e.clientY));
       card.addEventListener('pointerleave', clearTooltip);
@@ -2452,35 +2050,110 @@ function renderEquipPanel() {
   }
 
   // Body section
-  const bodySection = document.createElement('div');
-  bodySection.className = 'eq-section';
-  EQUIP_SLOTS.filter(s => s.group === 'body').forEach(slot => bodySection.appendChild(makeSlotCard(slot)));
-  panel.appendChild(bodySection);
+  const bodySlots = EQUIP_SLOTS.filter(s => s.group === 'body' && isVisible(s));
+  if (bodySlots.length) {
+    const bodySection = document.createElement('div');
+    bodySection.className = 'eq-section';
+    bodySlots.forEach(slot => bodySection.appendChild(makeSlotCard(slot)));
+    scrollArea.appendChild(bodySection);
+  }
 
   // Weapons section
-  const weaponSection = document.createElement('div');
-  weaponSection.className = 'eq-section';
-  const weaponHeader = document.createElement('div');
-  weaponHeader.className = 'eq-section-header';
-  weaponHeader.textContent = 'Weapons';
-  const weaponRow = document.createElement('div');
-  weaponRow.className = 'eq-weapons-row';
-  EQUIP_SLOTS.filter(s => s.group === 'weapons').forEach(slot => weaponRow.appendChild(makeSlotCard(slot)));
-  weaponSection.appendChild(weaponHeader);
-  weaponSection.appendChild(weaponRow);
-  panel.appendChild(weaponSection);
+  const weaponSlots = EQUIP_SLOTS.filter(s => s.group === 'weapons' && isVisible(s));
+  if (weaponSlots.length) {
+    const weaponSection = document.createElement('div');
+    weaponSection.className = 'eq-section';
+    const weaponHeader = document.createElement('div');
+    weaponHeader.className = 'eq-section-header';
+    weaponHeader.textContent = 'Weapons';
+    const weaponRow = document.createElement('div');
+    weaponRow.className = 'eq-weapons-row';
+    weaponSlots.forEach(slot => weaponRow.appendChild(makeSlotCard(slot)));
+    weaponSection.appendChild(weaponHeader);
+    weaponSection.appendChild(weaponRow);
+    scrollArea.appendChild(weaponSection);
+  }
 
   // Wondrous / attunement section
-  const wondrousSlots = EQUIP_SLOTS.filter(s => s.group === 'wondrous');
-  const attuneCount   = wondrousSlots.filter(s => state.equipped[s.id]).length;
-  const wondrousSection = document.createElement('div');
-  wondrousSection.className = 'eq-section';
-  const wondrousHeader = document.createElement('div');
-  wondrousHeader.className = 'eq-section-header';
-  wondrousHeader.textContent = `Wondrous (${attuneCount}/3)`;
-  wondrousSection.appendChild(wondrousHeader);
-  wondrousSlots.forEach(slot => wondrousSection.appendChild(makeSlotCard(slot)));
-  panel.appendChild(wondrousSection);
+  const wondrousSlots = EQUIP_SLOTS.filter(s => s.group === 'wondrous' && isVisible(s));
+  if (wondrousSlots.length) {
+    const attuneCount = wondrousSlots.filter(s => state.equipped[s.id]).length;
+    const wondrousSection = document.createElement('div');
+    wondrousSection.className = 'eq-section';
+    const wondrousHeader = document.createElement('div');
+    wondrousHeader.className = 'eq-section-header';
+    wondrousHeader.textContent = `Wondrous (${attuneCount}/${wondrousSlots.length})`;
+    wondrousSection.appendChild(wondrousHeader);
+    wondrousSlots.forEach(slot => wondrousSection.appendChild(makeSlotCard(slot)));
+    scrollArea.appendChild(wondrousSection);
+  }
+
+  panel.appendChild(scrollArea);
+
+  // Footer: settings button
+  const footer = document.createElement('div');
+  footer.id = 'equip-panel-footer';
+  const settingsBtn = document.createElement('button');
+  settingsBtn.className = 'btn-sm';
+  settingsBtn.textContent = '⚙ Configure Slots';
+  settingsBtn.addEventListener('click', openEquipSettings);
+  footer.appendChild(settingsBtn);
+  panel.appendChild(footer);
+}
+
+function openEquipSettings() {
+  const list = document.getElementById('equip-settings-list');
+  list.innerHTML = '';
+
+  const groups = [
+    { key: 'body',     label: 'Body' },
+    { key: 'weapons',  label: 'Weapons' },
+    { key: 'wondrous', label: 'Wondrous' },
+  ];
+
+  groups.forEach(({ key, label }) => {
+    const header = document.createElement('div');
+    header.className = 'equip-settings-group';
+    header.textContent = label;
+    list.appendChild(header);
+
+    EQUIP_SLOTS.filter(s => s.group === key).forEach(slot => {
+      const lbl = document.createElement('label');
+      lbl.className = 'checkbox-label';
+
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = !state.disabledSlots.includes(slot.id);
+      cb.addEventListener('change', () => {
+        if (cb.checked) {
+          state.disabledSlots = state.disabledSlots.filter(id => id !== slot.id);
+        } else {
+          if (!state.disabledSlots.includes(slot.id)) state.disabledSlots.push(slot.id);
+        }
+        saveSlotConfig();
+        renderEquipPanel();
+      });
+
+      const span = document.createElement('span');
+      span.textContent = slot.label;
+      lbl.appendChild(cb);
+      lbl.appendChild(span);
+      list.appendChild(lbl);
+    });
+  });
+
+  showModal('equip-settings-modal');
+}
+
+function saveSlotConfig() {
+  localStorage.setItem('dnd_slot_config', JSON.stringify(state.disabledSlots));
+}
+
+function loadSlotConfig() {
+  try {
+    const raw = localStorage.getItem('dnd_slot_config');
+    if (raw) state.disabledSlots = JSON.parse(raw) ?? [];
+  } catch {}
 }
 
 let equipModalInstanceId = null;
@@ -2589,27 +2262,36 @@ function showItemTooltip(instanceId, x, y) {
   if (!inst) return;
   const t = state.db[inst.templateId];
   if (!t) return;
-
-  const el    = document.getElementById('item-tooltip');
-  const color = RARITY_META[t.rarity]?.color ?? '#888';
-
   const weight = t.stackable
     ? `${Math.round(t.weightEach * (inst.stackCount ?? 1) * 100) / 100} lb (×${inst.stackCount ?? 1})`
     : `${shapeWeight(getRotatedShape(t.shape, inst.rotation))} lb`;
+  renderTooltip(t, weight, x, y);
+}
 
-  const dmgHtml      = t.damage
+function showTemplateTooltip(templateId, x, y) {
+  const t = state.db[templateId];
+  if (!t) return;
+  const weight = t.stackable ? `${t.weightEach} lb each` : `${shapeWeight(t.shape)} lb`;
+  renderTooltip(t, weight, x, y);
+}
+
+function renderTooltip(t, weight, x, y) {
+  const el    = document.getElementById('item-tooltip');
+  const color = RARITY_META[t.rarity]?.color ?? '#888';
+
+  const dmgHtml    = t.damage
     ? `<div class="tip-row"><span>Damage</span><span>${t.damage}${t.damageType ? ' ' + t.damageType : ''}</span></div>`
     : '';
-  const costHtml     = t.cost
+  const costHtml   = t.cost
     ? `<div class="tip-row"><span>Cost</span><span>${t.cost.toLocaleString()} gp</span></div>`
     : '';
-  const attuneHtml   = t.attunement
+  const attuneHtml = t.attunement
     ? `<div class="tip-attune">Requires Attunement</div>`
     : '';
-  const descHtml     = t.description
+  const descHtml   = t.description
     ? `<div class="tip-desc">${t.description}</div>`
     : '';
-  const tagsHtml     = t.tags?.length
+  const tagsHtml   = t.tags?.length
     ? `<div class="tip-tags">${t.tags.map(tag => `<span class="tag-pill">${tag}</span>`).join('')}</div>`
     : '';
 
@@ -2619,27 +2301,22 @@ function showItemTooltip(instanceId, x, y) {
       <span class="tip-rarity" style="color:${color}">${RARITY_META[t.rarity]?.label ?? ''}</span>
     </div>
     ${attuneHtml}
-    ${dmgHtml}
     <div class="tip-row"><span>Weight</span><span>${weight}</span></div>
     ${costHtml}
+    ${dmgHtml}
     ${descHtml}
     ${tagsHtml}
   `;
 
   el.classList.remove('hidden');
 
-  // Position tooltip, flipping left/up if it would overflow the viewport
-  const pad = 12;
-  const tipW = 240;
-  let left = x + pad;
-  let top  = y + pad;
+  const pad = 12, tipW = 240;
+  let left = x + pad, top = y + pad;
   if (left + tipW > window.innerWidth - pad) left = x - tipW - pad;
   el.style.left = left + 'px';
   el.style.top  = top + 'px';
-  // Now that it's visible we can measure height and correct vertical overflow
   if (top + el.offsetHeight > window.innerHeight - pad) {
-    top = window.innerHeight - el.offsetHeight - pad;
-    el.style.top = top + 'px';
+    el.style.top = (window.innerHeight - el.offsetHeight - pad) + 'px';
   }
 }
 
@@ -2648,11 +2325,11 @@ function showItemTooltip(instanceId, x, y) {
 // =============================================================================
 function init() {
   DEFAULT_ITEMS.forEach(t => { state.db[t.id] = t; });
-  initGrid();
-  buildGrid();
+  loadSlotConfig();
+  autoLoad();    // Restore last session before building the grid
+  rebuildGrid(); // Sizes grid from restored character.strength, places saved instances
   renderItemList();
   renderEquipPanel();
-  updateWeightDisplay();
   initFirebase();
 }
 
