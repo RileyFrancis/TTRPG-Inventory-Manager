@@ -230,12 +230,6 @@ function buildItemEl(template, shape, rarity) {
   el.style.gridTemplateColumns = `repeat(${dims.cols}, ${CELL}px)`;
   el.style.display = 'grid';
 
-  if (template.image) {
-    el.style.backgroundImage = `url('${template.image}')`;
-    el.style.backgroundSize = 'contain';
-    el.style.backgroundRepeat = 'no-repeat';
-    el.style.backgroundPosition = 'center';
-  }
 
   const rc = RARITY_META[rarity]?.color ?? '#888';
   const innerBorder = 'rgba(255,255,255,0.1)';
@@ -265,6 +259,13 @@ function buildItemEl(template, shape, rarity) {
   const labelRow = candidates[Math.floor(candidates.length / 2)];
   let firstC = -1, lastC = -1;
   shape[labelRow].forEach((v, c) => { if (v) { if (firstC < 0) firstC = c; lastC = c; } });
+
+  if (template.image) {
+    const imgDiv = document.createElement('div');
+    imgDiv.className = 'item-image-bg';
+    imgDiv.style.backgroundImage = `url('${template.image}')`;
+    el.appendChild(imgDiv);
+  }
 
   const lbl = document.createElement('div');
   lbl.className = 'item-label';
@@ -933,7 +934,7 @@ function onDragEnd(e) {
     inst.rotation = drag.origRotation;
     const restoreShape = getRotatedShape(template.shape, inst.rotation);
     placeOnGrid(inst.id, restoreShape, inst.row, inst.col);
-    state.equipped[dragHoverSlotId] = drag.instanceId;
+    equipItem(drag.instanceId, dragHoverSlotId);
     placed = true;
     dragHoverSlotId = null;
   }
@@ -1982,6 +1983,10 @@ function getEquippedSlot(instanceId) {
 }
 
 function equipItem(instanceId, slotId) {
+  // Remove from any slot it's already in
+  for (const s of Object.keys(state.equipped)) {
+    if (state.equipped[s] === instanceId) delete state.equipped[s];
+  }
   state.equipped[slotId] = instanceId;
   renderAllItems();
   debouncedSync();
