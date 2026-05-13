@@ -201,6 +201,13 @@ function totalCarriedWeight() {
 // =============================================================================
 let _nextId = 1;
 function newId() { return 'inst_' + (_nextId++); }
+function syncNextId() {
+  const max = Object.keys(state.instances)
+    .map(id => parseInt(id.slice(5), 10))  // strip 'inst_'
+    .filter(n => !isNaN(n))
+    .reduce((a, b) => Math.max(a, b), 0);
+  if (max >= _nextId) _nextId = max + 1;
+}
 function newTemplateId() { return 'custom_' + Date.now() + '_' + Math.floor(Math.random() * 1000); }
 
 // =============================================================================
@@ -339,7 +346,6 @@ function renderPlacedItem(inst) {
 
   el.addEventListener('pointerdown', onItemPointerDown);
   el.addEventListener('contextmenu', onItemContextMenu);
-  el.addEventListener('click', onItemClick);
 
   gridEl.appendChild(el);
   return el;
@@ -520,14 +526,57 @@ function populateTagFilter() {
 // =============================================================================
 function showTemplateDetails(templateId) {
   state.selected = { type: 'template', id: templateId };
-  switchTab('details');
-
   const t = state.db[templateId];
   if (!t) return;
+  populateDetailsPanel(t);
+  switchTab('details');
 
+  document.getElementById('details-place-btn').classList.remove('hidden');
+  document.getElementById('details-place-btn').onclick = () => startPlacing(t.id);
+  document.getElementById('details-stash-btn').onclick = () => { addToStash(t.id); switchTab('browse'); };
+  document.getElementById('details-edit-btn').onclick  = () => openItemModal(t.id);
+  document.getElementById('details-delete-btn').textContent = 'Delete';
+  document.getElementById('details-delete-btn').onclick = () => deleteTemplate(t.id);
+}
+
+function showInstanceDetails(instanceId) {
+  const inst = state.instances[instanceId];
+  if (!inst) return;
+  const t = state.db[inst.templateId];
+  if (!t) return;
+
+  state.selected = { type: 'instance', id: instanceId };
+  populateDetailsPanel(t, inst);
+  switchTab('details');
+
+  document.getElementById('details-place-btn').classList.add('hidden');
+  document.getElementById('details-stash-btn').onclick = () => {
+    if (inst.row !== null && inst.row !== undefined) {
+      unequipInstance(instanceId);
+      removeFromGrid(instanceId);
+      inst.row = null;
+      inst.col = null;
+      renderAllItems();
+      updateWeightDisplay();
+      debouncedSync();
+    }
+    switchTab('browse');
+  };
+  document.getElementById('details-edit-btn').onclick = () => openItemModal(t.id);
+  document.getElementById('details-delete-btn').textContent = 'Remove';
+  document.getElementById('details-delete-btn').onclick = () => {
+    removeInstance(instanceId);
+    document.getElementById('details-content').classList.add('hidden');
+    document.getElementById('details-placeholder').classList.remove('hidden');
+  };
+}
+
+function populateDetailsPanel(t, inst) {
   const color = RARITY_META[t.rarity]?.color ?? '#888';
-  const shape = t.shape;
-  const weight = t.stackable ? t.weightEach : shapeWeight(shape);
+  const shape = inst ? getRotatedShape(t.shape, inst.rotation ?? 0) : t.shape;
+  const weight = t.stackable
+    ? (inst ? `${Math.round(t.weightEach * (inst.stackCount ?? 1) * 100) / 100} lb (×${inst.stackCount ?? 1})` : `${t.weightEach} lb each`)
+    : `${shapeWeight(shape)} lb`;
 
   document.getElementById('details-placeholder').classList.add('hidden');
   document.getElementById('details-content').classList.remove('hidden');
@@ -545,15 +594,16 @@ function showTemplateDetails(templateId) {
   if (t.image) { imgEl.src = t.image; imgEl.classList.remove('hidden'); }
   else imgEl.classList.add('hidden');
 
-  document.getElementById('details-weight').textContent =
-    t.stackable ? `${t.weightEach} lb each` : `${weight} lb`;
+  document.getElementById('details-weight').textContent = weight;
   document.getElementById('details-cost').textContent =
     t.cost ? `${t.cost.toLocaleString()} gp` : 'Priceless';
 
   const stackRow = document.getElementById('details-stack-row');
   if (t.stackable) {
     stackRow.classList.remove('hidden');
-    document.getElementById('details-stack').textContent = `×${computeMaxStack(t.weightEach)} max`;
+    document.getElementById('details-stack').textContent = inst
+      ? `${inst.stackCount ?? 1} / ${computeMaxStack(t.weightEach)}`
+      : `×${computeMaxStack(t.weightEach)} max`;
   } else {
     stackRow.classList.add('hidden');
   }
@@ -561,14 +611,13 @@ function showTemplateDetails(templateId) {
   const damageRow = document.getElementById('details-damage-row');
   if (t.damage) {
     damageRow.classList.remove('hidden');
-    const dmgType = t.damageType ? ` ${t.damageType}` : '';
-    document.getElementById('details-damage').textContent = `${t.damage}${dmgType}`;
+    document.getElementById('details-damage').textContent =
+      `${t.damage}${t.damageType ? ' ' + t.damageType : ''}`;
   } else {
     damageRow.classList.add('hidden');
   }
 
-  document.getElementById('details-attunement-row')
-    .classList.toggle('hidden', !t.attunement);
+  document.getElementById('details-attunement-row').classList.toggle('hidden', !t.attunement);
 
   const tagsEl = document.getElementById('details-tags');
   tagsEl.innerHTML = '';
@@ -580,11 +629,6 @@ function showTemplateDetails(templateId) {
   });
 
   document.getElementById('details-desc').textContent = t.description || '';
-
-  document.getElementById('details-place-btn').onclick = () => startPlacing(t.id);
-  document.getElementById('details-stash-btn').onclick = () => { addToStash(t.id); switchTab('browse'); };
-  document.getElementById('details-edit-btn').onclick  = () => openItemModal(t.id);
-  document.getElementById('details-delete-btn').onclick = () => deleteTemplate(t.id);
 }
 
 function renderDetailsShapePreview(shape, color) {
@@ -625,15 +669,23 @@ function updateWeightDisplay() {
     statusEl.textContent = ''; statusEl.className = '';
   }
 
-  // Bar fill — scale gradient to always span full track width so color is static
-  const pct = Math.min(carried / heavy, 1) * 100;
+  // Dynamic bar max: expands from normal → enc → heavy as thresholds are crossed
+  const barMax = carried > enc ? heavy : (carried > normal ? enc : normal);
+  const pct    = Math.min(carried / barMax, 1) * 100;
+
   const fillEl = document.getElementById('weight-bar-fill');
   fillEl.style.width = pct + '%';
-  fillEl.style.backgroundSize = pct > 0 ? (100 / pct * 100).toFixed(2) + '% 100%' : '100% 100%';
+  // Keep gradient colors anchored to absolute weights by scaling backgroundSize
+  // so the color at the fill edge always reflects the real encumbrance level
+  fillEl.style.backgroundSize = (heavy / barMax * 100).toFixed(2) + '% 100%';
 
-  // Markers
-  document.getElementById('weight-enc-marker').style.left   = (normal / heavy * 100) + '%';
-  document.getElementById('weight-heavy-marker').style.left = (enc    / heavy * 100) + '%';
+  // Enc marker always visible at the normal threshold
+  document.getElementById('weight-enc-marker').style.left = (normal / barMax * 100) + '%';
+
+  // Heavy marker only appears once the bar has expanded into the heavy zone
+  const heavyMarkerEl = document.getElementById('weight-heavy-marker');
+  heavyMarkerEl.style.left = (enc / barMax * 100) + '%';
+  heavyMarkerEl.style.display = barMax === heavy ? '' : 'none';
 
   // Header
   document.getElementById('char-name-display').textContent = state.character.name;
@@ -837,6 +889,7 @@ function renderStash() {
   countEl.classList.toggle('hidden', unplaced.length === 0);
 
   document.getElementById('stash-all-btn').disabled = !hasPlaced;
+  document.getElementById('stash-delete-all-btn').classList.toggle('hidden', unplaced.length === 0);
 
   list.innerHTML = '';
   unplaced.forEach(inst => {
@@ -888,8 +941,7 @@ function renderStash() {
     });
     card.addEventListener('click', e => {
       if (e.target === removeBtn || removeBtn.contains(e.target)) return;
-      // Only enter placing mode on a tap, not after a drag was completed
-      if (state.mode === 'idle') startPlacingFromStash(inst.id);
+      if (state.mode === 'idle') showInstanceDetails(inst.id);
     });
     list.appendChild(card);
   });
@@ -975,6 +1027,9 @@ function finalizePlacement(template, shape, rotation, row, col, stackCount) {
 let dragPointerCapture = null;
 let dragHoverSlotId = null; // slot id the drag ghost is currently hovering over
 
+const DRAG_THRESHOLD = 6; // px of movement before a press becomes a drag
+let dragIntent = null;    // pending drag: waiting to see if pointer moves enough
+
 function onItemPointerDown(e) {
   if (e.button !== 0) return;
   if (isReadOnly()) return;
@@ -992,39 +1047,76 @@ function onItemPointerDown(e) {
   const shape = getRotatedShape(template.shape, inst.rotation);
   const dims  = shapeDims(shape);
 
-  // Which cell of the item did the pointer land on?
   const itemRect  = el.getBoundingClientRect();
   const localX    = e.clientX - itemRect.left;
   const localY    = e.clientY - itemRect.top;
   const anchorCol = Math.floor(localX / CELL);
   const anchorRow = Math.floor(localY / CELL);
 
-  // Block drag from empty cells within a concave shape's bounding box
   if (!shape[anchorRow]?.[anchorCol]) return;
+
+  // Record intent but don't start the drag yet — wait for movement threshold
+  dragIntent = {
+    instanceId, el,
+    anchorRow: Math.min(anchorRow, dims.rows - 1),
+    anchorCol: Math.min(anchorCol, dims.cols - 1),
+    startX: e.clientX, startY: e.clientY,
+  };
+
+  document.addEventListener('pointermove', onDragIntentMove);
+  document.addEventListener('pointerup', onDragIntentUp);
+  e.preventDefault();
+}
+
+function onDragIntentMove(e) {
+  if (!dragIntent) return;
+  const dx = e.clientX - dragIntent.startX;
+  const dy = e.clientY - dragIntent.startY;
+  if (dx * dx + dy * dy < DRAG_THRESHOLD * DRAG_THRESHOLD) return;
+
+  // Movement threshold crossed — activate the drag
+  document.removeEventListener('pointermove', onDragIntentMove);
+  document.removeEventListener('pointerup', onDragIntentUp);
+  const intent = dragIntent;
+  dragIntent = null;
+  activateItemDrag(intent, e);
+}
+
+function onDragIntentUp(e) {
+  // Pointer released before threshold — treat as a click
+  document.removeEventListener('pointermove', onDragIntentMove);
+  document.removeEventListener('pointerup', onDragIntentUp);
+  if (!dragIntent) return;
+  const { instanceId } = dragIntent;
+  dragIntent = null;
+  const inst = state.instances[instanceId];
+  if (inst) showInstanceDetails(instanceId);
+}
+
+function activateItemDrag(intent, e) {
+  const { instanceId, el, anchorRow, anchorCol } = intent;
+  const inst = state.instances[instanceId];
+  if (!inst) return;
+  const template = state.db[inst.templateId];
+  if (!template) return;
+  const shape = getRotatedShape(template.shape, inst.rotation);
 
   state.mode = 'dragging';
   state.dragging = {
-    instanceId,
-    anchorRow: Math.min(anchorRow, dims.rows - 1),
-    anchorCol: Math.min(anchorCol, dims.cols - 1),
-    origRow: inst.row,
-    origCol: inst.col,
-    origRotation: inst.rotation,
+    instanceId, anchorRow, anchorCol,
+    origRow: inst.row, origCol: inst.col, origRotation: inst.rotation,
   };
 
-  // Hide original
   el.classList.add('dragging-source');
   removeFromGrid(instanceId);
 
-  // Start ghost at item's current screen position under cursor
-  const initX = e.clientX - state.dragging.anchorCol * CELL;
-  const initY = e.clientY - state.dragging.anchorRow * CELL;
+  const initX = e.clientX - anchorCol * CELL;
+  const initY = e.clientY - anchorRow * CELL;
   showGhost(shape, template.rarity, initX, initY);
 
   document.body.style.userSelect = 'none';
   document.addEventListener('pointermove', onDragMove);
   document.addEventListener('pointerup', onDragEnd);
-  e.preventDefault();
 }
 
 function onStashPointerDown(e, instanceId) {
@@ -1252,16 +1344,6 @@ document.addEventListener('keydown', e => {
 // =============================================================================
 // INTERACTION — ITEM CLICKS & CONTEXT MENU
 // =============================================================================
-function onItemClick(e) {
-  if (state.mode !== 'idle') return;
-  const el = e.currentTarget;
-  const instanceId = el.dataset.instanceId;
-  if (!instanceId) return;
-  const inst = state.instances[instanceId];
-  if (!inst) return;
-  state.selected = { type: 'instance', id: instanceId };
-  showTemplateDetails(inst.templateId);
-}
 
 function onItemContextMenu(e) {
   e.preventDefault();
@@ -1281,8 +1363,10 @@ let ctxInstanceId = null;
 function showInstanceContextMenu(instanceId, x, y) {
   ctxInstanceId = instanceId;
   const equipped = !!getEquippedSlot(instanceId);
-  document.getElementById('ctx-equip').style.display   = equipped ? 'none' : '';
-  document.getElementById('ctx-unequip').style.display = equipped ? '' : 'none';
+  document.getElementById('ctx-equip').style.display     = equipped ? 'none' : '';
+  document.getElementById('ctx-unequip').style.display   = equipped ? '' : 'none';
+  document.getElementById('ctx-duplicate').style.display = '';
+  document.getElementById('ctx-stash').style.display     = '';
   ctxMenu.style.left = x + 'px';
   ctxMenu.style.top  = y + 'px';
   ctxMenu.classList.remove('hidden');
@@ -1301,9 +1385,11 @@ function showTemplateContextMenu(templateId, x, y) {
 
 function hideContextMenu() {
   ctxMenu.classList.add('hidden');
-  document.getElementById('ctx-rotate').style.display = '';
-  document.getElementById('ctx-equip').style.display  = '';
-  document.getElementById('ctx-unequip').style.display = 'none';
+  document.getElementById('ctx-rotate').style.display    = '';
+  document.getElementById('ctx-equip').style.display     = '';
+  document.getElementById('ctx-unequip').style.display   = 'none';
+  document.getElementById('ctx-duplicate').style.display = 'none';
+  document.getElementById('ctx-stash').style.display     = 'none';
 }
 
 document.getElementById('ctx-rotate').addEventListener('click', () => {
@@ -1325,6 +1411,26 @@ document.getElementById('ctx-edit').addEventListener('click', () => {
   if (!ctxInstanceId) return;
   const inst = state.instances[ctxInstanceId];
   if (inst) openItemModal(inst.templateId);
+  hideContextMenu();
+});
+document.getElementById('ctx-duplicate').addEventListener('click', () => {
+  if (!ctxInstanceId) return;
+  const inst = state.instances[ctxInstanceId];
+  if (inst) startPlacing(inst.templateId);
+  hideContextMenu();
+});
+document.getElementById('ctx-stash').addEventListener('click', () => {
+  if (!ctxInstanceId) return;
+  const inst = state.instances[ctxInstanceId];
+  if (inst) {
+    unequipInstance(ctxInstanceId);
+    removeFromGrid(ctxInstanceId);
+    inst.row = null;
+    inst.col = null;
+    renderAllItems();
+    updateWeightDisplay();
+    debouncedSync();
+  }
   hideContextMenu();
 });
 document.getElementById('ctx-remove').addEventListener('click', () => {
@@ -1614,6 +1720,15 @@ const SAVE_KEY = 'dnd_inventory_v1';
 document.getElementById('save-btn').addEventListener('click', saveState);
 document.getElementById('load-btn').addEventListener('click', loadState);
 document.getElementById('stash-all-btn').addEventListener('click', stashAllItems);
+document.getElementById('stash-delete-all-btn').addEventListener('click', () => {
+  const unplaced = Object.values(state.instances).filter(i => i.row === null || i.row === undefined);
+  if (!confirm(`Delete all ${unplaced.length} stashed item${unplaced.length > 1 ? 's' : ''}? This cannot be undone.`)) return;
+  if (state.placing?.instanceId && state.instances[state.placing.instanceId]?.row === null) cancelPlacing();
+  unplaced.forEach(inst => { delete state.instances[inst.id]; });
+  renderStash();
+  updateWeightDisplay();
+  debouncedSync();
+});
 
 function autoSave() {
   const data = {
@@ -1638,6 +1753,7 @@ function autoLoad() {
     if (data.instances)   state.instances   = data.instances;
     if (data.equipped)    state.equipped    = data.equipped;
     if (data.equipLayout) state.equipLayout = data.equipLayout;
+    syncNextId();
   } catch {}
 }
 
@@ -1655,6 +1771,7 @@ function loadState() {
     Object.assign(state.db, data.db ?? {});
     state.instances = data.instances ?? {};
     state.equipped  = data.equipped  ?? {};
+    syncNextId();
     rebuildGrid();
     renderItemList();
     renderEquipPanel();
@@ -1896,7 +2013,7 @@ function loadPlayerStateIntoView(playerData) {
 
   state.instances = playerData.instances ? { ...playerData.instances } : {};
   state.equipped  = playerData.equipped  ? { ...playerData.equipped  } : {};
-
+  syncNextId();
   rebuildGrid();
   renderItemList();
   updateWeightDisplay();
@@ -1906,6 +2023,7 @@ function applyRemoteEditToOwnState(playerData) {
   if (playerData.instances !== undefined) state.instances = { ...playerData.instances };
   if (playerData.equipped  !== undefined) state.equipped  = { ...playerData.equipped  };
   if (playerData.customDb) Object.assign(state.db, playerData.customDb);
+  syncNextId();
   rebuildGrid();
   renderItemList();
   updateWeightDisplay();
@@ -1930,6 +2048,7 @@ function restoreOwnState() {
   DEFAULT_ITEMS.forEach(t => { state.db[t.id] = t; });
   Object.assign(state.db, own.customDb);
   state.party.ownState = null;
+  syncNextId();
   rebuildGrid();
   renderItemList();
   updateWeightDisplay();

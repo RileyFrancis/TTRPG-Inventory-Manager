@@ -133,7 +133,7 @@ textarea { resize: vertical; }
 #weight-bar-fill {
   height: 100%;
   border-radius: 5px;
-  background: linear-gradient(90deg, #1eff00, #ff8000, #ff2020);
+  background: linear-gradient(90deg, #1eff00 33.33%, #ff8000 66.66%, #ff2020 100%);
   transition: width 0.3s ease, background-size 0.3s ease;
 }
 .weight-marker {
@@ -1249,8 +1249,12 @@ body.party-readonly #details-delete-btn { display: none !important; }
   margin-bottom: 6px;
 }
 
-#stash-header #stash-all-btn {
+#stash-header #stash-delete-all-btn {
   margin-left: auto;
+  font-size: 10px;
+}
+
+#stash-header #stash-all-btn {
   font-size: 10px;
 }
 
