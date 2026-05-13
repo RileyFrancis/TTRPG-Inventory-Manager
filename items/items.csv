@@ -1,0 +1,69 @@
+id,name,rarity,description,cost,tags,damage,damageType,attunement,stackable,weightEach,image,shape
+gold_coin,Gold Coin,common,"Standard currency of the realm. 50 coins weigh 1 lb.",1,currency,,,,true,0.02,,1
+silver_coin,Silver Coin,common,10 silver pieces equal 1 gold piece.,0.1,currency,,,,true,0.02,,1
+gem_small,Gemstone,uncommon,"A polished gem suitable for trade or arcane focus.",50,gem|trade,,,,,,,1
+arrow,Arrow,common,"A standard arrow for shortbows and longbows. 20 arrows weigh 1 lb.",0.05,ammunition|ranged,,,,true,0.05,,1
+crossbow_bolt,Crossbow Bolt,common,"A bolt for crossbows. 20 bolts weigh 1 lb.",0.05,ammunition|ranged,,,,true,0.05,,1
+sling_bullet,Sling Bullet,common,"Heavy lead bullets for a sling. 20 per pound.",0.01,ammunition|ranged,,,,true,0.05,,1
+dagger,Dagger,common,"A small piercing blade, concealable and light. Finesse, thrown (20/60 ft).",2,weapon|melee|finesse|thrown|martial,1d4,piercing,,,,,1|1
+handaxe,Handaxe,common,"A small axe that can be thrown. Thrown (20/60 ft).",5,weapon|melee|thrown|simple,1d6,slashing,,,,,1|1|1
+short_sword,Short Sword,common,"A nimble martial blade. Finesse, light.",10,weapon|melee|finesse|light|martial,1d6,piercing,,,,,1|1|1
+longsword,Longsword,common,"A versatile martial sword. Can be wielded one- or two-handed.",15,weapon|melee|versatile|martial,1d8,slashing,,,,,1|1|1|1
+rapier,Rapier,common,"An elegant piercing blade with unmatched finesse.",25,weapon|melee|finesse|martial,1d8,piercing,,,,,1|1|1|1
+greatsword,Greatsword,common,"A massive two-handed blade that deals tremendous damage.",50,weapon|melee|heavy|two-handed|martial,2d6,slashing,,,,,11|11|11|11|11
+scimitar,Scimitar,common,"A curved, slashing blade favored by desert warriors.",25,weapon|melee|finesse|light|martial,1d6,slashing,,,,,01|11|10|10
+battleaxe,Battleaxe,common,"A war axe usable with one or two hands.",10,weapon|melee|versatile|martial,1d8,slashing,,,,,110|010|010|011
+greataxe,Greataxe,common,"A massive two-handed axe dealing 1d12 damage.",30,weapon|melee|heavy|two-handed|martial,1d12,slashing,,,,,111|111|010|010|010|011
+quarterstaff,Quarterstaff,common,"A simple wooden staff, versatile in a trained hand.",0.2,weapon|melee|versatile|simple,1d6,bludgeoning,,,,,1|1|1|1|1
+spear,Spear,common,"A wooden shaft tipped with iron. Thrown (20/60 ft).",1,weapon|melee|thrown|simple,1d6,piercing,,,,,1|1|1|1
+halberd,Halberd,common,"A polearm with an axe-blade and a spike. Reach.",20,weapon|melee|heavy|reach|two-handed|martial,1d10,slashing,,,,,11|01|01|01|01|01
+glaive,Glaive,common,"A blade on a long pole. Heavy, reach, two-handed.",20,weapon|melee|heavy|reach|two-handed|martial,1d10,slashing,,,,,10|11|01|01|01|01
+mace,Mace,common,"A bludgeoning weapon effective against armor.",5,weapon|melee|bludgeoning|simple,1d6,bludgeoning,,,,,11|01|01|01
+warhammer,Warhammer,common,"A heavy bludgeoning weapon. Versatile.",15,weapon|melee|bludgeoning|versatile|martial,1d8,bludgeoning,,,,,111|010|010|010
+maul,Maul,common,"A two-handed war hammer. Heavy.",10,weapon|melee|bludgeoning|heavy|two-handed|martial,2d6,bludgeoning,,,,,111|111|010|010|010
+shortbow,Shortbow,common,"A compact bow with 80/320 ft range.",25,weapon|ranged|two-handed|simple,1d6,piercing,,,,,10|11|10|10
+longbow,Longbow,common,"A powerful bow with 150/600 ft range.",50,weapon|ranged|two-handed|heavy|martial,1d8,piercing,,,,,10|11|10|10|10|10
+hand_crossbow,Hand Crossbow,common,"A compact crossbow, light and concealable.",75,weapon|ranged|light|martial,1d6,piercing,,,,,111|010|010
+heavy_crossbow,Heavy Crossbow,common,"A powerful crossbow with 100/400 ft range.",50,weapon|ranged|two-handed|heavy|martial,1d10,piercing,,,,,1111|0110|0010|0010
+shield,Shield,common,"+2 to AC. Must be wielded to gain bonus.",10,armor|shield,,,,,,,11|11|11
+leather_armor,Leather Armor,common,"Light armor made from stiffened leather. AC 11 + DEX.",10,armor|light,,,,,,,111|111|111|101
+chain_shirt,Chain Shirt,common,"Medium armor, AC 13 + DEX (max 2).",50,armor|medium,,,,,,,1111|1111|1111|1001
+plate_armor,Plate Armor,uncommon,"Heavy full-plate armor, AC 18. Strength 15 required.",1500,armor|heavy,,,,,,,11111|11111|11111|11111|11111|10001|10001
+potion_healing,Potion of Healing,common,"Restores 2d4+2 hit points when consumed.",50,potion|consumable|healing,,,,,,,1|1
+potion_greater_healing,Greater Healing Potion,uncommon,"Restores 4d4+4 hit points.",150,potion|consumable|healing,,,,,,,1|1
+potion_superior_healing,Superior Healing Potion,rare,"Restores 8d4+8 hit points.",450,potion|consumable|healing,,,,,,,1|1
+potion_supreme_healing,Supreme Healing Potion,very_rare,"Restores 10d4+20 hit points.",1350,potion|consumable|healing,,,,,,,1|1
+potion_giant_strength,Potion of Giant Strength,rare,"Sets your Strength to 21 for 1 hour.",500,potion|consumable|buff,,,,,,,11|01
+potion_invisibility,Potion of Invisibility,very_rare,"You become invisible for up to 1 hour.",2000,potion|consumable|stealth,,,,,,,1|1
+antitoxin,Antitoxin,uncommon,"Advantage on saving throws against poison for 1 hour.",50,potion|consumable,,,,,,,1
+spell_scroll_cantrip,Spell Scroll (Cantrip),common,"A scroll containing a single cantrip spell.",25,scroll|consumable|magic,,,,,,,1|1
+spell_scroll_1st,Spell Scroll (1st Level),common,"A scroll with a 1st-level spell inscription.",75,scroll|consumable|magic,,,,,,,1|1
+spell_scroll_5th,Spell Scroll (5th Level),rare,"A scroll imbued with a powerful 5th-level spell.",1500,scroll|consumable|magic,,,,,,,1|1
+spell_scroll_9th,Spell Scroll (9th Level),legendary,"A scroll containing a legendary 9th-level spell.",50000,scroll|consumable|magic,,,,,,,1|1
+ring_protection,Ring of Protection,rare,"+1 bonus to AC and saving throws.",3500,ring|magic|attuned,,,true,,,,1
+ring_spell_storing,Ring of Spell Storing,rare,"Stores up to 5 levels of spells for later casting.",24000,ring|magic|attuned,,,true,,,,1
+amulet_natural_armor,Amulet of Natural Armor,uncommon,"+1 bonus to natural armor class.",5000,amulet|magic|attuned,,,true,,,,1
+cloak_displacement,Cloak of Displacement,rare,"Attackers have disadvantage on their first attack each turn.",24000,cloak|magic|attuned,,,true,,,,11|11|11
+bag_holding,Bag of Holding,uncommon,"Holds 500 lbs in a 64 cubic foot space, weighs only 15 lbs.",4000,magic|container,,,,,,,111|111|111|111|111
+wand_magic_missiles,Wand of Magic Missiles,uncommon,"Has 7 charges. Expend 1-3 charges to cast Magic Missile.",2000,wand|magic|arcane|attuned,,,true,,,,1|1|1
+staff_power,Staff of Power,very_rare,"20 charges. Grants +2 to attack, damage, saving throws, and AC.",95500,staff|magic|arcane|attuned,,,true,,,,1|1|1|1|1|1|1
+holy_avenger,Holy Avenger,legendary,"A paladin's sacred sword. +3 bonus, radiant damage, magical aura.",165000,weapon|melee|magic|attuned|legendary,,,true,,,,1|1|1|1|1
+deck_many_things,Deck of Many Things,artifact,"A deck of 22 cards, each with wild magical effects. Use with caution.",0,artifact|magic|dangerous,,,,,,,11|11
+rope_hemp,Rope (Hemp 50ft),common,"50 feet of hemp rope. Holds up to 1500 lbs.",1,gear|utility,,,,,,,11|11|11|11|11
+torch,Torch,common,"Sheds bright light in a 20-ft radius for 1 hour.",0.01,gear|light|consumable,,,,,,,1|1
+lantern_hooded,Hooded Lantern,common,"Bright light 30 ft, dim 60 ft. Can be shuttered.",5,gear|light,,,,,,,11|11
+crowbar,Crowbar,common,"Advantage on Strength checks to pry things open.",2,gear|tool,,,,,,,1|1|1|1|1
+grappling_hook,Grappling Hook,common,"A hook to anchor a rope, enabling climbing.",2,gear|tool|utility,,,,,,,11|11
+healers_kit,Healer's Kit,common,"10 uses. Stabilize a dying creature without a Medicine check.",5,gear|healing|consumable,,,,,,,11|11
+tinderbox,Tinderbox,common,"Strike flint and steel to light torches or start fires.",0.5,gear|tool|light,,,,,,,1
+rations,Rations (1 day),common,"Dry food for one day: jerky, dried fruit, hardtack.",0.5,gear|food|consumable,,,,,,,1|1
+waterskin,Waterskin,common,"Holds up to 4 pints of liquid when full.",0.2,gear|container,,,,,,,11|01|01
+thieves_tools,Thieves' Tools,common,"Small file, picks, mirrors, and clamps. Proficiency required.",25,gear|tool|thieves,,,,,,,11|11
+spellbook,Spellbook,uncommon,"An essential tome for wizards, containing their known spells.",50,gear|arcane|book,,,,,,,111|111|111|111
+component_pouch,Component Pouch,common,"A small pouch with common spell components.",25,gear|arcane,,,,,,,1|1
+orb,Orb (Arcane Focus),common,"A crystal orb used as an arcane focus for spellcasting.",20,gear|arcane|focus,,,,,,,11|11
+holy_symbol,Holy Symbol,common,"A sacred symbol used as a divine focus by clerics and paladins.",5,gear|divine|focus,,,,,,,1|1
+poison_basic,Basic Poison (vial),uncommon,"Applied to a weapon. On hit, target must succeed DC 10 CON or take 1d4 poison.",100,gear|consumable|poison,,,,,,,1
+diamond,Diamond,legendary,"A flawless gem. Required component for Raise Dead and similar spells.",5000,gem|treasure|spell-component,,,,,,,1
+ruby,Ruby,rare,"A deep red gem of significant value.",1000,gem|treasure,,,,,,,1
+sapphire,Sapphire,very_rare,"A magnificent blue gem.",2500,gem|treasure,,,,,,,1

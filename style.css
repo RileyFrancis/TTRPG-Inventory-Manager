@@ -195,6 +195,7 @@ textarea { resize: vertical; }
   width: calc(var(--cols) * var(--cell));
   flex-shrink: 0;
   user-select: none;
+  overflow: hidden;
 }
 
 /* ─── GRID CELLS ─────────────────────────────────────────── */

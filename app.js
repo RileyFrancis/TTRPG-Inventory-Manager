@@ -218,6 +218,7 @@ const gridEl = document.getElementById('inventory-grid');
 function buildGrid() {
   gridEl.innerHTML = '';
   gridEl.style.gridTemplateColumns = `repeat(${GRID_COLS}, ${CELL}px)`;
+  gridEl.style.gridTemplateRows    = `repeat(${gridRows()}, ${CELL}px)`;
 
   const str = state.character.strength;
   const total = gridRows();
@@ -239,15 +240,51 @@ function buildGrid() {
     }
   }
 
-  gridEl.style.height = total * CELL + 'px';
+  // updateGridFade() will set the final height; start at normal zone to avoid flicker
+  gridEl.style.height = normalRows() * CELL + 'px';
 }
 
 // =============================================================================
 // RENDERING — PLACED ITEMS
 // =============================================================================
+const GRID_FADE_ROWS = 4;
+
+function updateGridFade() {
+  const totalRows = gridRows();
+  const totalHeight = totalRows * CELL;
+  let lowestPx = normalRows() * CELL;
+
+  Object.values(state.instances).forEach(inst => {
+    if (inst.row === null || inst.row === undefined) return;
+    const t = state.db[inst.templateId];
+    if (!t) return;
+    const shape = getRotatedShape(t.shape, inst.rotation);
+    const bottomPx = (inst.row + shape.length) * CELL;
+    if (bottomPx > lowestPx) lowestPx = bottomPx;
+  });
+
+  const fadeStartPx = Math.min(lowestPx, totalHeight);
+  const fadeEndPx   = Math.min(lowestPx + GRID_FADE_ROWS * CELL, totalHeight);
+
+  gridEl.style.height = fadeEndPx + 'px';
+
+  if (fadeEndPx >= totalHeight) {
+    gridEl.style.maskImage = '';
+    gridEl.style.webkitMaskImage = '';
+    return;
+  }
+
+  // Percentages relative to the element's rendered height (fadeEndPx), not totalHeight
+  const sp = (fadeStartPx / fadeEndPx * 100).toFixed(2);
+  const mask = `linear-gradient(to bottom, black ${sp}%, transparent 100%)`;
+  gridEl.style.maskImage = mask;
+  gridEl.style.webkitMaskImage = mask;
+}
+
 function renderAllItems() {
   gridEl.querySelectorAll('.placed-item').forEach(el => el.remove());
   Object.values(state.instances).forEach(inst => renderPlacedItem(inst));
+  updateGridFade();
   renderEquipPanel();
   renderStash();
 }
@@ -649,6 +686,24 @@ function renderDetailsShapePreview(shape, color) {
 // =============================================================================
 // RENDERING — HEADER WEIGHT STATS
 // =============================================================================
+function getZoneEncumbrance() {
+  const str = state.character.strength;
+  let status = 0; // 0 = none, 1 = enc, 2 = heavy
+  Object.values(state.instances).forEach(inst => {
+    if (inst.row === null || inst.row === undefined) return;
+    const t = state.db[inst.templateId];
+    if (!t) return;
+    const shape = getRotatedShape(t.shape, inst.rotation);
+    const bottomRow = inst.row + shape.length - 1;
+    if (bottomRow >= str * 2) {
+      status = Math.max(status, 2);
+    } else if (bottomRow >= str) {
+      status = Math.max(status, 1);
+    }
+  });
+  return status;
+}
+
 function updateWeightDisplay() {
   const str = state.character.strength;
   const normal = str * 15;
@@ -659,11 +714,12 @@ function updateWeightDisplay() {
   document.getElementById('weight-carried').textContent = `${carried} lb carried`;
   document.getElementById('weight-limits').textContent  = `${normal} / ${enc} / ${heavy} lb`;
 
-  // Status
+  // Status: zone placement overrides weight-based encumbrance upward
+  const zoneStatus = getZoneEncumbrance();
   const statusEl = document.getElementById('encumbrance-status');
-  if (carried > enc) {
+  if (carried > enc || zoneStatus >= 2) {
     statusEl.textContent = 'Heavily Encumbered'; statusEl.className = 'heavy';
-  } else if (carried > normal) {
+  } else if (carried > normal || zoneStatus >= 1) {
     statusEl.textContent = 'Encumbered'; statusEl.className = 'enc';
   } else {
     statusEl.textContent = ''; statusEl.className = '';
@@ -2717,6 +2773,7 @@ function renderTooltip(t, weight, x, y) {
 // INITIALIZATION
 // =============================================================================
 function init() {
+  loadDefaultItems();
   DEFAULT_ITEMS.forEach(t => { state.db[t.id] = t; });
   autoLoad();       // Restore last session (includes equipLayout if saved)
   loadSlotConfig(); // Fallback: migrate old config or apply defaults if layout not yet set
