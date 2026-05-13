@@ -51,6 +51,16 @@
           <!-- cells injected by JS -->
         </div>
       </div>
+      <!-- Unplaced items -->
+      <div id="stash-section" class="hidden">
+        <div id="stash-header">
+          <span>Needs Placement</span>
+          <span id="stash-count" class="stash-badge"></span>
+          <button id="stash-all-btn" class="btn-sm" title="Move all placed items to the stash">Stash All</button>
+        </div>
+        <div id="stash-list"></div>
+      </div>
+
       <div id="gm-placeholder" class="hidden">
         <div class="gm-ph-inner">
           <div class="gm-ph-icon">&#9876;</div>
@@ -128,6 +138,7 @@
           <div id="details-desc"></div>
           <div id="details-actions">
             <button id="details-place-btn" class="btn-primary">Place in Inventory</button>
+            <button id="details-stash-btn" class="btn-sm">+ Stash</button>
             <button id="details-edit-btn" class="btn-sm">Edit</button>
             <button id="details-delete-btn" class="btn-sm danger">Delete</button>
           </div>
@@ -375,12 +386,13 @@
 
 <!-- ===== EQUIP SETTINGS MODAL ===== -->
 <div id="equip-settings-modal" class="modal hidden">
-  <div class="modal-box narrow">
+  <div class="modal-box">
     <h2>Configure Slots</h2>
-    <p class="modal-note">Show or hide equipment slots in the panel.</p>
+    <p class="modal-note">Add, remove, reorder, and rename sections and slots. <span class="es-legend"><span>👁</span> visible &nbsp; <span>⇔</span> side-by-side &nbsp; <span>✦</span> attunement only</span></p>
     <div id="equip-settings-list"></div>
     <div class="modal-footer">
-      <button class="cancel-btn btn-primary">Done</button>
+      <button id="equip-settings-apply-btn" class="btn-primary">Apply</button>
+      <button class="cancel-btn btn-sm">Cancel</button>
     </div>
   </div>
 </div>

@@ -939,29 +939,97 @@ body.party-readonly #details-delete-btn { display: none !important; }
   text-align: left;
 }
 
-/* ─── EQUIP SETTINGS LIST ────────────────────────────────── */
+/* ─── EQUIP SETTINGS EDITOR ──────────────────────────────── */
+.es-legend {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  font-size: 10px;
+  color: var(--text-dim);
+  opacity: 0.8;
+}
+.es-legend span { font-size: 11px; }
+
 #equip-settings-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   padding: 4px 0;
+  max-height: 50vh;
+  overflow-y: auto;
 }
 
-.equip-settings-group {
+.es-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 4px;
+  border-radius: 4px;
+  background: var(--bg);
+}
+
+.es-row.es-header-row {
+  background: rgba(255,255,255,0.04);
+  border-left: 2px solid var(--accent);
+}
+
+.es-label-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text);
+  font-size: 12px;
+  padding: 2px 6px;
+  height: 24px;
+}
+.es-label-input:focus { border-color: var(--accent); outline: none; }
+
+.es-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  border-radius: 3px;
+  font-size: 13px;
+  flex-shrink: 0;
+  position: relative;
+  opacity: 0.35;
+  transition: opacity 0.1s, background 0.1s;
+}
+.es-toggle input[type=checkbox] { position: absolute; opacity: 0; width: 0; height: 0; }
+.es-toggle:has(input:checked) { opacity: 1; background: rgba(100,180,255,0.15); }
+.es-toggle span { pointer-events: none; }
+
+.btn-icon {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  flex-shrink: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
   color: var(--text-dim);
-  padding: 8px 0 4px;
-  border-top: 1px solid var(--border);
-  margin-top: 4px;
+  cursor: pointer;
 }
+.btn-icon:hover:not(:disabled) { border-color: var(--accent); color: var(--text); }
+.btn-icon:disabled { opacity: 0.3; cursor: default; }
+.btn-icon.danger { color: var(--danger); border-color: transparent; }
+.btn-icon.danger:hover { background: rgba(220,80,80,0.15); }
 
-.equip-settings-group:first-child {
-  border-top: none;
-  margin-top: 0;
-  padding-top: 0;
+.es-add-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
 }
 
 .eq-section {
@@ -1159,4 +1227,106 @@ body.party-readonly #details-delete-btn { display: none !important; }
   font-style: italic;
   color: var(--accent);
   margin-bottom: 5px;
+}
+
+/* ─── STASH (NEEDS PLACEMENT) ────────────────────────────── */
+#stash-section {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+  padding: 6px 8px 8px;
+  background: var(--surface);
+}
+
+#stash-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+
+#stash-header #stash-all-btn {
+  margin-left: auto;
+  font-size: 10px;
+}
+
+#stash-all-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.stash-badge {
+  background: var(--accent);
+  color: #000;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 8px;
+  padding: 1px 6px;
+  line-height: 1.4;
+}
+
+#stash-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.stash-card {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 5px 6px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  max-width: 200px;
+  position: relative;
+}
+.stash-card:hover { border-color: var(--accent); }
+.stash-card.placing {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(192,137,58,0.35);
+}
+
+.stash-shape {
+  display: grid;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.stash-cell {
+  width: 10px;
+  height: 10px;
+  border-radius: 1px;
+  background: transparent;
+}
+.stash-cell.filled { opacity: 0.85; }
+
+.stash-name {
+  font-size: 11px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.stash-remove {
+  opacity: 0;
+  transition: opacity 0.1s;
+  flex-shrink: 0;
+}
+.stash-card:hover .stash-remove { opacity: 1; }
+
+#details-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
 }

@@ -37,6 +37,29 @@ const EQUIP_SLOTS = [
   { id: 'attune3',  label: 'Slot III',  group: 'wondrous', attuneOnly: true },
 ];
 
+function getDefaultEquipLayout() {
+  return [
+    { type: 'header', label: 'Body' },
+    { type: 'slot', id: 'head',     label: 'Headgear',  panelLabel: 'Head',   attuneOnly: false, inRow: false, visible: true },
+    { type: 'slot', id: 'armor',    label: 'Armor',     panelLabel: '',       attuneOnly: false, inRow: false, visible: true },
+    { type: 'slot', id: 'cloak',    label: 'Cloak',     panelLabel: '',       attuneOnly: false, inRow: false, visible: true },
+    { type: 'slot', id: 'gloves',   label: 'Gloves',    panelLabel: '',       attuneOnly: false, inRow: false, visible: true },
+    { type: 'slot', id: 'boots',    label: 'Footwear',  panelLabel: '',       attuneOnly: false, inRow: false, visible: true },
+    { type: 'header', label: 'Weapons' },
+    { type: 'slot', id: 'mainHand', label: 'Main Hand', panelLabel: 'Main',   attuneOnly: false, inRow: true,  visible: true },
+    { type: 'slot', id: 'offHand',  label: 'Off Hand',  panelLabel: 'Off',    attuneOnly: false, inRow: true,  visible: true },
+    { type: 'slot', id: 'ranged',   label: 'Ranged',    panelLabel: 'Ranged', attuneOnly: false, inRow: true,  visible: true },
+    { type: 'header', label: 'Wondrous' },
+    { type: 'slot', id: 'attune1',  label: 'Slot I',    panelLabel: '',       attuneOnly: true,  inRow: false, visible: true },
+    { type: 'slot', id: 'attune2',  label: 'Slot II',   panelLabel: '',       attuneOnly: true,  inRow: false, visible: true },
+    { type: 'slot', id: 'attune3',  label: 'Slot III',  panelLabel: '',       attuneOnly: true,  inRow: false, visible: true },
+  ];
+}
+
+function getSlotDef(slotId) {
+  return state.equipLayout.find(item => item.type === 'slot' && item.id === slotId);
+}
+
 // =============================================================================
 // DEFAULT ITEM DATABASE  (defined in items.js, loaded before this script)
 // =============================================================================
@@ -63,8 +86,8 @@ const state = {
   editingItemId: null, // null = new item
   // Equipped items: { [slotId]: instanceId | null }
   equipped: {},
-  // Slot ids hidden from the equip panel (persisted separately)
-  disabledSlots: [],
+  // Equipment panel layout — ordered array of header/slot items (persisted separately)
+  equipLayout: [],
   // Party session
   party: {
     active: false,
@@ -219,6 +242,7 @@ function renderAllItems() {
   gridEl.querySelectorAll('.placed-item').forEach(el => el.remove());
   Object.values(state.instances).forEach(inst => renderPlacedItem(inst));
   renderEquipPanel();
+  renderStash();
 }
 
 function buildItemEl(template, shape, rarity) {
@@ -281,6 +305,7 @@ function buildItemEl(template, shape, rarity) {
 }
 
 function renderPlacedItem(inst) {
+  if (inst.row === null || inst.row === undefined) return; // unplaced — shown in stash
   const template = state.db[inst.templateId];
   if (!template) return;
   const shape = getRotatedShape(template.shape, inst.rotation);
@@ -557,6 +582,7 @@ function showTemplateDetails(templateId) {
   document.getElementById('details-desc').textContent = t.description || '';
 
   document.getElementById('details-place-btn').onclick = () => startPlacing(t.id);
+  document.getElementById('details-stash-btn').onclick = () => { addToStash(t.id); switchTab('browse'); };
   document.getElementById('details-edit-btn').onclick  = () => openItemModal(t.id);
   document.getElementById('details-delete-btn').onclick = () => deleteTemplate(t.id);
 }
@@ -753,6 +779,120 @@ function cancelPlacing() {
   document.removeEventListener('click', onPlacingClick, true);
   document.removeEventListener('contextmenu', onPlacingRightClick, true);
   renderItemList();
+  renderStash();
+}
+
+function addToStash(templateId) {
+  if (isReadOnly()) return;
+  const t = state.db[templateId];
+  if (!t) return;
+  const id = newId();
+  state.instances[id] = { id, templateId, rotation: 0, row: null, col: null, stackCount: 1 };
+  renderStash();
+  updateWeightDisplay();
+  debouncedSync();
+}
+
+function startPlacingFromStash(instanceId) {
+  if (isReadOnly()) return;
+  const inst = state.instances[instanceId];
+  if (!inst) return;
+  cancelPlacing();
+  state.mode = 'placing';
+  state.placing = { templateId: inst.templateId, rotation: inst.rotation ?? 0, instanceId };
+  document.body.style.cursor = 'crosshair';
+  document.body.style.userSelect = 'none';
+  renderStash();
+  document.addEventListener('mousemove', onPlacingMouseMove);
+  document.addEventListener('click', onPlacingClick, true);
+  document.addEventListener('contextmenu', onPlacingRightClick, true);
+}
+
+function stashAllItems() {
+  const placed = Object.values(state.instances).filter(i => i.row !== null && i.row !== undefined);
+  if (!placed.length) return;
+  placed.forEach(inst => {
+    removeFromGrid(inst.id);
+    inst.row = null;
+    inst.col = null;
+  });
+  renderAllItems();
+  updateWeightDisplay();
+  debouncedSync();
+}
+
+function renderStash() {
+  const section = document.getElementById('stash-section');
+  const list    = document.getElementById('stash-list');
+  if (!section || !list) return;
+
+  const unplaced = Object.values(state.instances).filter(i => i.row === null || i.row === undefined);
+  const hasPlaced = Object.values(state.instances).some(i => i.row !== null && i.row !== undefined);
+
+  // Always show when there are unplaced items; also show when there are placed items (for Stash All button)
+  section.classList.toggle('hidden', unplaced.length === 0 && !hasPlaced);
+
+  const countEl = document.getElementById('stash-count');
+  countEl.textContent = unplaced.length;
+  countEl.classList.toggle('hidden', unplaced.length === 0);
+
+  document.getElementById('stash-all-btn').disabled = !hasPlaced;
+
+  list.innerHTML = '';
+  unplaced.forEach(inst => {
+    const t = state.db[inst.templateId];
+    if (!t) return;
+    const color = RARITY_META[t.rarity]?.color ?? '#888';
+    const isActive = state.placing?.instanceId === inst.id;
+
+    const card = document.createElement('div');
+    card.className = 'stash-card' + (isActive ? ' placing' : '');
+    card.title = 'Click to place';
+
+    const shape = normalizeShape(t.stackable ? [[1]] : t.shape);
+    const { rows, cols } = shapeDims(shape);
+    const preview = document.createElement('div');
+    preview.className = 'stash-shape';
+    preview.style.gridTemplateColumns = `repeat(${cols}, 10px)`;
+    preview.style.gridTemplateRows    = `repeat(${rows}, 10px)`;
+    shape.forEach(row => row.forEach(v => {
+      const c = document.createElement('div');
+      c.className = 'stash-cell' + (v ? ' filled' : '');
+      if (v) c.style.background = color;
+      preview.appendChild(c);
+    }));
+
+    const nameEl = document.createElement('span');
+    nameEl.className = 'stash-name';
+    nameEl.textContent = t.name + (inst.stackCount > 1 ? ` ×${inst.stackCount}` : '');
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'btn-icon danger stash-remove';
+    removeBtn.title = 'Remove';
+    removeBtn.textContent = '×';
+    removeBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      if (state.placing?.instanceId === inst.id) cancelPlacing();
+      delete state.instances[inst.id];
+      renderStash();
+      updateWeightDisplay();
+      debouncedSync();
+    });
+
+    card.appendChild(preview);
+    card.appendChild(nameEl);
+    card.appendChild(removeBtn);
+    card.addEventListener('pointerdown', e => {
+      if (e.target === removeBtn || removeBtn.contains(e.target)) return;
+      onStashPointerDown(e, inst.id);
+    });
+    card.addEventListener('click', e => {
+      if (e.target === removeBtn || removeBtn.contains(e.target)) return;
+      // Only enter placing mode on a tap, not after a drag was completed
+      if (state.mode === 'idle') startPlacingFromStash(inst.id);
+    });
+    list.appendChild(card);
+  });
 }
 
 function onPlacingMouseMove(e) {
@@ -811,12 +951,20 @@ function onPlacingRightClick(e) {
 }
 
 function finalizePlacement(template, shape, rotation, row, col, stackCount) {
-  const id = newId();
-  state.instances[id] = {
-    id, templateId: template.id, rotation, row, col, stackCount,
-  };
+  let id;
+  if (state.placing?.instanceId) {
+    // Placing a stash item — update existing instance
+    id = state.placing.instanceId;
+    state.instances[id].rotation = rotation;
+    state.instances[id].row = row;
+    state.instances[id].col = col;
+  } else {
+    id = newId();
+    state.instances[id] = { id, templateId: template.id, rotation, row, col, stackCount };
+  }
   placeOnGrid(id, shape, row, col);
   renderPlacedItem(state.instances[id]);
+  renderStash();
   updateWeightDisplay();
   debouncedSync();
 }
@@ -879,6 +1027,36 @@ function onItemPointerDown(e) {
   e.preventDefault();
 }
 
+function onStashPointerDown(e, instanceId) {
+  if (e.button !== 0) return;
+  if (isReadOnly()) return;
+  clearTooltip();
+  if (state.mode === 'placing') { cancelPlacing(); return; }
+
+  const inst = state.instances[instanceId];
+  if (!inst) return;
+  const template = state.db[inst.templateId];
+  if (!template) return;
+
+  const shape = getRotatedShape(template.shape, inst.rotation ?? 0);
+
+  state.mode = 'dragging';
+  state.dragging = {
+    instanceId,
+    anchorRow: 0,
+    anchorCol: 0,
+    origRow: null,   // null = came from stash, not the grid
+    origCol: null,
+    origRotation: inst.rotation ?? 0,
+  };
+
+  showGhost(shape, template.rarity, e.clientX, e.clientY);
+  document.body.style.userSelect = 'none';
+  document.addEventListener('pointermove', onDragMove);
+  document.addEventListener('pointerup', onDragEnd);
+  e.preventDefault();
+}
+
 function onDragMove(e) {
   if (state.mode !== 'dragging') return;
   const drag = state.dragging;
@@ -904,7 +1082,7 @@ function onDragMove(e) {
   dragHoverSlotId = null;
   const equipCard = getEquipCardAtPoint(e.clientX, e.clientY);
   if (equipCard) {
-    const slot = EQUIP_SLOTS.find(s => s.id === equipCard.dataset.slotId);
+    const slot = getSlotDef(equipCard.dataset.slotId);
     if (slot && !(slot.attuneOnly && !template.attunement)) {
       equipCard.classList.add('drag-hover');
       dragHoverSlotId = slot.id;
@@ -929,11 +1107,14 @@ function onDragEnd(e) {
   // Using the tracked dragHoverSlotId is more reliable than re-checking at pointerup
   // because pointer coordinates can be stale or imprecise at release time.
   if (dragHoverSlotId) {
-    inst.row = drag.origRow;
-    inst.col = drag.origCol;
-    inst.rotation = drag.origRotation;
-    const restoreShape = getRotatedShape(template.shape, inst.rotation);
-    placeOnGrid(inst.id, restoreShape, inst.row, inst.col);
+    // Restore grid position first (skip if dragged from stash — item has no grid pos)
+    if (drag.origRow !== null && drag.origRow !== undefined) {
+      inst.row = drag.origRow;
+      inst.col = drag.origCol;
+      inst.rotation = drag.origRotation;
+      const restoreShape = getRotatedShape(template.shape, inst.rotation);
+      placeOnGrid(inst.id, restoreShape, inst.row, inst.col);
+    }
     equipItem(drag.instanceId, dragHoverSlotId);
     placed = true;
     dragHoverSlotId = null;
@@ -954,12 +1135,14 @@ function onDragEnd(e) {
   }
 
   if (!placed) {
-    // Restore original position
+    // Restore original position; if dragged from stash, leave unplaced (row stays null)
     inst.row = drag.origRow;
     inst.col = drag.origCol;
     inst.rotation = drag.origRotation;
-    const restoreShape = getRotatedShape(template.shape, inst.rotation);
-    placeOnGrid(inst.id, restoreShape, inst.row, inst.col);
+    if (inst.row !== null && inst.row !== undefined) {
+      const restoreShape = getRotatedShape(template.shape, inst.rotation);
+      placeOnGrid(inst.id, restoreShape, inst.row, inst.col);
+    }
   }
 
   state.mode = 'idle';
@@ -1233,6 +1416,7 @@ function rebuildGrid() {
   buildGrid();
   // Re-place all instances
   Object.values(state.instances).forEach(inst => {
+    if (inst.row === null || inst.row === undefined) return; // stash item
     const t = state.db[inst.templateId];
     if (!t) return;
     const shape = getRotatedShape(t.shape, inst.rotation);
@@ -1429,12 +1613,14 @@ const SAVE_KEY = 'dnd_inventory_v1';
 
 document.getElementById('save-btn').addEventListener('click', saveState);
 document.getElementById('load-btn').addEventListener('click', loadState);
+document.getElementById('stash-all-btn').addEventListener('click', stashAllItems);
 
 function autoSave() {
   const data = {
-    character: state.character,
-    instances: state.instances,
-    equipped:  state.equipped,
+    character:   state.character,
+    instances:   state.instances,
+    equipped:    state.equipped,
+    equipLayout: state.equipLayout,
     db: Object.fromEntries(
       Object.entries(state.db).filter(([id]) => !DEFAULT_ITEMS.find(t => t.id === id))
     ),
@@ -1447,10 +1633,11 @@ function autoLoad() {
   if (!raw) return;
   try {
     const data = JSON.parse(raw);
-    if (data.character) state.character = data.character;
-    if (data.db)        Object.assign(state.db, data.db);
-    if (data.instances) state.instances = data.instances;
-    if (data.equipped)  state.equipped  = data.equipped;
+    if (data.character)   state.character   = data.character;
+    if (data.db)          Object.assign(state.db, data.db);
+    if (data.instances)   state.instances   = data.instances;
+    if (data.equipped)    state.equipped    = data.equipped;
+    if (data.equipLayout) state.equipLayout = data.equipLayout;
   } catch {}
 }
 
@@ -2011,8 +2198,6 @@ function renderEquipPanel() {
   const scrollArea = document.createElement('div');
   scrollArea.id = 'equip-slots-scroll';
 
-  const isVisible = s => !state.disabledSlots.includes(s.id);
-
   function makeSlotCard(slot) {
     const instId = state.equipped[slot.id] ?? null;
     const inst   = instId ? state.instances[instId] : null;
@@ -2024,7 +2209,7 @@ function renderEquipPanel() {
 
     const labelEl = document.createElement('span');
     labelEl.className = 'eq-card-label';
-    labelEl.textContent = slot.panelLabel ?? slot.label;
+    labelEl.textContent = slot.panelLabel || slot.label;
 
     const itemEl = document.createElement('span');
     itemEl.className = 'eq-card-item';
@@ -2054,48 +2239,48 @@ function renderEquipPanel() {
     return card;
   }
 
-  // Body section
-  const bodySlots = EQUIP_SLOTS.filter(s => s.group === 'body' && isVisible(s));
-  if (bodySlots.length) {
-    const bodySection = document.createElement('div');
-    bodySection.className = 'eq-section';
-    bodySlots.forEach(slot => bodySection.appendChild(makeSlotCard(slot)));
-    scrollArea.appendChild(bodySection);
+  let currentSection = null;
+  let rowBuffer = [];
+
+  function flushRowBuffer() {
+    if (!rowBuffer.length) return;
+    const rowDiv = document.createElement('div');
+    rowDiv.className = 'eq-weapons-row';
+    rowBuffer.forEach(card => rowDiv.appendChild(card));
+    currentSection.appendChild(rowDiv);
+    rowBuffer = [];
   }
 
-  // Weapons section
-  const weaponSlots = EQUIP_SLOTS.filter(s => s.group === 'weapons' && isVisible(s));
-  if (weaponSlots.length) {
-    const weaponSection = document.createElement('div');
-    weaponSection.className = 'eq-section';
-    const weaponHeader = document.createElement('div');
-    weaponHeader.className = 'eq-section-header';
-    weaponHeader.textContent = 'Weapons';
-    const weaponRow = document.createElement('div');
-    weaponRow.className = 'eq-weapons-row';
-    weaponSlots.forEach(slot => weaponRow.appendChild(makeSlotCard(slot)));
-    weaponSection.appendChild(weaponHeader);
-    weaponSection.appendChild(weaponRow);
-    scrollArea.appendChild(weaponSection);
-  }
+  state.equipLayout.forEach(item => {
+    if (item.type === 'header') {
+      flushRowBuffer();
+      currentSection = document.createElement('div');
+      currentSection.className = 'eq-section';
+      const hdr = document.createElement('div');
+      hdr.className = 'eq-section-header';
+      hdr.textContent = item.label;
+      currentSection.appendChild(hdr);
+      scrollArea.appendChild(currentSection);
+    } else if (item.type === 'slot' && item.visible !== false) {
+      if (!currentSection) {
+        currentSection = document.createElement('div');
+        currentSection.className = 'eq-section';
+        scrollArea.appendChild(currentSection);
+      }
+      const card = makeSlotCard(item);
+      if (item.inRow) {
+        rowBuffer.push(card);
+      } else {
+        flushRowBuffer();
+        currentSection.appendChild(card);
+      }
+    }
+  });
 
-  // Wondrous / attunement section
-  const wondrousSlots = EQUIP_SLOTS.filter(s => s.group === 'wondrous' && isVisible(s));
-  if (wondrousSlots.length) {
-    const attuneCount = wondrousSlots.filter(s => state.equipped[s.id]).length;
-    const wondrousSection = document.createElement('div');
-    wondrousSection.className = 'eq-section';
-    const wondrousHeader = document.createElement('div');
-    wondrousHeader.className = 'eq-section-header';
-    wondrousHeader.textContent = `Wondrous (${attuneCount}/${wondrousSlots.length})`;
-    wondrousSection.appendChild(wondrousHeader);
-    wondrousSlots.forEach(slot => wondrousSection.appendChild(makeSlotCard(slot)));
-    scrollArea.appendChild(wondrousSection);
-  }
+  flushRowBuffer();
 
   panel.appendChild(scrollArea);
 
-  // Footer: settings button
   const footer = document.createElement('div');
   footer.id = 'equip-panel-footer';
   const settingsBtn = document.createElement('button');
@@ -2107,58 +2292,141 @@ function renderEquipPanel() {
 }
 
 function openEquipSettings() {
+  let draft = JSON.parse(JSON.stringify(state.equipLayout));
+
   const list = document.getElementById('equip-settings-list');
-  list.innerHTML = '';
 
-  const groups = [
-    { key: 'body',     label: 'Body' },
-    { key: 'weapons',  label: 'Weapons' },
-    { key: 'wondrous', label: 'Wondrous' },
-  ];
+  function renderDraft() {
+    list.innerHTML = '';
 
-  groups.forEach(({ key, label }) => {
-    const header = document.createElement('div');
-    header.className = 'equip-settings-group';
-    header.textContent = label;
-    list.appendChild(header);
+    draft.forEach((item, idx) => {
+      const row = document.createElement('div');
+      row.className = 'es-row' + (item.type === 'header' ? ' es-header-row' : '');
 
-    EQUIP_SLOTS.filter(s => s.group === key).forEach(slot => {
-      const lbl = document.createElement('label');
-      lbl.className = 'checkbox-label';
-
-      const cb = document.createElement('input');
-      cb.type = 'checkbox';
-      cb.checked = !state.disabledSlots.includes(slot.id);
-      cb.addEventListener('change', () => {
-        if (cb.checked) {
-          state.disabledSlots = state.disabledSlots.filter(id => id !== slot.id);
-        } else {
-          if (!state.disabledSlots.includes(slot.id)) state.disabledSlots.push(slot.id);
-        }
-        saveSlotConfig();
-        renderEquipPanel();
+      const upBtn = document.createElement('button');
+      upBtn.className = 'btn-icon';
+      upBtn.title = 'Move up';
+      upBtn.textContent = '▲';
+      upBtn.disabled = idx === 0;
+      upBtn.addEventListener('click', () => {
+        if (idx > 0) { [draft[idx - 1], draft[idx]] = [draft[idx], draft[idx - 1]]; renderDraft(); }
       });
 
-      const span = document.createElement('span');
-      span.textContent = slot.label;
-      lbl.appendChild(cb);
-      lbl.appendChild(span);
-      list.appendChild(lbl);
+      const dnBtn = document.createElement('button');
+      dnBtn.className = 'btn-icon';
+      dnBtn.title = 'Move down';
+      dnBtn.textContent = '▼';
+      dnBtn.disabled = idx === draft.length - 1;
+      dnBtn.addEventListener('click', () => {
+        if (idx < draft.length - 1) { [draft[idx + 1], draft[idx]] = [draft[idx], draft[idx + 1]]; renderDraft(); }
+      });
+
+      const labelInput = document.createElement('input');
+      labelInput.type = 'text';
+      labelInput.className = 'es-label-input';
+      labelInput.value = item.label;
+      labelInput.addEventListener('input', e => { draft[idx].label = e.target.value; });
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn-icon danger';
+      delBtn.title = 'Remove';
+      delBtn.textContent = '×';
+      delBtn.addEventListener('click', () => { draft.splice(idx, 1); renderDraft(); });
+
+      row.appendChild(upBtn);
+      row.appendChild(dnBtn);
+      row.appendChild(labelInput);
+
+      if (item.type === 'slot') {
+        function makeToggle(title, symbol, getter, setter) {
+          const lbl = document.createElement('label');
+          lbl.className = 'es-toggle';
+          lbl.title = title;
+          const cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.checked = getter();
+          cb.addEventListener('change', () => setter(cb.checked));
+          lbl.appendChild(cb);
+          const sym = document.createElement('span');
+          sym.textContent = symbol;
+          lbl.appendChild(sym);
+          return lbl;
+        }
+        row.appendChild(makeToggle('Show in panel', '👁', () => item.visible !== false, v => { draft[idx].visible = v; }));
+        row.appendChild(makeToggle('Side-by-side', '⇔', () => !!item.inRow, v => { draft[idx].inRow = v; }));
+        row.appendChild(makeToggle('Attunement only', '✦', () => !!item.attuneOnly, v => { draft[idx].attuneOnly = v; }));
+      }
+
+      row.appendChild(delBtn);
+      list.appendChild(row);
     });
-  });
+
+    const addRow = document.createElement('div');
+    addRow.className = 'es-add-row';
+
+    const addHdrBtn = document.createElement('button');
+    addHdrBtn.className = 'btn-sm';
+    addHdrBtn.textContent = '+ Header';
+    addHdrBtn.addEventListener('click', () => {
+      draft.push({ type: 'header', label: 'New Section' });
+      renderDraft();
+    });
+
+    const addSlotBtn = document.createElement('button');
+    addSlotBtn.className = 'btn-sm';
+    addSlotBtn.textContent = '+ Slot';
+    addSlotBtn.addEventListener('click', () => {
+      draft.push({ type: 'slot', id: 'slot_' + Math.random().toString(36).slice(2, 6), label: 'New Slot', panelLabel: '', attuneOnly: false, inRow: false, visible: true });
+      renderDraft();
+    });
+
+    const resetBtn = document.createElement('button');
+    resetBtn.className = 'btn-sm';
+    resetBtn.textContent = '↺ Defaults';
+    resetBtn.addEventListener('click', () => { draft = getDefaultEquipLayout(); renderDraft(); });
+
+    addRow.appendChild(addHdrBtn);
+    addRow.appendChild(addSlotBtn);
+    addRow.appendChild(resetBtn);
+    list.appendChild(addRow);
+  }
+
+  renderDraft();
+
+  document.getElementById('equip-settings-apply-btn').onclick = () => {
+    state.equipLayout = draft;
+    saveSlotConfig();
+    renderEquipPanel();
+    hideModal('equip-settings-modal');
+  };
 
   showModal('equip-settings-modal');
 }
 
 function saveSlotConfig() {
-  localStorage.setItem('dnd_slot_config', JSON.stringify(state.disabledSlots));
+  localStorage.setItem('dnd_slot_config', JSON.stringify(state.equipLayout));
 }
 
 function loadSlotConfig() {
+  if (state.equipLayout.length) return; // already restored by autoLoad
   try {
     const raw = localStorage.getItem('dnd_slot_config');
-    if (raw) state.disabledSlots = JSON.parse(raw) ?? [];
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]?.type) {
+        state.equipLayout = parsed;
+      } else if (Array.isArray(parsed)) {
+        // Migrate old format (list of disabled slot ID strings)
+        const layout = getDefaultEquipLayout();
+        parsed.forEach(id => {
+          const s = layout.find(item => item.type === 'slot' && item.id === id);
+          if (s) s.visible = false;
+        });
+        state.equipLayout = layout;
+      }
+    }
   } catch {}
+  if (!state.equipLayout.length) state.equipLayout = getDefaultEquipLayout();
 }
 
 let equipModalInstanceId = null;
@@ -2174,8 +2442,9 @@ function openEquipModal(instanceId) {
   const picker = document.getElementById('equip-slot-picker');
   picker.innerHTML = '';
 
-  // attuneOnly slots are only offered if the item requires attunement
-  const eligibleSlots = EQUIP_SLOTS.filter(slot => !(slot.attuneOnly && !t?.attunement));
+  const eligibleSlots = state.equipLayout.filter(item =>
+    item.type === 'slot' && item.visible !== false && !(item.attuneOnly && !t?.attunement)
+  );
 
   eligibleSlots.forEach(slot => {
     const occupantId   = state.equipped[slot.id];
@@ -2195,7 +2464,7 @@ function openEquipModal(instanceId) {
 // Called from clicking a slot in the equip panel — picks an item for the given slot
 function openSlotPicker(slotId) {
   clearTooltip();
-  const slot = EQUIP_SLOTS.find(s => s.id === slotId);
+  const slot = getSlotDef(slotId);
   if (!slot) return;
 
   document.getElementById('equip-modal').querySelector('h2').textContent = slot.label;
@@ -2330,8 +2599,8 @@ function renderTooltip(t, weight, x, y) {
 // =============================================================================
 function init() {
   DEFAULT_ITEMS.forEach(t => { state.db[t.id] = t; });
-  loadSlotConfig();
-  autoLoad();    // Restore last session before building the grid
+  autoLoad();       // Restore last session (includes equipLayout if saved)
+  loadSlotConfig(); // Fallback: migrate old config or apply defaults if layout not yet set
   rebuildGrid(); // Sizes grid from restored character.strength, places saved instances
   renderItemList();
   renderEquipPanel();
