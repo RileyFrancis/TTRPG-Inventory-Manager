@@ -92,6 +92,7 @@
               <option value="very_rare">Very Rare</option>
               <option value="legendary">Legendary</option>
               <option value="artifact">Artifact</option>
+              <option value="special">Special</option>
             </select>
             <select id="tag-filter">
               <option value="">All Tags</option>
@@ -236,6 +237,7 @@
             <option value="very_rare">Very Rare</option>
             <option value="legendary">Legendary</option>
             <option value="artifact">Artifact</option>
+            <option value="special">Special</option>
           </select>
         </label>
       </div>
@@ -245,15 +247,20 @@
         <textarea id="f-desc" rows="2"></textarea>
       </label>
 
-      <div class="form-two-col">
-        <label class="field">
-          <span>Cost (gp)</span>
-          <input type="number" id="f-cost" min="0" step="0.01" value="0">
-        </label>
-        <label class="field">
-          <span>Tags (comma separated)</span>
-          <input type="text" id="f-tags" placeholder="weapon, melee, …">
-        </label>
+      <label class="field">
+        <span>Tags (comma separated)</span>
+        <input type="text" id="f-tags" placeholder="weapon, melee, …">
+      </label>
+
+      <div class="field">
+        <span>Cost</span>
+        <div class="cost-inputs">
+          <label class="cost-denom"><span>PP</span><input type="number" id="f-cost-pp" min="0" step="1" value="0"></label>
+          <label class="cost-denom"><span>GP</span><input type="number" id="f-cost-gp" min="0" step="1" value="0"></label>
+          <label class="cost-denom"><span>EP</span><input type="number" id="f-cost-ep" min="0" step="1" value="0"></label>
+          <label class="cost-denom"><span>SP</span><input type="number" id="f-cost-sp" min="0" step="1" value="0"></label>
+          <label class="cost-denom"><span>CP</span><input type="number" id="f-cost-cp" min="0" step="1" value="0"></label>
+        </div>
       </div>
 
       <div class="form-two-col">

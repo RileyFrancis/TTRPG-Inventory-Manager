@@ -7,7 +7,7 @@
 //          attunement, stackable, weightEach, image, shape
 //
 // tags  — pipe-separated list, e.g.  weapon|melee|finesse
-// shape — rows pipe-separated, each row is binary digits, e.g. 11|01|10
+// shape — rows pipe-separated, each row is 0/1 digits,  e.g.  11|01|10
 //         weight = number of 1s (1 lb per cell)
 
 let DEFAULT_ITEMS = [];
@@ -37,6 +37,22 @@ function parseCSVRow(line) {
   return fields;
 }
 
+function parseCost(str) {
+  const zero = { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 };
+  if (!str || !str.trim()) return zero;
+  const trimmed = str.trim();
+  // Plain number → treat as gp (backwards compat)
+  if (/^[\d.]+$/.test(trimmed)) return { ...zero, gp: parseFloat(trimmed) };
+  const result = { ...zero };
+  const re = /(\d+(?:\.\d+)?)\s*(cp|sp|ep|gp|pp)/gi;
+  let m;
+  while ((m = re.exec(trimmed)) !== null) {
+    const denom = m[2].toLowerCase();
+    if (denom in result) result[denom] += parseFloat(m[1]);
+  }
+  return result;
+}
+
 function parseShape(str) {
   if (!str || !str.trim()) return [[1]];
   return str.trim().split('|').map(row => row.split('').map(c => parseInt(c, 10)));
@@ -48,20 +64,18 @@ function loadDefaultItems() {
     xhr.open('GET', 'items/items.csv', false); // synchronous
     xhr.send();
     if (xhr.status !== 200) throw new Error(`HTTP ${xhr.status}`);
-    const text = xhr.responseText;
-    const lines = text.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+    const lines = xhr.responseText.split('\n').map(l => l.trim()).filter(l => l);
     if (lines.length < 2) return;
     const headers = parseCSVRow(lines[0]);
-
     DEFAULT_ITEMS = lines.slice(1).map(line => {
       const vals = parseCSVRow(line);
-      const v = (col) => vals[headers.indexOf(col)] ?? '';
+      const v = col => vals[headers.indexOf(col)] ?? '';
       return {
         id:          v('id'),
         name:        v('name'),
         rarity:      v('rarity') || 'common',
         description: v('description'),
-        cost:        parseFloat(v('cost')) || 0,
+        cost:        parseCost(v('cost')),
         tags:        v('tags') ? v('tags').split('|') : [],
         damage:      v('damage')     || undefined,
         damageType:  v('damageType') || undefined,

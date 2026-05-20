@@ -30,6 +30,7 @@
   --rarity-very_rare: #c040ff;
   --rarity-legendary: #ff8000;
   --rarity-artifact:  #e6cc80;
+  --rarity-special:   #ff4da6;
 
   --ghost-valid:   rgba(30, 255, 0, 0.25);
   --ghost-invalid: rgba(220, 40, 40, 0.30);
@@ -304,6 +305,7 @@ textarea { resize: vertical; }
 .rarity-very_rare { --rc: var(--rarity-very_rare); }
 .rarity-legendary { --rc: var(--rarity-legendary); }
 .rarity-artifact  { --rc: var(--rarity-artifact);  }
+.rarity-special   { --rc: var(--rarity-special);   }
 
 .item-cell.filled {
   background: color-mix(in srgb, var(--rc) 35%, transparent);
@@ -1335,3 +1337,113 @@ body.party-readonly #details-delete-btn { display: none !important; }
   gap: 6px;
   margin-top: 10px;
 }
+
+/* ─── MULTI-DENOMINATION COST INPUT ──────────────────────── */
+.cost-inputs {
+  display: flex;
+  gap: 5px;
+}
+
+.cost-denom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.cost-denom span {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+}
+
+.cost-denom input {
+  width: 100%;
+  text-align: center;
+  padding: 4px 2px;
+  min-width: 0;
+}
+
+/* ─── COIN PURSE ─────────────────────────────────────────── */
+#coin-purse {
+  border-top: 1px solid var(--border);
+  padding: 6px;
+  flex-shrink: 0;
+}
+
+.coin-purse-header {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-dim);
+  padding: 2px 2px 5px;
+}
+
+.coin-purse-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 3px;
+}
+
+.coin-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 2px;
+  gap: 2px;
+  transition: border-color 0.15s;
+}
+
+.coin-item.empty { opacity: 0.4; }
+
+.coin-item.clickable {
+  cursor: pointer;
+  position: relative;
+}
+.coin-item.clickable:hover {
+  border-color: var(--accent);
+  opacity: 1;
+}
+
+.coin-label {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  line-height: 1;
+}
+
+.coin-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1;
+}
+
+.coin-actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+.coin-item.clickable:hover .coin-actions { opacity: 1; }
+
+.coin-action-btn {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-dim);
+  background: var(--border);
+  border-radius: 2px;
+  padding: 0 3px;
+  line-height: 1.4;
+  transition: color 0.1s, background 0.1s;
+}
+.coin-action-btn:hover:not(:disabled) { color: var(--text); background: var(--border2); }
+.coin-action-btn:disabled { opacity: 0.3; cursor: default; }

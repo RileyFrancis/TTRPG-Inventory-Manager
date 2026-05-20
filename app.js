@@ -16,9 +16,10 @@ const RARITY_META = {
   very_rare: { label: 'Very Rare',        color: '#c040ff' },
   legendary: { label: 'Legendary',        color: '#ff8000' },
   artifact:  { label: 'Artifact',         color: '#e6cc80' },
+  special:   { label: 'Special',          color: '#ff4da6' },
 };
 
-const RARITY_ORDER = ['common','uncommon','rare','very_rare','legendary','artifact'];
+const RARITY_ORDER = ['common','uncommon','rare','very_rare','legendary','artifact','special'];
 
 const EQUIP_SLOTS = [
   // Body — rendered top to bottom in equip panel
@@ -633,7 +634,7 @@ function populateDetailsPanel(t, inst) {
 
   document.getElementById('details-weight').textContent = weight;
   document.getElementById('details-cost').textContent =
-    t.cost ? `${t.cost.toLocaleString()} gp` : 'Priceless';
+    hasCost(t.cost) ? formatCost(t.cost) : 'Priceless';
 
   const stackRow = document.getElementById('details-stack-row');
   if (t.stackable) {
@@ -1073,6 +1074,7 @@ function finalizePlacement(template, shape, rotation, row, col, stackCount) {
   placeOnGrid(id, shape, row, col);
   renderPlacedItem(state.instances[id]);
   renderStash();
+  renderEquipPanel();
   updateWeightDisplay();
   debouncedSync();
 }
@@ -1601,7 +1603,12 @@ function openItemModal(templateId) {
   document.getElementById('f-name').value    = t?.name ?? '';
   document.getElementById('f-rarity').value  = t?.rarity ?? 'common';
   document.getElementById('f-desc').value    = t?.description ?? '';
-  document.getElementById('f-cost').value    = t?.cost ?? 0;
+  const cost = parseCostObj(t?.cost);
+  document.getElementById('f-cost-pp').value = cost.pp;
+  document.getElementById('f-cost-gp').value = cost.gp;
+  document.getElementById('f-cost-ep').value = cost.ep;
+  document.getElementById('f-cost-sp').value = cost.sp;
+  document.getElementById('f-cost-cp').value = cost.cp;
   document.getElementById('f-tags').value    = t?.tags.join(', ') ?? '';
   document.getElementById('f-image').value        = t?.image ?? '';
   document.getElementById('f-damage').value       = t?.damage ?? '';
@@ -1701,7 +1708,13 @@ document.getElementById('save-item-btn').addEventListener('click', () => {
     name,
     rarity:      document.getElementById('f-rarity').value,
     description: document.getElementById('f-desc').value.trim(),
-    cost:        parseFloat(document.getElementById('f-cost').value) || 0,
+    cost: {
+      pp: parseInt(document.getElementById('f-cost-pp').value) || 0,
+      gp: parseInt(document.getElementById('f-cost-gp').value) || 0,
+      ep: parseInt(document.getElementById('f-cost-ep').value) || 0,
+      sp: parseInt(document.getElementById('f-cost-sp').value) || 0,
+      cp: parseInt(document.getElementById('f-cost-cp').value) || 0,
+    },
     tags,
     image:       document.getElementById('f-image').value.trim(),
     damage:      document.getElementById('f-damage').value.trim() || undefined,
@@ -1728,7 +1741,9 @@ function openStackModal(max, callback) {
   document.getElementById('stack-modal-desc').textContent = `How many to place? (max ${max})`;
   const input = document.getElementById('stack-count-input');
   input.max = max;
+  input.min = '1';
   input.value = max;
+  document.getElementById('stack-confirm-btn').textContent = 'Place';
   showModal('stack-modal');
 }
 
@@ -1766,6 +1781,133 @@ document.querySelectorAll('.cancel-btn').forEach(btn => {
 // =============================================================================
 function computeMaxStack(weightEach) {
   return Math.round(1 / weightEach);
+}
+
+function parseCostObj(val) {
+  if (typeof val === 'object' && val !== null) return { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0, ...val };
+  if (typeof val === 'number') return { cp: 0, sp: 0, ep: 0, gp: val, pp: 0 };
+  return { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 };
+}
+
+function hasCost(cost) {
+  const c = parseCostObj(cost);
+  return !!(c.cp || c.sp || c.ep || c.gp || c.pp);
+}
+
+function formatCost(cost) {
+  const c = parseCostObj(cost);
+  const parts = [];
+  if (c.pp) parts.push(`${c.pp} pp`);
+  if (c.gp) parts.push(`${c.gp} gp`);
+  if (c.ep) parts.push(`${c.ep} ep`);
+  if (c.sp) parts.push(`${c.sp} sp`);
+  if (c.cp) parts.push(`${c.cp} cp`);
+  return parts.length ? parts.join(' ') : '—';
+}
+
+function getCoinCounts() {
+  const counts = { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 };
+  const coinMap = { coin_cp: 'cp', coin_sp: 'sp', coin_ep: 'ep', coin_gp: 'gp', coin_pp: 'pp' };
+  Object.values(state.instances).forEach(inst => {
+    const denom = coinMap[inst.templateId];
+    if (denom !== undefined) counts[denom] += inst.stackCount ?? 1;
+  });
+  return counts;
+}
+
+function addCoinsToInventory(templateId, totalToAdd) {
+  if (totalToAdd <= 0) return;
+  const t = state.db[templateId];
+  if (!t) return;
+  const maxStack = computeMaxStack(t.weightEach);
+  let remaining = totalToAdd;
+
+  // Fill existing non-full stacks first (least-full first)
+  const partial = Object.values(state.instances)
+    .filter(inst => inst.templateId === templateId && (inst.stackCount ?? 1) < maxStack)
+    .sort((a, b) => (a.stackCount ?? 1) - (b.stackCount ?? 1));
+
+  for (const inst of partial) {
+    if (remaining <= 0) break;
+    const space = maxStack - (inst.stackCount ?? 1);
+    const adding = Math.min(space, remaining);
+    inst.stackCount = (inst.stackCount ?? 1) + adding;
+    remaining -= adding;
+  }
+
+  // Create new stash stacks for any remainder
+  while (remaining > 0) {
+    const count = Math.min(maxStack, remaining);
+    const id = newId();
+    state.instances[id] = { id, templateId, rotation: 0, row: null, col: null, stackCount: count };
+    remaining -= count;
+  }
+
+  renderAllItems();
+  updateWeightDisplay();
+  debouncedSync();
+}
+
+function openAddCoinsModal(templateId) {
+  if (isReadOnly()) return;
+  const t = state.db[templateId];
+  if (!t) return;
+  stackModalCallback = count => addCoinsToInventory(templateId, count);
+  document.getElementById('stack-modal-desc').textContent = `How many ${t.name}s to add?`;
+  const input = document.getElementById('stack-count-input');
+  input.removeAttribute('max');
+  input.min = '1';
+  input.value = '1';
+  document.getElementById('stack-confirm-btn').textContent = 'Add';
+  showModal('stack-modal');
+}
+
+function removeCoinsFromInventory(templateId, totalToRemove) {
+  if (totalToRemove <= 0) return;
+  let remaining = totalToRemove;
+
+  // Remove from smallest stacks first to eliminate partials before touching full stacks
+  const instances = Object.values(state.instances)
+    .filter(inst => inst.templateId === templateId)
+    .sort((a, b) => (a.stackCount ?? 1) - (b.stackCount ?? 1));
+
+  for (const inst of instances) {
+    if (remaining <= 0) break;
+    const count = inst.stackCount ?? 1;
+    if (count <= remaining) {
+      if (inst.row !== null && inst.row !== undefined) {
+        unequipInstance(inst.id);
+        removeFromGrid(inst.id);
+      }
+      delete state.instances[inst.id];
+      remaining -= count;
+    } else {
+      inst.stackCount = count - remaining;
+      remaining = 0;
+    }
+  }
+
+  renderAllItems();
+  updateWeightDisplay();
+  debouncedSync();
+}
+
+function openRemoveCoinsModal(templateId) {
+  if (isReadOnly()) return;
+  const t = state.db[templateId];
+  if (!t) return;
+  const coinMap = { coin_cp: 'cp', coin_sp: 'sp', coin_ep: 'ep', coin_gp: 'gp', coin_pp: 'pp' };
+  const denom = coinMap[templateId];
+  const total = denom ? getCoinCounts()[denom] : 0;
+  if (total === 0) return;
+  stackModalCallback = count => removeCoinsFromInventory(templateId, count);
+  document.getElementById('stack-modal-desc').textContent = `How many ${t.name}s to remove? (have ${total.toLocaleString()})`;
+  const input = document.getElementById('stack-count-input');
+  input.max = total;
+  input.min = '1';
+  input.value = '1';
+  document.getElementById('stack-confirm-btn').textContent = 'Remove';
+  showModal('stack-modal');
 }
 
 // =============================================================================
@@ -2456,6 +2598,59 @@ function renderEquipPanel() {
 
   panel.appendChild(scrollArea);
 
+  // Coin purse
+  const coinPurse = document.createElement('div');
+  coinPurse.id = 'coin-purse';
+  const cpHdr = document.createElement('div');
+  cpHdr.className = 'coin-purse-header';
+  cpHdr.textContent = 'Coin Purse';
+  coinPurse.appendChild(cpHdr);
+  const cpGrid = document.createElement('div');
+  cpGrid.className = 'coin-purse-grid';
+  const { cp, sp, ep, gp, pp } = getCoinCounts();
+  const coinDefs = [
+    { templateId: 'coin_pp', label: 'PP', count: pp, color: '#b0c4de' },
+    { templateId: 'coin_gp', label: 'GP', count: gp, color: '#ffd700' },
+    { templateId: 'coin_ep', label: 'EP', count: ep, color: '#7ec8e3' },
+    { templateId: 'coin_sp', label: 'SP', count: sp, color: '#c0c0c0' },
+    { templateId: 'coin_cp', label: 'CP', count: cp, color: '#b87333' },
+  ];
+  coinDefs.forEach(({ templateId, label, count, color }) => {
+    const item = document.createElement('div');
+    item.className = 'coin-item' + (count === 0 ? ' empty' : '');
+    const lbl = document.createElement('span');
+    lbl.className = 'coin-label';
+    lbl.style.color = color;
+    lbl.textContent = label;
+    const cnt = document.createElement('span');
+    cnt.className = 'coin-count';
+    cnt.textContent = count.toLocaleString();
+    item.appendChild(lbl);
+    item.appendChild(cnt);
+    if (!isReadOnly()) {
+      item.classList.add('clickable');
+      const actions = document.createElement('div');
+      actions.className = 'coin-actions';
+      const addBtn = document.createElement('button');
+      addBtn.className = 'coin-action-btn';
+      addBtn.textContent = '+';
+      addBtn.title = `Add ${label}`;
+      addBtn.addEventListener('click', e => { e.stopPropagation(); openAddCoinsModal(templateId); });
+      const remBtn = document.createElement('button');
+      remBtn.className = 'coin-action-btn';
+      remBtn.textContent = '−';
+      remBtn.title = `Remove ${label}`;
+      remBtn.disabled = count === 0;
+      remBtn.addEventListener('click', e => { e.stopPropagation(); openRemoveCoinsModal(templateId); });
+      actions.appendChild(addBtn);
+      actions.appendChild(remBtn);
+      item.appendChild(actions);
+    }
+    cpGrid.appendChild(item);
+  });
+  coinPurse.appendChild(cpGrid);
+  panel.appendChild(coinPurse);
+
   const footer = document.createElement('div');
   footer.id = 'equip-panel-footer';
   const settingsBtn = document.createElement('button');
@@ -2731,8 +2926,8 @@ function renderTooltip(t, weight, x, y) {
   const dmgHtml    = t.damage
     ? `<div class="tip-row"><span>Damage</span><span>${t.damage}${t.damageType ? ' ' + t.damageType : ''}</span></div>`
     : '';
-  const costHtml   = t.cost
-    ? `<div class="tip-row"><span>Cost</span><span>${t.cost.toLocaleString()} gp</span></div>`
+  const costHtml   = hasCost(t.cost)
+    ? `<div class="tip-row"><span>Cost</span><span>${formatCost(t.cost)}</span></div>`
     : '';
   const attuneHtml = t.attunement
     ? `<div class="tip-attune">Requires Attunement</div>`
