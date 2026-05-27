@@ -1918,6 +1918,56 @@ const SAVE_KEY = 'dnd_inventory_v1';
 
 document.getElementById('save-btn').addEventListener('click', saveState);
 document.getElementById('load-btn').addEventListener('click', loadState);
+document.getElementById('export-csv-btn').addEventListener('click', exportItemsCSV);
+
+function csvField(val) {
+  const s = String(val ?? '');
+  return (s.includes(',') || s.includes('"') || s.includes('\n'))
+    ? '"' + s.replace(/"/g, '""') + '"'
+    : s;
+}
+
+function costToCSVStr(cost) {
+  const c = parseCostObj(cost);
+  const parts = [];
+  if (c.pp) parts.push(`${c.pp}pp`);
+  if (c.gp) parts.push(`${c.gp}gp`);
+  if (c.ep) parts.push(`${c.ep}ep`);
+  if (c.sp) parts.push(`${c.sp}sp`);
+  if (c.cp) parts.push(`${c.cp}cp`);
+  return parts.join(' ');
+}
+
+function exportItemsCSV() {
+  const headers = ['id','name','rarity','description','cost','tags','damage','damageType',
+                   'attunement','stackable','weightEach','image','shape'];
+  const rows = [headers.join(',')];
+  Object.values(state.db).forEach(t => {
+    const shapeStr = t.stackable ? '1' : normalizeShape(t.shape).map(r => r.join('')).join('|');
+    rows.push([
+      t.id,
+      t.name,
+      t.rarity,
+      t.description || '',
+      costToCSVStr(t.cost),
+      (t.tags || []).join('|'),
+      t.damage || '',
+      t.damageType || '',
+      t.attunement ? 'true' : '',
+      t.stackable ? 'true' : '',
+      t.weightEach != null ? t.weightEach : '',
+      t.image || '',
+      shapeStr,
+    ].map(csvField).join(','));
+  });
+  const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'items.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
 document.getElementById('stash-all-btn').addEventListener('click', stashAllItems);
 document.getElementById('stash-delete-all-btn').addEventListener('click', () => {
   const unplaced = Object.values(state.instances).filter(i => i.row === null || i.row === undefined);
