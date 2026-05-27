@@ -25,12 +25,12 @@
   --zone-heavy-line:   #3a1e18;
 
   --rarity-common:    #b0b0b0;
-  --rarity-uncommon:  #1eff00;
-  --rarity-rare:      #0084ff;
-  --rarity-very_rare: #c040ff;
+  --rarity-uncommon:  #47f052;
+  --rarity-rare:      #3290e7;
+  --rarity-very_rare: #914fdc;
   --rarity-legendary: #ff8000;
-  --rarity-artifact:  #e6cc80;
-  --rarity-special:   #ff4da6;
+  --rarity-artifact:  #ec362f;
+  --rarity-special:   #ffa2d0;
 
   --ghost-valid:   rgba(30, 255, 0, 0.25);
   --ghost-invalid: rgba(220, 40, 40, 0.30);
