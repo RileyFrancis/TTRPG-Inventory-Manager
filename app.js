@@ -1073,6 +1073,7 @@ function finalizePlacement(template, shape, rotation, row, col, stackCount) {
   }
   placeOnGrid(id, shape, row, col);
   renderPlacedItem(state.instances[id]);
+  updateGridFade();
   renderStash();
   renderEquipPanel();
   updateWeightDisplay();
