@@ -1,7 +1,8 @@
-id,name,rarity,description,cost,tags,damage,damageType,attunement,stackable,weightEach,image,shape
+id,name,rarity,description,cost,tags,damage,damageType,attunement,stackable,weightEach,image,shape,container,containerRows,containerCols
 club,Club,common,,1sp,"Weapon ",1d4,Bludgeoning,,,,,1|1
 coin_cp,Copper Piece,special,A standard copper coin.,1cp,currency,,,,true,0.02,,1
 coin_sp,Silver Piece,special,A standard silver coin. Worth 10 copper pieces.,1sp,currency,,,,true,0.02,,1
 coin_ep,Electrum Piece,special,A standard electrum coin. Worth 5 silver pieces.,1ep,currency,,,,true,0.02,,1
 coin_gp,Gold Piece,special,A standard gold coin. Worth 10 silver pieces.,1gp,currency,,,,true,0.02,,1
-coin_pp,Platinum Piece,special,A standard platinum coin. Worth 10 gold pieces.,1pp,currency,,,,true,0.02,,1
+coin_pp,Platinum Piece,special,A standard platinum coin. Worth 10 gold pieces.,1pp,currency,,,,true,0.02,,1,,,,
+backpack,Backpack,common,A sturdy leather backpack with many compartments.,2gp,container,,,,,,,11|11|11,true,5,10

@@ -84,6 +84,9 @@ function loadDefaultItems() {
         weightEach:  v('weightEach') ? parseFloat(v('weightEach')) : undefined,
         image:       v('image') || '',
         shape:       parseShape(v('shape')),
+        container:      v('container') === 'true',
+        containerRows:  v('containerRows') ? parseInt(v('containerRows'), 10) : undefined,
+        containerCols:  v('containerCols') ? parseInt(v('containerCols'), 10) : undefined,
       };
     }).filter(t => t.id);
   } catch (err) {

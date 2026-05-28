@@ -1338,6 +1338,32 @@ body.party-readonly #details-delete-btn { display: none !important; }
   margin-top: 10px;
 }
 
+/* ─── CONTAINER TABS ─────────────────────────────────────── */
+#container-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+  overflow-x: auto;
+  padding: 0 8px;
+  scrollbar-width: none;
+}
+#container-tabs::-webkit-scrollbar { display: none; }
+
+.container-tab {
+  padding: 6px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: color 0.15s, border-color 0.15s;
+}
+.container-tab:hover:not(.active) { color: var(--text); }
+.container-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
 /* ─── MULTI-DENOMINATION COST INPUT ──────────────────────── */
 .cost-inputs {
   display: flex;

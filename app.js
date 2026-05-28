@@ -89,6 +89,10 @@ const state = {
   equipped: {},
   // Equipment panel layout — ordered array of header/slot items (persisted separately)
   equipLayout: [],
+  // Container view: null = main inventory, instanceId = viewing that container's interior
+  activeContainer: null,
+  // Per-container internal grids: { [instanceId]: 2D array }
+  containerGrids: {},
   // Party session
   party: {
     active: false,
@@ -105,6 +109,22 @@ const state = {
 // Convenience
 function gridRows() { return state.character.strength * 3; }
 function normalRows() { return state.character.strength; }
+
+function activeGrid() {
+  return state.activeContainer
+    ? (state.containerGrids[state.activeContainer] ?? state.grid)
+    : state.grid;
+}
+function activeGridCols() {
+  if (!state.activeContainer) return GRID_COLS;
+  const t = state.db[state.instances[state.activeContainer]?.templateId];
+  return t?.containerCols ?? 5;
+}
+function activeGridRows() {
+  if (!state.activeContainer) return gridRows();
+  const t = state.db[state.instances[state.activeContainer]?.templateId];
+  return t?.containerRows ?? 5;
+}
 
 // =============================================================================
 // SHAPE UTILITIES
@@ -167,23 +187,31 @@ function initGrid() {
 }
 
 function canPlace(shape, gridRow, gridCol, excludeInstanceId = null) {
+  const grid = activeGrid();
+  const cols = activeGridCols();
   const cells = getShapeCells(shape, gridRow, gridCol);
   for (const { row, col } of cells) {
-    if (row < 0 || row >= state.grid.length || col < 0 || col >= GRID_COLS) return false;
-    const occupant = state.grid[row][col];
+    if (row < 0 || row >= grid.length || col < 0 || col >= cols) return false;
+    const occupant = grid[row][col];
     if (occupant && occupant !== excludeInstanceId) return false;
   }
   return true;
 }
 
 function placeOnGrid(instanceId, shape, gridRow, gridCol) {
+  const grid = activeGrid();
   getShapeCells(shape, gridRow, gridCol).forEach(({ row, col }) => {
-    state.grid[row][col] = instanceId;
+    if (grid[row]) grid[row][col] = instanceId;
   });
 }
 
 function removeFromGrid(instanceId) {
-  state.grid.forEach(row => row.forEach((v, i, arr) => {
+  const inst = state.instances[instanceId];
+  const grid = (inst?.containerId)
+    ? (state.containerGrids[inst.containerId] ?? null)
+    : state.grid;
+  if (!grid) return;
+  grid.forEach(row => row.forEach((v, i, arr) => {
     if (v === instanceId) arr[i] = null;
   }));
 }
@@ -218,14 +246,28 @@ const gridEl = document.getElementById('inventory-grid');
 
 function buildGrid() {
   gridEl.innerHTML = '';
-  gridEl.style.gridTemplateColumns = `repeat(${GRID_COLS}, ${CELL}px)`;
-  gridEl.style.gridTemplateRows    = `repeat(${gridRows()}, ${CELL}px)`;
+  const cols = activeGridCols();
+  const totalRows = activeGridRows();
+  gridEl.style.gridTemplateColumns = `repeat(${cols}, ${CELL}px)`;
+  gridEl.style.gridTemplateRows    = `repeat(${totalRows}, ${CELL}px)`;
+
+  if (state.activeContainer) {
+    for (let r = 0; r < totalRows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const cell = document.createElement('div');
+        cell.className = 'grid-cell';
+        cell.dataset.row = r;
+        cell.dataset.col = c;
+        gridEl.appendChild(cell);
+      }
+    }
+    gridEl.style.height = totalRows * CELL + 'px';
+    return;
+  }
 
   const str = state.character.strength;
-  const total = gridRows();
-
-  for (let r = 0; r < total; r++) {
-    for (let c = 0; c < GRID_COLS; c++) {
+  for (let r = 0; r < totalRows; r++) {
+    for (let c = 0; c < cols; c++) {
       const cell = document.createElement('div');
       cell.className = 'grid-cell';
       cell.dataset.row = r;
@@ -240,8 +282,6 @@ function buildGrid() {
       gridEl.appendChild(cell);
     }
   }
-
-  // updateGridFade() will set the final height; start at normal zone to avoid flicker
   gridEl.style.height = normalRows() * CELL + 'px';
 }
 
@@ -251,6 +291,13 @@ function buildGrid() {
 const GRID_FADE_ROWS = 4;
 
 function updateGridFade() {
+  if (state.activeContainer) {
+    const rows = activeGridRows();
+    gridEl.style.height = rows * CELL + 'px';
+    gridEl.style.maskImage = '';
+    gridEl.style.webkitMaskImage = '';
+    return;
+  }
   const totalRows = gridRows();
   const totalHeight = totalRows * CELL;
   let lowestPx = normalRows() * CELL;
@@ -284,8 +331,13 @@ function updateGridFade() {
 
 function renderAllItems() {
   gridEl.querySelectorAll('.placed-item').forEach(el => el.remove());
-  Object.values(state.instances).forEach(inst => renderPlacedItem(inst));
+  const activeContainerId = state.activeContainer;
+  Object.values(state.instances).forEach(inst => {
+    if ((inst.containerId ?? null) !== activeContainerId) return;
+    renderPlacedItem(inst);
+  });
   updateGridFade();
+  renderContainerTabs();
   renderEquipPanel();
   renderStash();
 }
@@ -691,6 +743,7 @@ function getZoneEncumbrance() {
   const str = state.character.strength;
   let status = 0; // 0 = none, 1 = enc, 2 = heavy
   Object.values(state.instances).forEach(inst => {
+    if (inst.containerId) return; // skip items stored inside containers
     if (inst.row === null || inst.row === undefined) return;
     const t = state.db[inst.templateId];
     if (!t) return;
@@ -896,7 +949,7 @@ function addToStash(templateId) {
   const t = state.db[templateId];
   if (!t) return;
   const id = newId();
-  state.instances[id] = { id, templateId, rotation: 0, row: null, col: null, stackCount: 1 };
+  state.instances[id] = { id, templateId, rotation: 0, row: null, col: null, stackCount: 1, containerId: state.activeContainer ?? null };
   renderStash();
   updateWeightDisplay();
   debouncedSync();
@@ -918,7 +971,10 @@ function startPlacingFromStash(instanceId) {
 }
 
 function stashAllItems() {
-  const placed = Object.values(state.instances).filter(i => i.row !== null && i.row !== undefined);
+  const activeContainerId = state.activeContainer;
+  const placed = Object.values(state.instances).filter(i =>
+    (i.containerId ?? null) === activeContainerId && i.row !== null && i.row !== undefined
+  );
   if (!placed.length) return;
   placed.forEach(inst => {
     removeFromGrid(inst.id);
@@ -935,8 +991,13 @@ function renderStash() {
   const list    = document.getElementById('stash-list');
   if (!section || !list) return;
 
-  const unplaced = Object.values(state.instances).filter(i => i.row === null || i.row === undefined);
-  const hasPlaced = Object.values(state.instances).some(i => i.row !== null && i.row !== undefined);
+  const activeContainerId = state.activeContainer;
+  const unplaced = Object.values(state.instances).filter(i =>
+    (i.containerId ?? null) === activeContainerId && (i.row === null || i.row === undefined)
+  );
+  const hasPlaced = Object.values(state.instances).some(i =>
+    (i.containerId ?? null) === activeContainerId && i.row !== null && i.row !== undefined
+  );
 
   // Always show when there are unplaced items; also show when there are placed items (for Stash All button)
   section.classList.toggle('hidden', unplaced.length === 0 && !hasPlaced);
@@ -1067,13 +1128,17 @@ function finalizePlacement(template, shape, rotation, row, col, stackCount) {
     state.instances[id].rotation = rotation;
     state.instances[id].row = row;
     state.instances[id].col = col;
+    state.instances[id].containerId = state.activeContainer ?? null;
   } else {
     id = newId();
-    state.instances[id] = { id, templateId: template.id, rotation, row, col, stackCount };
+    state.instances[id] = { id, templateId: template.id, rotation, row, col, stackCount, containerId: state.activeContainer ?? null };
   }
   placeOnGrid(id, shape, row, col);
+  // Initialize container grid for newly placed container items
+  if (template.container && !state.containerGrids[id]) initContainerGrid(id);
   renderPlacedItem(state.instances[id]);
   updateGridFade();
+  renderContainerTabs();
   renderStash();
   renderEquipPanel();
   updateWeightDisplay();
@@ -1279,6 +1344,7 @@ function onDragEnd(e) {
       if (canPlace(shape, gr, gc, drag.instanceId)) {
         inst.row = gr;
         inst.col = gc;
+        inst.containerId = state.activeContainer ?? null;
         placeOnGrid(inst.id, shape, gr, gc);
         placed = true;
       }
@@ -1514,8 +1580,22 @@ function rotateInstance(instanceId) {
 }
 
 function removeInstance(instanceId) {
+  const inst = state.instances[instanceId];
+  const t = inst ? state.db[inst.templateId] : null;
+  if (t?.container) {
+    // Remove all items stored inside this container
+    Object.keys(state.instances).forEach(id => {
+      if (state.instances[id]?.containerId === instanceId) delete state.instances[id];
+    });
+    delete state.containerGrids[instanceId];
+    if (state.activeContainer === instanceId) {
+      state.activeContainer = null;
+      buildGrid();
+    }
+  }
   removeFromGrid(instanceId);
   delete state.instances[instanceId];
+  renderContainerTabs();
   renderAllItems();
   updateWeightDisplay();
   debouncedSync();
@@ -1577,18 +1657,92 @@ document.getElementById('save-char-btn').addEventListener('click', () => {
 });
 
 function rebuildGrid() {
+  state.activeContainer = null;
   initGrid();
   buildGrid();
-  // Re-place all instances
+  rebuildContainerGrids();
+  // Re-place main inventory instances
   Object.values(state.instances).forEach(inst => {
-    if (inst.row === null || inst.row === undefined) return; // stash item
+    if (inst.containerId) return; // skip items inside containers
+    if (inst.row === null || inst.row === undefined) return;
     const t = state.db[inst.templateId];
     if (!t) return;
     const shape = getRotatedShape(t.shape, inst.rotation);
     if (canPlace(shape, inst.row, inst.col)) placeOnGrid(inst.id, shape, inst.row, inst.col);
   });
+  renderContainerTabs();
   renderAllItems();
   updateWeightDisplay();
+}
+
+function initContainerGrid(instanceId) {
+  const t = state.db[state.instances[instanceId]?.templateId];
+  const rows = t?.containerRows ?? 5;
+  const cols = t?.containerCols ?? 5;
+  state.containerGrids[instanceId] = Array.from({ length: rows }, () => Array(cols).fill(null));
+}
+
+function rebuildContainerGrids() {
+  state.containerGrids = {};
+  // Initialize a grid for every container instance
+  Object.values(state.instances).forEach(inst => {
+    const t = state.db[inst.templateId];
+    if (t?.container) initContainerGrid(inst.id);
+  });
+  // Re-place items that are stored inside containers
+  Object.values(state.instances).forEach(inst => {
+    if (!inst.containerId) return;
+    if (inst.row === null || inst.row === undefined) return;
+    const t = state.db[inst.templateId];
+    if (!t) return;
+    const grid = state.containerGrids[inst.containerId];
+    if (!grid) return;
+    const shape = getRotatedShape(t.shape, inst.rotation);
+    getShapeCells(shape, inst.row, inst.col).forEach(({ row, col }) => {
+      if (grid[row]) grid[row][col] = inst.id;
+    });
+  });
+}
+
+function renderContainerTabs() {
+  const tabsEl = document.getElementById('container-tabs');
+  const containers = Object.values(state.instances).filter(inst => {
+    const t = state.db[inst.templateId];
+    return t?.container && inst.row !== null && inst.row !== undefined && !inst.containerId;
+  });
+
+  if (containers.length === 0) {
+    tabsEl.classList.add('hidden');
+    return;
+  }
+
+  tabsEl.classList.remove('hidden');
+  tabsEl.innerHTML = '';
+
+  const mainTab = document.createElement('button');
+  mainTab.className = 'container-tab' + (state.activeContainer === null ? ' active' : '');
+  mainTab.textContent = 'Inventory';
+  mainTab.addEventListener('click', () => { if (state.activeContainer !== null) switchActiveContainer(null); });
+  tabsEl.appendChild(mainTab);
+
+  containers.forEach(inst => {
+    const t = state.db[inst.templateId];
+    const tab = document.createElement('button');
+    tab.className = 'container-tab' + (state.activeContainer === inst.id ? ' active' : '');
+    tab.textContent = t.name;
+    tab.addEventListener('click', () => { if (state.activeContainer !== inst.id) switchActiveContainer(inst.id); });
+    tabsEl.appendChild(tab);
+  });
+}
+
+function switchActiveContainer(id) {
+  if (state.activeContainer === id) return;
+  cancelPlacing();
+  state.activeContainer = id;
+  if (id && !state.containerGrids[id]) initContainerGrid(id);
+  buildGrid();
+  renderContainerTabs();
+  renderAllItems();
 }
 
 // =============================================================================
@@ -1616,6 +1770,12 @@ function openItemModal(templateId) {
   document.getElementById('f-damage-type').value  = t?.damageType ?? '';
   document.getElementById('f-attunement').checked = t?.attunement ?? false;
 
+  const isContainer = t?.container ?? false;
+  document.getElementById('f-container').checked = isContainer;
+  document.getElementById('container-fields').classList.toggle('hidden', !isContainer);
+  document.getElementById('f-container-cols').value = t?.containerCols ?? 5;
+  document.getElementById('f-container-rows').value = t?.containerRows ?? 5;
+
   const stackable = t?.stackable ?? false;
   document.getElementById('f-stackable').checked = stackable;
   document.getElementById('f-weight-each').value = t?.weightEach ?? 0.1;
@@ -1631,6 +1791,10 @@ document.getElementById('f-stackable').addEventListener('change', e => {
   const on = e.target.checked;
   document.getElementById('stackable-fields').classList.toggle('hidden', !on);
   document.getElementById('shape-editor-section').classList.toggle('hidden', on);
+});
+
+document.getElementById('f-container').addEventListener('change', e => {
+  document.getElementById('container-fields').classList.toggle('hidden', !e.target.checked);
 });
 
 document.getElementById('f-weight-each').addEventListener('input', updateMaxStackDisplay);
@@ -1703,6 +1867,7 @@ document.getElementById('save-item-btn').addEventListener('click', () => {
   const id = state.editingItemId ?? newTemplateId();
   const tagsRaw = document.getElementById('f-tags').value;
   const tags = tagsRaw.split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
+  const isContainer = document.getElementById('f-container').checked;
 
   state.db[id] = {
     id,
@@ -1724,6 +1889,9 @@ document.getElementById('save-item-btn').addEventListener('click', () => {
     stackable,
     weightEach:  stackable ? weightEach : undefined,
     shape:       stackable ? [[1]] : state.editorShape.map(r => [...r]),
+    container:      isContainer || undefined,
+    containerRows:  isContainer ? (parseInt(document.getElementById('f-container-rows').value) || 5) : undefined,
+    containerCols:  isContainer ? (parseInt(document.getElementById('f-container-cols').value) || 5) : undefined,
   };
 
   hideModal('item-modal');
@@ -1940,7 +2108,7 @@ function costToCSVStr(cost) {
 
 function exportItemsCSV() {
   const headers = ['id','name','rarity','description','cost','tags','damage','damageType',
-                   'attunement','stackable','weightEach','image','shape'];
+                   'attunement','stackable','weightEach','image','shape','container','containerRows','containerCols'];
   const rows = [headers.join(',')];
   Object.values(state.db).forEach(t => {
     const shapeStr = t.stackable ? '1' : normalizeShape(t.shape).map(r => r.join('')).join('|');
@@ -1958,6 +2126,9 @@ function exportItemsCSV() {
       t.weightEach != null ? t.weightEach : '',
       t.image || '',
       shapeStr,
+      t.container ? 'true' : '',
+      t.containerRows != null ? t.containerRows : '',
+      t.containerCols != null ? t.containerCols : '',
     ].map(csvField).join(','));
   });
   const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
@@ -1970,7 +2141,10 @@ function exportItemsCSV() {
 }
 document.getElementById('stash-all-btn').addEventListener('click', stashAllItems);
 document.getElementById('stash-delete-all-btn').addEventListener('click', () => {
-  const unplaced = Object.values(state.instances).filter(i => i.row === null || i.row === undefined);
+  const activeContainerId = state.activeContainer;
+  const unplaced = Object.values(state.instances).filter(i =>
+    (i.containerId ?? null) === activeContainerId && (i.row === null || i.row === undefined)
+  );
   if (!confirm(`Delete all ${unplaced.length} stashed item${unplaced.length > 1 ? 's' : ''}? This cannot be undone.`)) return;
   if (state.placing?.instanceId && state.instances[state.placing.instanceId]?.row === null) cancelPlacing();
   unplaced.forEach(inst => { delete state.instances[inst.id]; });
@@ -2090,6 +2264,7 @@ function getSerializableInstances() {
       row: inst.row,
       col: inst.col,
       stackCount: inst.stackCount,
+      containerId: inst.containerId ?? null,
     }])
   );
 }

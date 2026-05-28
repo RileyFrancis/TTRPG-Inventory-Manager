@@ -46,6 +46,7 @@
         <span id="viewing-banner-text"></span>
         <button id="return-to-own-btn" class="btn-sm">Return to Your Inventory</button>
       </div>
+      <div id="container-tabs" class="hidden"></div>
       <div id="grid-scroll">
         <div id="inventory-grid">
           <!-- cells injected by JS -->
@@ -311,6 +312,22 @@
           <input type="checkbox" id="f-attunement">
           <span>Requires Attunement</span>
         </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="f-container">
+          <span>Is a Container (has internal storage)</span>
+        </label>
+        <div id="container-fields" class="hidden">
+          <div class="form-two-col">
+            <label class="field">
+              <span>Internal Columns</span>
+              <input type="number" id="f-container-cols" min="1" max="15" step="1" value="5">
+            </label>
+            <label class="field">
+              <span>Internal Rows</span>
+              <input type="number" id="f-container-rows" min="1" max="20" step="1" value="5">
+            </label>
+          </div>
+        </div>
       </div>
 
       <div id="shape-editor-section">
