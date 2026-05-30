@@ -2107,13 +2107,13 @@ function costToCSVStr(cost) {
 }
 
 function exportItemsCSV() {
-  const headers = ['id','name','rarity','description','cost','tags','damage','damageType',
-                   'attunement','stackable','weightEach','image','shape','container','containerRows','containerCols'];
+  const headers = ['name','rarity','description','cost','tags','damage','damageType',
+                   'attunement','stackable','weightEach','image','shape','container','containerRows','containerCols',
+                   'properties','mastery'];
   const rows = [headers.join(',')];
   Object.values(state.db).forEach(t => {
     const shapeStr = t.stackable ? '1' : normalizeShape(t.shape).map(r => r.join('')).join('|');
     rows.push([
-      t.id,
       t.name,
       t.rarity,
       t.description || '',
@@ -2129,6 +2129,8 @@ function exportItemsCSV() {
       t.container ? 'true' : '',
       t.containerRows != null ? t.containerRows : '',
       t.containerCols != null ? t.containerCols : '',
+      (t.properties || []).join(';'),
+      t.mastery || '',
     ].map(csvField).join(','));
   });
   const blob = new Blob([rows.join('\n')], { type: 'text/csv' });

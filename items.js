@@ -3,12 +3,15 @@
 // =============================================================================
 // Edit items/items.csv to add, remove, or modify the built-in item list.
 //
-// Columns: id, name, rarity, description, cost, tags, damage, damageType,
-//          attunement, stackable, weightEach, image, shape
+// Columns: name, rarity, description, cost, tags, damage, damageType,
+//          attunement, stackable, weightEach, image, shape,
+//          container, containerRows, containerCols, properties, mastery
 //
-// tags  — pipe-separated list, e.g.  weapon|melee|finesse
-// shape — rows pipe-separated, each row is 0/1 digits,  e.g.  11|01|10
-//         weight = number of 1s (1 lb per cell)
+// tags       — pipe-separated list, e.g.  weapon|melee|finesse
+// properties — semicolon-separated list, e.g.  finesse;light;thrown
+// shape      — rows pipe-separated, each row is 0/1 digits,  e.g.  11|01|10
+//              weight = number of 1s (1 lb per cell)
+// id is auto-assigned from the row number (no id column needed)
 
 let DEFAULT_ITEMS = [];
 
@@ -67,11 +70,11 @@ function loadDefaultItems() {
     const lines = xhr.responseText.split('\n').map(l => l.trim()).filter(l => l);
     if (lines.length < 2) return;
     const headers = parseCSVRow(lines[0]);
-    DEFAULT_ITEMS = lines.slice(1).map(line => {
+    DEFAULT_ITEMS = lines.slice(1).map((line, rowIndex) => {
       const vals = parseCSVRow(line);
       const v = col => vals[headers.indexOf(col)] ?? '';
       return {
-        id:          v('id'),
+        id:          String(rowIndex + 1),
         name:        v('name'),
         rarity:      v('rarity') || 'common',
         description: v('description'),
@@ -87,8 +90,10 @@ function loadDefaultItems() {
         container:      v('container') === 'true',
         containerRows:  v('containerRows') ? parseInt(v('containerRows'), 10) : undefined,
         containerCols:  v('containerCols') ? parseInt(v('containerCols'), 10) : undefined,
+        properties:  v('properties') ? v('properties').split(';').map(s => s.trim()).filter(Boolean) : [],
+        mastery:     v('mastery') || undefined,
       };
-    }).filter(t => t.id);
+    }).filter(t => t.name);
   } catch (err) {
     console.error('Failed to load items/items.csv:', err);
   }

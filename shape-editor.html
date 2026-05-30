@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Shape Editor</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: monospace;
+    background: #1a1a2e;
+    color: #e0e0e0;
+    display: flex;
+    gap: 24px;
+    padding: 24px;
+    min-height: 100vh;
+  }
+
+  h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 2px; color: #888; margin-bottom: 12px; }
+
+  /* Left panel */
+  .left { display: flex; flex-direction: column; gap: 16px; }
+
+  .controls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .row { display: flex; align-items: center; gap: 8px; }
+
+  label { color: #aaa; font-size: 13px; width: 60px; }
+
+  input[type=number] {
+    width: 56px;
+    background: #2a2a3e;
+    border: 1px solid #444;
+    color: #e0e0e0;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 13px;
+  }
+
+  button {
+    background: #2a2a3e;
+    border: 1px solid #555;
+    color: #ccc;
+    padding: 6px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: monospace;
+    font-size: 13px;
+    transition: background 0.1s;
+  }
+  button:hover { background: #3a3a5e; color: #fff; }
+  button.primary { border-color: #7c6fcd; color: #b4acf0; }
+  button.primary:hover { background: #3a3060; }
+  button.danger { border-color: #7c3535; color: #f08080; }
+  button.danger:hover { background: #3a1515; }
+
+  /* Draw grid */
+  #grid-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    user-select: none;
+  }
+
+  .grid-row { display: flex; gap: 2px; }
+
+  .cell {
+    width: 36px;
+    height: 36px;
+    border-radius: 3px;
+    background: #2a2a3e;
+    border: 1px solid #3a3a5e;
+    cursor: pointer;
+    transition: background 0.07s;
+  }
+  .cell.on  { background: #7c6fcd; border-color: #a090f0; }
+  .cell:not(.ghost):hover { filter: brightness(1.3); }
+
+  .cell.ghost {
+    background: rgba(124, 111, 205, 0.04);
+    border: 1px dashed #5a5080;
+    cursor: cell;
+    transition: background 0.1s, border-color 0.1s;
+  }
+  .cell.ghost:hover { background: rgba(124, 111, 205, 0.18); border-color: #9080e0; filter: none; }
+
+  /* Right panel */
+  .right { display: flex; flex-direction: column; gap: 24px; flex: 1; }
+
+  /* Output */
+  .output-block {
+    background: #0f0f1a;
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 14px;
+    font-size: 13px;
+    white-space: pre;
+    overflow-x: auto;
+  }
+  #output-csv  { color: #a0d0a0; }
+  #output-js   { color: #7090a0; margin-top: 12px; }
+  .out-label   { font-size: 11px; color: #555; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px; }
+
+  /* Rotation previews */
+  .previews {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .preview-box { display: flex; flex-direction: column; gap: 6px; }
+  .preview-label { font-size: 11px; color: #666; text-align: center; }
+  .mini-grid { display: flex; flex-direction: column; gap: 1px; }
+  .mini-row  { display: flex; gap: 1px; }
+  .mini-cell {
+    width: 14px;
+    height: 14px;
+    border-radius: 2px;
+    background: #2a2a3e;
+    border: 1px solid #333;
+  }
+  .mini-cell.on { background: #7c6fcd; border-color: #a090f0; }
+
+  /* Stats */
+  #stats { font-size: 13px; color: #888; }
+  #stats span { color: #ccc; }
+</style>
+</head>
+<body>
+
+<div class="left">
+  <div>
+    <h2>Shape Editor</h2>
+  </div>
+
+  <div class="controls">
+    <div class="row">
+      <label>Rows</label>
+      <input type="number" id="inp-rows" value="3" min="1" max="12">
+    </div>
+    <div class="row">
+      <label>Cols</label>
+      <input type="number" id="inp-cols" value="3" min="1" max="12">
+    </div>
+    <div class="row" style="margin-top:4px; gap:6px; flex-wrap:wrap;">
+      <button onclick="resize()">Resize</button>
+      <button onclick="trim()" class="primary">Trim</button>
+      <button onclick="clearAll()" class="danger">Clear</button>
+    </div>
+  </div>
+
+  <div id="grid-wrap"></div>
+
+  <div id="stats">
+    Weight: <span id="stat-weight">0</span> lb &nbsp;|&nbsp; Cells: <span id="stat-cells">0</span>
+  </div>
+</div>
+
+<div class="right">
+  <div>
+    <h2>Output</h2>
+    <div class="out-label">CSV (items.csv → shape column)</div>
+    <div class="output-block" id="output-csv"></div>
+    <div class="row" style="margin-top:8px; gap:6px;">
+      <button onclick="copyCSV()" class="primary">Copy CSV</button>
+    </div>
+    <div class="out-label" style="margin-top:16px;">JS array (app.js reference)</div>
+    <div class="output-block" id="output-js"></div>
+  </div>
+
+  <div>
+    <h2>Rotations</h2>
+    <div class="previews" id="previews"></div>
+  </div>
+</div>
+
+<script>
+let rows = 3, cols = 3;
+let grid = [];   // grid[r][c] = 0|1
+let painting = null; // null | 0 | 1  — persists across renders
+
+function makeGrid(r, c, prev) {
+  const g = [];
+  for (let i = 0; i < r; i++) {
+    g.push([]);
+    for (let j = 0; j < c; j++)
+      g[i].push(prev && prev[i] && prev[i][j] !== undefined ? prev[i][j] : 0);
+  }
+  return g;
+}
+
+function resize() {
+  const r = Math.max(1, Math.min(20, parseInt(document.getElementById('inp-rows').value) || 1));
+  const c = Math.max(1, Math.min(20, parseInt(document.getElementById('inp-cols').value) || 1));
+  rows = r; cols = c;
+  grid = makeGrid(r, c, grid);
+  render();
+}
+
+function clearAll() {
+  grid = makeGrid(rows, cols);
+  render();
+}
+
+function trim() {
+  let top = rows, bot = -1, left = cols, right = -1;
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++)
+      if (grid[r][c]) {
+        top  = Math.min(top, r);
+        bot  = Math.max(bot, r);
+        left = Math.min(left, c);
+        right= Math.max(right, c);
+      }
+  if (bot === -1) return;
+  const g = [];
+  for (let r = top; r <= bot; r++)
+    g.push(grid[r].slice(left, right + 1));
+  rows = bot - top + 1; cols = right - left + 1;
+  document.getElementById('inp-rows').value = rows;
+  document.getElementById('inp-cols').value = cols;
+  grid = g;
+  render();
+}
+
+function rotateCW(g) {
+  const r = g.length, c = g[0].length;
+  const out = [];
+  for (let j = 0; j < c; j++) {
+    out.push([]);
+    for (let i = r - 1; i >= 0; i--) out[j].push(g[i][j]);
+  }
+  return out;
+}
+
+// Paint cell at r,c. Expands the grid when painting into the ghost zone
+// or when dragging paint onto the last data row/col.
+// Returns true if a full render was triggered (caller must not call update()).
+function applyPaint(r, c) {
+  if (painting === null) return false;
+  const ghostRow = r >= rows;
+  const ghostCol = c >= cols;
+
+  if (ghostRow || ghostCol) {
+    if (ghostRow) {
+      grid.push(new Array(cols).fill(0));
+      rows++;
+      document.getElementById('inp-rows').value = rows;
+    }
+    if (ghostCol) {
+      grid.forEach(row => row.push(0));
+      cols++;
+      document.getElementById('inp-cols').value = cols;
+    }
+    grid[r][c] = painting ?? 1;
+    render();
+    return true;
+  }
+
+  grid[r][c] = painting;
+
+  // Auto-expand: painting the last data row/col grows the grid
+  let expanded = false;
+  if (painting === 1 && r === rows - 1) {
+    grid.push(new Array(cols).fill(0));
+    rows++;
+    document.getElementById('inp-rows').value = rows;
+    expanded = true;
+  }
+  if (painting === 1 && c === cols - 1) {
+    grid.forEach(row => row.push(0));
+    cols++;
+    document.getElementById('inp-cols').value = cols;
+    expanded = true;
+  }
+  if (expanded) { render(); return true; }
+
+  return false;
+}
+
+function renderGrid() {
+  const wrap = document.getElementById('grid-wrap');
+  wrap.innerHTML = '';
+  for (let r = 0; r < rows; r++) {
+    const rowEl = document.createElement('div');
+    rowEl.className = 'grid-row';
+    for (let c = 0; c < cols; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell' + (grid[r][c] ? ' on' : '');
+      cell.dataset.r = r;
+      cell.dataset.c = c;
+      rowEl.appendChild(cell);
+    }
+    // Ghost right cell
+    const gr = document.createElement('div');
+    gr.className = 'cell ghost';
+    gr.dataset.r = r;
+    gr.dataset.c = cols;
+    rowEl.appendChild(gr);
+    wrap.appendChild(rowEl);
+  }
+  // Ghost bottom row (includes corner)
+  const ghostRow = document.createElement('div');
+  ghostRow.className = 'grid-row';
+  for (let c = 0; c <= cols; c++) {
+    const cell = document.createElement('div');
+    cell.className = 'cell ghost';
+    cell.dataset.r = rows;
+    cell.dataset.c = c;
+    ghostRow.appendChild(cell);
+  }
+  wrap.appendChild(ghostRow);
+}
+
+// Module-level pointer events attached once — survive DOM rebuilds inside #grid-wrap
+function initEvents() {
+  const wrap = document.getElementById('grid-wrap');
+
+  wrap.addEventListener('pointerdown', e => {
+    const cell = e.target.closest('.cell');
+    if (!cell) return;
+    e.preventDefault();
+    const r = +cell.dataset.r, c = +cell.dataset.c;
+    const curVal = (r < rows && c < cols) ? grid[r][c] : 0;
+    painting = curVal ? 0 : 1;
+    if (!applyPaint(r, c)) update();
+  });
+
+  // Use elementFromPoint so drag-painting works across rebuilt DOM
+  document.addEventListener('pointermove', e => {
+    if (painting === null) return;
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const cell = el && el.closest('#grid-wrap .cell');
+    if (!cell) return;
+    const r = +cell.dataset.r, c = +cell.dataset.c;
+    if (!applyPaint(r, c)) update();
+  });
+
+  document.addEventListener('pointerup', () => { painting = null; });
+}
+
+function updateGridDisplay() {
+  document.querySelectorAll('#grid-wrap .cell:not(.ghost)').forEach(cell => {
+    cell.classList.toggle('on', !!grid[+cell.dataset.r][+cell.dataset.c]);
+  });
+}
+
+function renderOutput() {
+  document.getElementById('output-csv').textContent =
+    grid.map(row => row.join('')).join('|');
+  const lines = grid.map(row => '[' + row.join(', ') + ']');
+  document.getElementById('output-js').textContent =
+    '[\n  ' + lines.join(',\n  ') + '\n]';
+}
+
+function renderPreviews() {
+  const wrap = document.getElementById('previews');
+  wrap.innerHTML = '';
+  let g = grid.map(r => [...r]);
+  for (let rot = 0; rot < 4; rot++) {
+    const box = document.createElement('div');
+    box.className = 'preview-box';
+    const label = document.createElement('div');
+    label.className = 'preview-label';
+    label.textContent = rot === 0 ? '0° (base)' : rot * 90 + '°';
+    const miniGrid = document.createElement('div');
+    miniGrid.className = 'mini-grid';
+    for (const row of g) {
+      const rowEl = document.createElement('div');
+      rowEl.className = 'mini-row';
+      for (const v of row) {
+        const c = document.createElement('div');
+        c.className = 'mini-cell' + (v ? ' on' : '');
+        rowEl.appendChild(c);
+      }
+      miniGrid.appendChild(rowEl);
+    }
+    box.appendChild(label);
+    box.appendChild(miniGrid);
+    wrap.appendChild(box);
+    g = rotateCW(g);
+  }
+}
+
+function renderStats() {
+  const filled = grid.flat().reduce((a, v) => a + v, 0);
+  document.getElementById('stat-cells').textContent = filled;
+  document.getElementById('stat-weight').textContent = filled;
+}
+
+function update() {
+  updateGridDisplay();
+  renderOutput();
+  renderPreviews();
+  renderStats();
+}
+
+function render() {
+  renderGrid();
+  renderOutput();
+  renderPreviews();
+  renderStats();
+}
+
+async function copyCSV() {
+  const text = document.getElementById('output-csv').textContent;
+  await navigator.clipboard.writeText(text);
+  const btn = document.querySelector('button.primary');
+  const orig = btn.textContent;
+  btn.textContent = 'Copied!';
+  setTimeout(() => btn.textContent = orig, 1200);
+}
+
+// Init
+grid = makeGrid(rows, cols);
+render();
+initEvents();
+</script>
+</body>
+</html>
