@@ -11,6 +11,7 @@ A browser-based inventory manager for tabletop RPGs (D&D 5e and similar systems)
 - **Stackable items** — arrows, potions, and other small items stack within a single cell
 - **Encumbrance tracking** — weight bar with STR-based carry zones (normal / encumbered / heavily encumbered)
 - **Auto-save** — inventory state persists automatically between browser sessions
+- **Light & dark themes** — parchment or candlelight, switchable from the ⚙ settings button
 - **Party play** — share a session code with your GM or players via Firebase Realtime Database
 - **Configure Slots** — fully customizable equipment panel with custom sections, reordering, and per-slot options
 
@@ -65,6 +66,7 @@ in dependency order; **that order matters** and is documented in the script bloc
 | `modals.js` | Tabs, filters, character / item-editor / stack modals |
 | `helpers.js` | Shared formatting and lookup helpers |
 | `persistence.js` | `localStorage` save/load and CSV export |
+| `theme.js` | Light/dark switching and the settings modal |
 | `firebase-config.js` | Reads Firebase credentials from `.env` into `FIREBASE_CONFIG` |
 | `party.js` | Party sync over Firebase + party UI |
 | `equipment.js` | Equipment slots, layout editor, equip/unequip |
@@ -94,6 +96,20 @@ session. One row per item; `id` is assigned automatically from the row number.
 `tools/shape-editor.html` draws a shape visually and prints the `shape` string to paste in.
 
 Custom items created in-app are saved to `localStorage` and persist between sessions.
+
+## Themes
+
+Click **⚙** in the header to open Settings and choose **Light**, **Dark**, or **System**.
+
+- *Light* is aged parchment with sepia ink; *Dark* is a candlelit tavern in oiled leather
+  and gold leaf.
+- *System* follows your OS setting and updates live if you change it.
+- The choice is remembered per browser (`localStorage`), separately from your inventory
+  save, and is applied before the page paints so there is no flash of the wrong theme.
+
+Both palettes are CSS custom properties at the top of `src/css/style.css` — edit the
+`:root` block for light, `:root[data-theme="dark"]` for dark. Rarity and coin colours are
+tuned per theme, since the bright greens that read well on black disappear on parchment.
 
 ## Equipment Slots
 

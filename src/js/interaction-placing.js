@@ -106,7 +106,7 @@ function renderStash() {
   unplaced.forEach(inst => {
     const t = state.db[inst.templateId];
     if (!t) return;
-    const color = RARITY_META[t.rarity]?.color ?? '#888';
+    const color = rarityColor(t.rarity);
     const isActive = state.placing?.instanceId === inst.id;
 
     const card = document.createElement('div');

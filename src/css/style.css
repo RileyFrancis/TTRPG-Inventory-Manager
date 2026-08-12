@@ -1,39 +1,167 @@
 /* ============================================================
    D&D INVENTORY MANAGER — style.css
-   Dark fantasy theme
+
+   THEMING
+   -------
+   Two palettes: an aged-parchment light theme and a candlelit
+   dark theme. `:root` holds the light palette (and doubles as
+   the fallback); `:root[data-theme="dark"]` overrides it.
+
+   The theme attribute is always set explicitly on <html> — the
+   inline script in index.html <head> resolves the stored
+   preference (light / dark / system) before first paint, and
+   src/js/theme.js keeps it in sync afterwards. Nothing here
+   depends on prefers-color-scheme directly.
+
+   Add a color as a token in BOTH blocks, never inline.
    ============================================================ */
 
 :root {
   --cell: 44px;
   --cols: 15;
 
-  --bg:       #0e1117;
-  --surface:  #161b27;
-  --panel:    #1d2436;
-  --border:   #2a3450;
-  --border2:  #3a4870;
-  --text:     #c8d4e8;
-  --text-dim: #6a7a9a;
-  --accent:   #c0893a;
-  --danger:   #e05050;
+  /* ─── Typography ─── */
+  --font-display: 'Cinzel', 'Trajan Pro', 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
+  --font-body: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', sans-serif;
 
-  --zone-normal-bg:    #1a2230;
-  --zone-normal-line:  #22344a;
-  --zone-enc-bg:       #221e12;
-  --zone-enc-line:     #3a3010;
-  --zone-heavy-bg:     #22120e;
-  --zone-heavy-line:   #3a1e18;
+  /* ─── Light: aged parchment, sepia ink, tooled leather ─── */
+  --bg:       #ded0ae;
+  --surface:  #efe4c8;
+  --panel:    #f7eed8;
+  --border:   #c4ab7e;
+  --border2:  #a3855a;
+  --text:     #33281a;
+  --text-dim: #71603f;
+  --accent:      #8a5a1c;
+  --accent-soft: #b08542;
+  --on-accent:   #fdf6e4;
+  --danger:      #a3291f;
 
-  --rarity-common:    #b0b0b0;
-  --rarity-uncommon:  #47f052;
-  --rarity-rare:      #3290e7;
-  --rarity-very_rare: #914fdc;
-  --rarity-legendary: #ff8000;
-  --rarity-artifact:  #ec362f;
-  --rarity-special:   #ffa2d0;
+  /* Parchment grain + leather emboss */
+  --grain-a:    rgba(94, 66, 26, 0.055);
+  --grain-b:    rgba(120, 88, 40, 0.035);
+  --grain-op:   0.9;
+  --emboss-hi:  rgba(255, 250, 235, 0.75);
+  --emboss-lo:  rgba(90, 62, 26, 0.18);
+  --shadow-soft: 0 2px 8px rgba(86, 60, 24, 0.18);
+  --shadow-deep: 0 10px 34px rgba(70, 48, 18, 0.32);
+  --vignette:   rgba(122, 90, 44, 0.16);
+  --gold-line:  linear-gradient(90deg, transparent, var(--accent-soft), transparent);
 
-  --ghost-valid:   rgba(30, 255, 0, 0.25);
-  --ghost-invalid: rgba(220, 40, 40, 0.30);
+  /* Carry zones */
+  --zone-normal-bg:    #e6d8b8;
+  --zone-normal-line:  #c9b085;
+  --zone-enc-bg:       #e8d3a0;
+  --zone-enc-line:     #c4a052;
+  --zone-heavy-bg:     #e6c3ae;
+  --zone-heavy-line:   #c08466;
+  --zone-boundary-enc:   #a8761e;
+  --zone-boundary-heavy: #9e3b28;
+
+  /* Encumbrance readout */
+  --enc-ok:    #4a7a2c;
+  --enc-warn:  #b06a10;
+  --enc-heavy: #a3291f;
+  --weight-track: #c9b085;
+
+  /* Rarity — deepened so they hold contrast on parchment */
+  --rarity-common:    #6d6355;
+  --rarity-uncommon:  #2c7d34;
+  --rarity-rare:      #1b62b4;
+  --rarity-very_rare: #6f2fae;
+  --rarity-legendary: #b85f00;
+  --rarity-artifact:  #a02b1c;
+  --rarity-special:   #b83a7d;
+
+  /* Placed items + drag ghost */
+  --item-label-fg:     #2a2015;
+  --item-label-shadow: 0 1px 2px rgba(255, 248, 232, 0.85);
+  --item-inner-border: rgba(60, 40, 12, 0.14);
+  --ghost-outer:       rgba(52, 34, 10, 0.75);
+  --ghost-inner:       rgba(52, 34, 10, 0.10);
+  --ghost-valid:   rgba(58, 140, 40, 0.28);
+  --ghost-invalid: rgba(170, 40, 30, 0.28);
+  --ghost-valid-glow:   rgba(58, 140, 40, 0.55);
+  --ghost-invalid-glow: rgba(170, 40, 30, 0.55);
+
+  --coin-pp: #55688a;
+  --coin-gp: #9a7508;
+  --coin-ep: #3f7e96;
+  --coin-sp: #6f6f6f;
+  --coin-cp: #8a4f1e;
+
+  --online: #2c7d34;
+  --role-player-fg: #1b62b4;
+  --role-player-bg: rgba(27, 98, 180, 0.14);
+  --toggle-on-bg:   rgba(138, 90, 28, 0.18);
+}
+
+:root[data-theme="dark"] {
+  /* ─── Dark: candlelit tavern, oiled leather, gold leaf ─── */
+  --bg:       #14100b;
+  --surface:  #1d1710;
+  --panel:    #262017;
+  --border:   #3d3122;
+  --border2:  #5b4831;
+  --text:     #e9dcc0;
+  --text-dim: #a08d6c;
+  --accent:      #d4a24c;
+  --accent-soft: #b8873a;
+  --on-accent:   #1a1206;
+  --danger:      #d9584f;
+
+  --grain-a:    rgba(255, 226, 170, 0.030);
+  --grain-b:    rgba(0, 0, 0, 0.16);
+  --grain-op:   0.8;
+  --emboss-hi:  rgba(255, 228, 178, 0.10);
+  --emboss-lo:  rgba(0, 0, 0, 0.45);
+  --shadow-soft: 0 2px 10px rgba(0, 0, 0, 0.5);
+  --shadow-deep: 0 10px 34px rgba(0, 0, 0, 0.72);
+  --vignette:   rgba(0, 0, 0, 0.5);
+  --gold-line:  linear-gradient(90deg, transparent, var(--accent-soft), transparent);
+
+  --zone-normal-bg:    #201a13;
+  --zone-normal-line:  #3b3022;
+  --zone-enc-bg:       #241a0c;
+  --zone-enc-line:     #4a3512;
+  --zone-heavy-bg:     #26120d;
+  --zone-heavy-line:   #4d2018;
+  --zone-boundary-enc:   #a8761e;
+  --zone-boundary-heavy: #a8402e;
+
+  --enc-ok:    #7ac74f;
+  --enc-warn:  #e0a020;
+  --enc-heavy: #e05545;
+  --weight-track: #33291d;
+
+  --rarity-common:    #b3a894;
+  --rarity-uncommon:  #56d95f;
+  --rarity-rare:      #4a9de8;
+  --rarity-very_rare: #a86ff0;
+  --rarity-legendary: #ff9a2e;
+  --rarity-artifact:  #ef5a48;
+  --rarity-special:   #ff9fd0;
+
+  --item-label-fg:     rgba(255, 248, 232, 0.94);
+  --item-label-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  --item-inner-border: rgba(255, 240, 210, 0.10);
+  --ghost-outer:       rgba(255, 244, 220, 0.72);
+  --ghost-inner:       rgba(255, 244, 220, 0.08);
+  --ghost-valid:   rgba(60, 220, 60, 0.24);
+  --ghost-invalid: rgba(220, 60, 45, 0.28);
+  --ghost-valid-glow:   rgba(60, 220, 60, 0.5);
+  --ghost-invalid-glow: rgba(220, 60, 45, 0.5);
+
+  --coin-pp: #b0c4de;
+  --coin-gp: #ffd700;
+  --coin-ep: #7ec8e3;
+  --coin-sp: #c0c0c0;
+  --coin-cp: #cc8543;
+
+  --online: #56d95f;
+  --role-player-fg: #6bb0f5;
+  --role-player-bg: rgba(80, 150, 235, 0.16);
+  --toggle-on-bg:   rgba(212, 162, 76, 0.18);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -42,9 +170,38 @@ html, body {
   height: 100%;
   background: var(--bg);
   color: var(--text);
-  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-family: var(--font-body);
   font-size: 13px;
   overflow: hidden;
+}
+
+/* Parchment grain — a fixed overlay so every surface shares one paper
+   texture. Sits below modals (z 500+) and the drag ghost (z 1000). */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  opacity: var(--grain-op);
+  background-image:
+    repeating-linear-gradient(0deg,   var(--grain-a) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(90deg,  var(--grain-b) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(115deg, var(--grain-a) 0 1px, transparent 1px 11px);
+}
+
+/* Display face for anything that should feel lettered rather than typed */
+h1, h2, h3,
+#char-name-display,
+.modal-box h2,
+.tab-btn,
+.btn-primary,
+.eq-section-header,
+#stash-header,
+.coin-purse-header,
+.party-label,
+#party-code-text {
+  font-family: var(--font-display);
 }
 
 button { cursor: pointer; border: none; background: none; color: inherit; font: inherit; }
@@ -52,36 +209,62 @@ input, select, textarea {
   background: var(--bg);
   border: 1px solid var(--border2);
   color: var(--text);
-  border-radius: 4px;
+  border-radius: 3px;
   padding: 4px 8px;
   font: inherit;
   outline: none;
+  box-shadow: inset 0 1px 2px var(--emboss-lo);
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
-input:focus, select:focus, textarea:focus { border-color: var(--accent); }
-select option { background: var(--panel); }
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent);
+  box-shadow: inset 0 1px 2px var(--emboss-lo), 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+select option { background: var(--panel); color: var(--text); }
 textarea { resize: vertical; }
 
 /* ─── BUTTONS ────────────────────────────────────────────── */
+/* Gold leaf: warm gradient, hairline bevel, pressed state sinks. */
 .btn-primary {
-  background: var(--accent);
-  color: #000;
-  border-radius: 5px;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--accent) 88%, #fff) 0%,
+    var(--accent) 45%,
+    var(--accent-soft) 100%);
+  color: var(--on-accent);
+  border: 1px solid var(--accent-soft);
+  border-radius: 3px;
   padding: 6px 14px;
-  font-weight: 600;
-  transition: filter 0.15s;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  box-shadow: inset 0 1px 0 var(--emboss-hi), 0 1px 3px var(--emboss-lo);
+  transition: filter 0.15s, box-shadow 0.15s, transform 0.05s;
 }
-.btn-primary:hover { filter: brightness(1.2); }
+.btn-primary:hover { filter: brightness(1.09) saturate(1.05); }
+.btn-primary:active {
+  transform: translateY(1px);
+  box-shadow: inset 0 1px 4px var(--emboss-lo);
+}
 
 .btn-sm {
-  background: var(--panel);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 92%, var(--emboss-hi)), var(--panel));
   border: 1px solid var(--border2);
-  border-radius: 4px;
+  border-radius: 3px;
   padding: 4px 10px;
+  box-shadow: inset 0 1px 0 var(--emboss-hi);
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
-.btn-sm:hover { border-color: var(--accent); }
+.btn-sm:hover { border-color: var(--accent); color: var(--accent); }
+.btn-sm:active { box-shadow: inset 0 1px 3px var(--emboss-lo); }
 
-.btn-sm.danger { color: var(--danger); border-color: var(--danger); }
-.btn-sm.danger:hover { background: rgba(220,80,80,0.15); }
+.btn-sm.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 55%, var(--border2)); }
+.btn-sm.danger:hover { background: color-mix(in srgb, var(--danger) 14%, var(--panel)); color: var(--danger); }
+
+/* Icon-only header buttons (settings gear, etc.) */
+.btn-sm.icon-only {
+  padding: 4px 8px;
+  font-size: 14px;
+  line-height: 1.2;
+}
 
 /* ─── LAYOUT ─────────────────────────────────────────────── */
 #app {
@@ -91,14 +274,27 @@ textarea { resize: vertical; }
 }
 
 #header {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 20px;
-  padding: 8px 16px;
-  background: var(--surface);
+  padding: 8px 16px 10px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface) 88%, var(--emboss-hi)), var(--surface));
   border-bottom: 1px solid var(--border);
+  box-shadow: 0 2px 6px var(--emboss-lo);
   flex-shrink: 0;
-  min-height: 56px;
+  min-height: 58px;
+  z-index: 5;
+}
+/* Gold rule beneath the header — the banner's stitched edge */
+#header::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 1px;
+  background: var(--gold-line);
+  opacity: 0.7;
 }
 
 #char-summary {
@@ -108,13 +304,17 @@ textarea { resize: vertical; }
   white-space: nowrap;
 }
 #char-name-display {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
+  letter-spacing: 0.02em;
   color: var(--accent);
+  text-shadow: 0 1px 0 var(--emboss-hi);
 }
 #char-str-display {
   font-weight: 600;
   color: var(--text-dim);
+  padding-left: 12px;
+  border-left: 1px solid var(--border);
 }
 
 /* Weight bar */
@@ -126,26 +326,30 @@ textarea { resize: vertical; }
 }
 #weight-bar-track {
   position: relative;
-  height: 10px;
-  background: var(--border);
-  border-radius: 5px;
+  height: 11px;
+  background: var(--weight-track);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  box-shadow: inset 0 1px 3px var(--emboss-lo);
   overflow: visible;
 }
 #weight-bar-fill {
   height: 100%;
   border-radius: 5px;
-  background: linear-gradient(90deg, #1eff00 33.33%, #ff8000 66.66%, #ff2020 100%);
+  background: linear-gradient(90deg,
+    var(--enc-ok) 33.33%, var(--enc-warn) 66.66%, var(--enc-heavy) 100%);
+  box-shadow: inset 0 1px 0 var(--emboss-hi);
   transition: width 0.3s ease, background-size 0.3s ease;
 }
 .weight-marker {
   position: absolute;
-  top: -3px;
+  top: -4px;
   width: 2px;
-  height: 16px;
-  background: #ff8000;
+  height: 17px;
+  background: var(--enc-warn);
   border-radius: 1px;
 }
-.weight-marker.heavy { background: #ff2020; }
+.weight-marker.heavy { background: var(--enc-heavy); }
 
 #weight-labels {
   display: flex;
@@ -156,8 +360,8 @@ textarea { resize: vertical; }
 #encumbrance-status {
   font-weight: 700;
 }
-#encumbrance-status.enc    { color: #ffa000; }
-#encumbrance-status.heavy  { color: #ff3030; }
+#encumbrance-status.enc    { color: var(--enc-warn); }
+#encumbrance-status.heavy  { color: var(--enc-heavy); }
 
 /* ─── MAIN LAYOUT ────────────────────────────────────────── */
 #main-layout {
@@ -180,15 +384,19 @@ textarea { resize: vertical; }
   flex: 1;
   overflow-y: auto;
   overflow-x: auto;
-  padding: 8px;
+  padding: 14px 8px;
   display: flex;
   justify-content: center;
   align-items: flex-start;
+  background:
+    radial-gradient(ellipse 120% 90% at 50% 0%, transparent 55%, var(--vignette) 100%),
+    var(--bg);
 }
 #grid-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
 #grid-scroll::-webkit-scrollbar-track { background: var(--bg); }
 #grid-scroll::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
 
+/* The pack itself — a leather-bound frame around the carry grid */
 #inventory-grid {
   position: relative;
   display: grid;
@@ -197,6 +405,11 @@ textarea { resize: vertical; }
   flex-shrink: 0;
   user-select: none;
   overflow: hidden;
+  border: 2px solid var(--border2);
+  border-radius: 3px;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent),
+    var(--shadow-deep);
 }
 
 /* ─── GRID CELLS ─────────────────────────────────────────── */
@@ -216,8 +429,8 @@ textarea { resize: vertical; }
 .grid-cell.highlight-invalid { background: var(--ghost-invalid) !important; }
 
 /* Zone boundary lines — extra top border on first row of enc/heavy zones */
-.grid-cell.zone-boundary-enc   { border-top: 2px solid #d9a64a66; }
-.grid-cell.zone-boundary-heavy { border-top: 2px solid #d94a4a66; }
+.grid-cell.zone-boundary-enc   { border-top: 2px solid color-mix(in srgb, var(--zone-boundary-enc) 65%, transparent); }
+.grid-cell.zone-boundary-heavy { border-top: 2px solid color-mix(in srgb, var(--zone-boundary-heavy) 65%, transparent); }
 
 /* ─── PLACED ITEMS ───────────────────────────────────────── */
 .placed-item {
@@ -267,8 +480,8 @@ textarea { resize: vertical; }
   padding: 2px;
   pointer-events: none;
   line-height: 1.1;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
-  color: rgba(255,255,255,0.9);
+  text-shadow: var(--item-label-shadow);
+  color: var(--item-label-fg);
   overflow: hidden;
   word-break: break-word;
   z-index: 1;
@@ -292,8 +505,8 @@ textarea { resize: vertical; }
   right: 3px;
   font-size: 9px;
   font-weight: 900;
-  color: #fff;
-  text-shadow: 0 0 3px #000;
+  color: var(--item-label-fg);
+  text-shadow: var(--item-label-shadow);
   pointer-events: none;
   line-height: 1;
 }
@@ -308,8 +521,13 @@ textarea { resize: vertical; }
 .rarity-special   { --rc: var(--rarity-special);   }
 
 .item-cell.filled {
-  background: color-mix(in srgb, var(--rc) 35%, transparent);
+  background: color-mix(in srgb, var(--rc) 26%, transparent);
   border-color: var(--rc);
+  box-shadow: inset 0 0 6px color-mix(in srgb, var(--rc) 32%, transparent);
+}
+/* Items need more fill on the dark ground to read as solid objects */
+:root[data-theme="dark"] .item-cell.filled {
+  background: color-mix(in srgb, var(--rc) 35%, transparent);
   box-shadow: inset 0 0 6px color-mix(in srgb, var(--rc) 40%, transparent);
 }
 
@@ -322,10 +540,10 @@ textarea { resize: vertical; }
   opacity: 0.85;
 }
 #drag-ghost.valid .item-cell.filled {
-  box-shadow: inset 0 0 12px rgba(30,255,0,0.5), 0 0 8px rgba(30,255,0,0.3);
+  box-shadow: inset 0 0 12px var(--ghost-valid-glow), 0 0 8px var(--ghost-valid);
 }
 #drag-ghost.invalid .item-cell.filled {
-  box-shadow: inset 0 0 12px rgba(220,40,40,0.5), 0 0 8px rgba(220,40,40,0.3);
+  box-shadow: inset 0 0 12px var(--ghost-invalid-glow), 0 0 8px var(--ghost-invalid);
 }
 
 /* ─── SIDEBAR ────────────────────────────────────────────── */
@@ -335,23 +553,34 @@ textarea { resize: vertical; }
   display: flex;
   flex-direction: column;
   background: var(--surface);
+  border-left: 1px solid var(--border);
+  box-shadow: inset 1px 0 0 var(--emboss-hi);
   overflow: hidden;
 }
 
 #sidebar-tabs {
   display: flex;
   border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--surface), color-mix(in srgb, var(--surface) 80%, var(--emboss-lo)));
   flex-shrink: 0;
 }
 .tab-btn {
   flex: 1;
-  padding: 10px;
-  font-weight: 600;
+  padding: 11px 10px 9px;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--text-dim);
   border-bottom: 2px solid transparent;
-  transition: color 0.15s, border-color 0.15s;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
-.tab-btn.active   { color: var(--accent); border-color: var(--accent); }
+.tab-btn.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+  text-shadow: 0 1px 0 var(--emboss-hi);
+}
 .tab-btn:hover:not(.active) { color: var(--text); }
 
 .tab-pane { display: none; flex-direction: column; flex: 1; overflow: hidden; }
@@ -387,14 +616,23 @@ textarea { resize: vertical; }
   align-items: center;
   gap: 8px;
   padding: 6px 8px;
-  border-radius: 5px;
+  border-radius: 3px;
   border: 1px solid var(--border);
-  background: var(--panel);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 94%, var(--emboss-hi)), var(--panel));
+  box-shadow: inset 0 1px 0 var(--emboss-hi);
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color 0.15s, background 0.15s, transform 0.08s;
 }
-.item-card:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--panel)); }
-.item-card.placing { border-color: #1eff00; background: rgba(30,255,0,0.08); }
+.item-card:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 9%, var(--panel));
+  transform: translateX(1px);
+}
+.item-card.placing {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, var(--panel));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+}
 
 .item-card-swatch {
   width: 10px;
@@ -539,26 +777,31 @@ textarea { resize: vertical; }
   z-index: 2000;
   background: var(--panel);
   border: 1px solid var(--border2);
-  border-radius: 6px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  border-radius: 3px;
+  box-shadow: var(--shadow-deep), inset 0 0 0 1px var(--emboss-hi);
   display: flex;
   flex-direction: column;
-  min-width: 140px;
+  min-width: 150px;
   overflow: hidden;
+  padding: 3px;
 }
 #context-menu button {
-  padding: 8px 14px;
+  padding: 7px 12px;
   text-align: left;
-  transition: background 0.1s;
+  border-radius: 2px;
+  transition: background 0.1s, color 0.1s;
 }
-#context-menu button:hover { background: var(--border); }
+#context-menu button:hover {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
 #ctx-remove { color: var(--danger); }
 
 /* ─── MODALS ─────────────────────────────────────────────── */
 #modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.6);
+  background: radial-gradient(ellipse at center, rgba(20, 12, 4, 0.45), rgba(12, 8, 3, 0.72));
   z-index: 500;
   backdrop-filter: blur(2px);
 }
@@ -571,23 +814,53 @@ textarea { resize: vertical; }
   justify-content: center;
   pointer-events: none;
 }
+/* A loose sheet of parchment, ruled in gold and pinned to the table */
 .modal-box {
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--border2);
-  border-radius: 8px;
-  padding: 20px 24px;
+  border-radius: 3px;
+  padding: 18px 24px 20px;
   width: 400px;
   max-width: 95vw;
   max-height: 90vh;
   overflow-y: auto;
   pointer-events: all;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.7);
+  box-shadow:
+    var(--shadow-deep),
+    inset 0 0 0 1px var(--emboss-hi),
+    inset 0 0 0 5px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 .modal-box::-webkit-scrollbar { width: 5px; }
 .modal-box::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
 .modal-box.wide { width: 580px; }
-.modal-box.narrow { width: 300px; }
-.modal-box h2 { font-size: 16px; margin-bottom: 16px; color: var(--accent); }
+.modal-box.narrow { width: 320px; }
+
+.modal-box h2 {
+  position: relative; /* anchors the fleuron to the heading, not the box */
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  margin-bottom: 18px;
+  padding-bottom: 11px;
+  color: var(--accent);
+  text-align: center;
+  text-shadow: 0 1px 0 var(--emboss-hi);
+  border-bottom: 1px solid var(--border);
+}
+/* Fleuron sitting on the rule beneath the title */
+.modal-box h2::after {
+  content: '❖';
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translate(-50%, 50%);
+  font-size: 9px;
+  line-height: 1;
+  color: var(--accent-soft);
+  background: var(--surface);
+  padding: 0 8px;
+}
 
 .field {
   display: flex;
@@ -795,9 +1068,9 @@ textarea { resize: vertical; }
 }
 
 .party-role-badge.player {
-  background: rgba(0, 132, 255, 0.15);
-  color: #0084ff;
-  border: 1px solid rgba(0, 132, 255, 0.35);
+  background: var(--role-player-bg);
+  color: var(--role-player-fg);
+  border: 1px solid color-mix(in srgb, var(--role-player-fg) 40%, transparent);
 }
 
 .party-hint {
@@ -850,7 +1123,7 @@ textarea { resize: vertical; }
   flex-shrink: 0;
 }
 
-.party-dot.online  { background: #1eff00; box-shadow: 0 0 5px #1eff0066; }
+.party-dot.online  { background: var(--online); box-shadow: 0 0 6px color-mix(in srgb, var(--online) 55%, transparent); }
 .party-dot.offline { background: var(--text-dim); opacity: 0.5; }
 
 .party-player-name-text {
@@ -899,7 +1172,7 @@ textarea { resize: vertical; }
 }
 
 .party-role-btn:last-child { border-right: none; }
-.party-role-btn.active { background: var(--accent); color: #000; }
+.party-role-btn.active { background: var(--accent); color: var(--on-accent); }
 .party-role-btn:not(.active):hover { background: var(--border); color: var(--text); }
 
 .party-action-btn { width: 100%; margin-bottom: 4px; }
@@ -918,6 +1191,7 @@ body.party-readonly #details-delete-btn { display: none !important; }
   flex-direction: column;
   background: var(--surface);
   border-right: 1px solid var(--border);
+  box-shadow: inset -1px 0 0 var(--emboss-lo);
 }
 
 #equip-slots-scroll {
@@ -972,7 +1246,7 @@ body.party-readonly #details-delete-btn { display: none !important; }
 }
 
 .es-row.es-header-row {
-  background: rgba(255,255,255,0.04);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
   border-left: 2px solid var(--accent);
 }
 
@@ -1004,7 +1278,7 @@ body.party-readonly #details-delete-btn { display: none !important; }
   transition: opacity 0.1s, background 0.1s;
 }
 .es-toggle input[type=checkbox] { position: absolute; opacity: 0; width: 0; height: 0; }
-.es-toggle:has(input:checked) { opacity: 1; background: rgba(100,180,255,0.15); }
+.es-toggle:has(input:checked) { opacity: 1; background: var(--toggle-on-bg); }
 .es-toggle span { pointer-events: none; }
 
 .btn-icon {
@@ -1025,7 +1299,7 @@ body.party-readonly #details-delete-btn { display: none !important; }
 .btn-icon:hover:not(:disabled) { border-color: var(--accent); color: var(--text); }
 .btn-icon:disabled { opacity: 0.3; cursor: default; }
 .btn-icon.danger { color: var(--danger); border-color: transparent; }
-.btn-icon.danger:hover { background: rgba(220,80,80,0.15); }
+.btn-icon.danger:hover { background: color-mix(in srgb, var(--danger) 15%, transparent); }
 
 .es-add-row {
   display: flex;
@@ -1042,13 +1316,26 @@ body.party-readonly #details-delete-btn { display: none !important; }
   margin-bottom: 10px;
 }
 
-.eq-section-header {
+/* Section headers read as chapter rules: label, then a gold hairline */
+.eq-section-header,
+.coin-purse-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   font-size: 9px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.12em;
   color: var(--text-dim);
   padding: 2px 2px 4px;
+}
+.eq-section-header::after,
+.coin-purse-header::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--gold-line);
+  opacity: 0.55;
 }
 
 .eq-card {
@@ -1057,8 +1344,9 @@ body.party-readonly #details-delete-btn { display: none !important; }
   flex-direction: column;
   padding: 4px 22px 4px 6px; /* right padding leaves room for × button */
   border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--panel);
+  border-radius: 3px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 93%, var(--emboss-hi)), var(--panel));
+  box-shadow: inset 0 1px 0 var(--emboss-hi);
   cursor: pointer;
   min-height: 34px;
   transition: border-color 0.12s;
@@ -1149,8 +1437,8 @@ body.party-readonly #details-delete-btn { display: none !important; }
 }
 
 .equip-slot-pick-btn.danger {
-  color: #e55;
-  border-color: #e55;
+  color: var(--danger);
+  border-color: var(--danger);
 }
 
 /* ─── EQUIP BADGE ────────────────────────────────────────── */
@@ -1161,7 +1449,7 @@ body.party-readonly #details-delete-btn { display: none !important; }
   font-size: 9px;
   line-height: 14px;
   background: var(--accent);
-  color: #000;
+  color: var(--on-accent);
   border-radius: 3px;
   padding: 0 2px;
   pointer-events: none;
@@ -1178,7 +1466,7 @@ body.party-readonly #details-delete-btn { display: none !important; }
   border-radius: 6px;
   padding: 10px 12px;
   pointer-events: none;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+  box-shadow: var(--shadow-deep), inset 0 0 0 1px var(--emboss-hi);
 }
 
 .tip-header {
@@ -1236,6 +1524,7 @@ body.party-readonly #details-delete-btn { display: none !important; }
 #stash-section {
   flex-shrink: 0;
   border-top: 1px solid var(--border);
+  box-shadow: 0 -2px 8px var(--emboss-lo);
   padding: 6px 8px 8px;
   background: var(--surface);
 }
@@ -1268,7 +1557,7 @@ body.party-readonly #details-delete-btn { display: none !important; }
 
 .stash-badge {
   background: var(--accent);
-  color: #000;
+  color: var(--on-accent);
   font-size: 10px;
   font-weight: 700;
   border-radius: 8px;
@@ -1286,9 +1575,10 @@ body.party-readonly #details-delete-btn { display: none !important; }
   display: flex;
   align-items: center;
   gap: 6px;
-  background: var(--panel);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 93%, var(--emboss-hi)), var(--panel));
+  box-shadow: inset 0 1px 0 var(--emboss-hi);
   border: 1px solid var(--border);
-  border-radius: 5px;
+  border-radius: 3px;
   padding: 5px 6px;
   cursor: pointer;
   transition: border-color 0.15s;
@@ -1298,7 +1588,7 @@ body.party-readonly #details-delete-btn { display: none !important; }
 .stash-card:hover { border-color: var(--accent); }
 .stash-card.placing {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(192,137,58,0.35);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 .stash-shape {
@@ -1401,14 +1691,6 @@ body.party-readonly #details-delete-btn { display: none !important; }
   flex-shrink: 0;
 }
 
-.coin-purse-header {
-  font-size: 9px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--text-dim);
-  padding: 2px 2px 5px;
-}
 
 .coin-purse-grid {
   display: grid;
@@ -1473,3 +1755,62 @@ body.party-readonly #details-delete-btn { display: none !important; }
 }
 .coin-action-btn:hover:not(:disabled) { color: var(--text); background: var(--border2); }
 .coin-action-btn:disabled { opacity: 0.3; cursor: default; }
+
+/* ─── SETTINGS MODAL / THEME PICKER ──────────────────────── */
+.segmented {
+  display: flex;
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 2px var(--emboss-lo);
+}
+
+.seg-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 9px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  background: var(--panel);
+  border-right: 1px solid var(--border2);
+  transition: background 0.15s, color 0.15s;
+}
+.seg-btn:last-child { border-right: none; }
+.seg-btn:hover:not(.active) { background: color-mix(in srgb, var(--accent) 10%, var(--panel)); color: var(--text); }
+
+.seg-btn.active {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--accent) 88%, #fff) 0%,
+    var(--accent) 45%,
+    var(--accent-soft) 100%);
+  color: var(--on-accent);
+  box-shadow: inset 0 1px 0 var(--emboss-hi);
+}
+
+.seg-icon { font-size: 17px; line-height: 1; }
+
+/* Rows of settings, each a labelled band */
+.setting-row { margin-bottom: 16px; }
+.setting-row:last-of-type { margin-bottom: 6px; }
+
+.setting-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-dim);
+  margin-bottom: 7px;
+}
+
+.setting-hint {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-style: italic;
+  line-height: 1.5;
+  margin-top: 7px;
+}

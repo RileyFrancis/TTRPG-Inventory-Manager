@@ -32,7 +32,7 @@ function renderItemList() {
     card.dataset.templateId = t.id;
     if (state.placing && state.placing.templateId === t.id) card.classList.add('placing');
 
-    const color = RARITY_META[t.rarity]?.color ?? '#888';
+    const color = rarityColor(t.rarity);
 
     const swatch = document.createElement('div');
     swatch.className = 'item-card-swatch';
@@ -224,7 +224,7 @@ function showInstanceDetails(instanceId) {
 }
 
 function populateDetailsPanel(t, inst) {
-  const color = RARITY_META[t.rarity]?.color ?? '#888';
+  const color = rarityColor(t.rarity);
   const shape = inst ? getRotatedShape(t.shape, inst.rotation ?? 0) : t.shape;
   const weight = t.stackable
     ? (inst ? `${Math.round(t.weightEach * (inst.stackCount ?? 1) * 100) / 100} lb (×${inst.stackCount ?? 1})` : `${t.weightEach} lb each`)

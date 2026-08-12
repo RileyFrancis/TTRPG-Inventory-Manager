@@ -41,7 +41,7 @@ function showTemplateTooltip(templateId, x, y) {
 
 function renderTooltip(t, weight, x, y) {
   const el    = document.getElementById('item-tooltip');
-  const color = RARITY_META[t.rarity]?.color ?? '#888';
+  const color = rarityColor(t.rarity);
 
   const dmgHtml    = t.damage
     ? `<div class="tip-row"><span>Damage</span><span>${t.damage}${t.damageType ? ' ' + t.damageType : ''}</span></div>`

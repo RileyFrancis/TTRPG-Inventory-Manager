@@ -7,6 +7,7 @@
 // INITIALIZATION
 // =============================================================================
 function init() {
+  initTheme();      // Before any render: rarity colours are read from the active palette
   loadDefaultItems();
   DEFAULT_ITEMS.forEach(t => { state.db[t.id] = t; });
   autoLoad();       // Restore last session (includes equipLayout if saved)

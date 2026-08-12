@@ -53,6 +53,7 @@ tools/              Standalone dev helpers (not part of the app)
 | `modals.js` | Tabs, filters, character / item-editor / stack modals |
 | `helpers.js` | Shared formatting + lookup helpers |
 | `persistence.js` | `saveState`, `loadState`, `exportItemsCSV` |
+| `theme.js` | Light/dark palette switching + the settings modal |
 | `firebase-config.js` | Parses `.env` → `FIREBASE_CONFIG` (`null` when absent) |
 | `party.js` | Firebase party sync + party UI |
 | `equipment.js` | Equip slots, layout editor, equip/unequip |
@@ -111,6 +112,25 @@ DRAGGING
 `items.js` reads `data/items.csv` with a **synchronous** `XMLHttpRequest` so `DEFAULT_ITEMS`
 is populated before `init()` runs. That is why the app needs an HTTP server rather than
 `file://`, and why the CSV path is relative to the project root, not to `src/js/`.
+
+### Theming
+
+Two palettes, both defined as CSS custom properties at the top of `style.css`:
+`:root` holds the light (aged parchment) tokens, `:root[data-theme="dark"]` the dark
+(candlelit) ones. **Every colour is a token — never write a literal colour in a rule**,
+or it will be wrong in one of the two themes.
+
+- `<html data-theme>` is always `light` or `dark`, never unset. The inline script in
+  `index.html` `<head>` sets it before first paint (no flash); `theme.js` owns it after.
+- The stored *preference* (`dnd_inventory_theme` in `localStorage`) is `light`, `dark`,
+  or `system`. `system` is re-resolved live from `prefers-color-scheme`.
+- Deliberately **not** part of the `dnd_inventory_v1` save file: the theme belongs to the
+  browser, not the character, and must be readable before app state loads.
+- Rarity and coin colours differ per theme (neon green vanishes on parchment). JS reads
+  them from CSS via `rarityColor()` / `coinColor()` in `helpers.js`, which cache lookups;
+  `applyTheme()` clears the cache and re-renders everything that bakes a colour into an
+  inline style. **If you add a render path that inlines a palette colour, it must be
+  re-run from `rerenderThemedContent()`.**
 
 ### Configuration
 

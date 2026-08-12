@@ -133,11 +133,11 @@ function renderEquipPanel() {
   cpGrid.className = 'coin-purse-grid';
   const { cp, sp, ep, gp, pp } = getCoinCounts();
   const coinDefs = [
-    { templateId: 'coin_pp', label: 'PP', count: pp, color: '#b0c4de' },
-    { templateId: 'coin_gp', label: 'GP', count: gp, color: '#ffd700' },
-    { templateId: 'coin_ep', label: 'EP', count: ep, color: '#7ec8e3' },
-    { templateId: 'coin_sp', label: 'SP', count: sp, color: '#c0c0c0' },
-    { templateId: 'coin_cp', label: 'CP', count: cp, color: '#b87333' },
+    { templateId: 'coin_pp', label: 'PP', count: pp, color: coinColor('pp') },
+    { templateId: 'coin_gp', label: 'GP', count: gp, color: coinColor('gp') },
+    { templateId: 'coin_ep', label: 'EP', count: ep, color: coinColor('ep') },
+    { templateId: 'coin_sp', label: 'SP', count: sp, color: coinColor('sp') },
+    { templateId: 'coin_cp', label: 'CP', count: cp, color: coinColor('cp') },
   ];
   coinDefs.forEach(({ templateId, label, count, color }) => {
     const item = document.createElement('div');

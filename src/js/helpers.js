@@ -136,3 +136,34 @@ function openRemoveCoinsModal(templateId) {
   document.getElementById('stack-confirm-btn').textContent = 'Remove';
   showModal('stack-modal');
 }
+
+// ─── RARITY COLOURS ────────────────────────────────────────────────────────
+// The palette lives in CSS (--rarity-*) so each theme can tune it: the neon
+// greens that read well on the dark ground would vanish on parchment. These
+// values get baked into inline styles at render time, so theme.js clears the
+// cache and re-renders on a palette swap.
+let _rarityColorCache = {};
+
+function rarityColor(rarity) {
+  if (_rarityColorCache[rarity]) return _rarityColorCache[rarity];
+  const fromCss = getComputedStyle(document.documentElement)
+    .getPropertyValue('--rarity-' + rarity).trim();
+  const color = fromCss || RARITY_META[rarity]?.color || '#888';
+  _rarityColorCache[rarity] = color;
+  return color;
+}
+
+// Coin metals get the same treatment: bright gold and silver disappear
+// against parchment, so each theme names its own.
+function coinColor(denom) {
+  const key = 'coin:' + denom;
+  if (_rarityColorCache[key]) return _rarityColorCache[key];
+  const color = getComputedStyle(document.documentElement)
+    .getPropertyValue('--coin-' + denom).trim() || 'currentColor';
+  _rarityColorCache[key] = color;
+  return color;
+}
+
+function clearRarityColorCache() {
+  _rarityColorCache = {};
+}

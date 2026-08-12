@@ -29,8 +29,8 @@ function initGhostEl(shape, rarity) {
   ghostEl.className = `rarity-${rarity}`;
   ghostEl.innerHTML = '';
 
-  const outerBorder = 'rgba(255,255,255,0.7)';
-  const innerBorder = 'rgba(255,255,255,0.08)';
+  const outerBorder = 'var(--ghost-outer)';
+  const innerBorder = 'var(--ghost-inner)';
 
   shape.forEach((row, r) => row.forEach((v, c) => {
     const cell = document.createElement('div');

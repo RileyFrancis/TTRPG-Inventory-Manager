@@ -116,8 +116,8 @@ function buildItemEl(template, shape, rarity) {
   el.style.display = 'grid';
 
 
-  const rc = RARITY_META[rarity]?.color ?? '#888';
-  const innerBorder = 'rgba(255,255,255,0.1)';
+  const rc = 'var(--rc)'; // resolved from the .rarity-* class on the item element
+  const innerBorder = 'var(--item-inner-border)';
 
   shape.forEach((row, r) => row.forEach((v, c) => {
     const cellEl = document.createElement('div');
