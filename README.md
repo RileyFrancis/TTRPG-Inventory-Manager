@@ -26,39 +26,70 @@ Then open [http://localhost:8787](http://localhost:8787).
 
 > Opening `index.html` directly as a `file://` URL works but is not recommended.
 
-## Files
+## Project Layout
+
+```
+index.html              Static shell — all DOM elements with stable IDs
+src/
+  css/style.css         All styles; CSS custom properties drive the theme
+  js/                   Application logic, one file per concern (see below)
+data/
+  items.csv             Default item database (loaded at startup)
+  generic_items.csv     Reference data, not loaded
+  items_old.csv         Reference data, not loaded
+tools/
+  shape-editor.html     Standalone helper for drawing item shapes
+```
+
+### `src/js/`
+
+Plain `<script>` files sharing globals — no bundler, no modules. `index.html` loads them
+in dependency order; **that order matters** and is documented in the script block there.
 
 | File | Purpose |
 |------|---------|
-| `index.html` | Static shell — all DOM elements with stable IDs |
-| `style.css` | All styles; CSS custom properties drive the theme |
-| `app.js` | All application logic |
-| `items.js` | Default item database (`DEFAULT_ITEMS` array) |
-| `items/images/` | Item artwork |
+| `items.js` | Parses `data/items.csv` into `DEFAULT_ITEMS` |
+| `constants.js` | Tunables, rarity metadata, equipment slot definitions |
+| `state.js` | The single mutable `state` object + convenience accessors |
+| `shapes.js` | Shape math: rotation, cell coords, bounding boxes |
+| `grid.js` | Grid occupancy: fit tests, place/remove, id generation |
+| `render-grid.js` | Draws grid cells and placed-item elements |
+| `render-sidebar.js` | Sidebar item list + details panel |
+| `render-stats.js` | Header weight / encumbrance readout |
+| `drag-ghost.js` | Floating ghost element shared by placing and dragging |
+| `interaction-placing.js` | PLACING mode — ghost follows cursor, click to drop |
+| `interaction-drag.js` | DRAGGING mode for placed items, plus R-key rotation |
+| `interaction-context.js` | Item clicks and the right-click context menu |
+| `modals.js` | Tabs, filters, character / item-editor / stack modals |
+| `helpers.js` | Shared formatting and lookup helpers |
+| `persistence.js` | `localStorage` save/load and CSV export |
+| `firebase-config.js` | Firebase credentials — edit to use your own project |
+| `party.js` | Party sync over Firebase + party UI |
+| `equipment.js` | Equipment slots, layout editor, equip/unequip |
+| `tooltip.js` | Hover tooltip for items |
+| `main.js` | Entry point — boots the app |
 
 ## Item Database
 
-Edit `items.js` to add, remove, or modify the default items available in every session. Each item is a plain object:
+Edit `data/items.csv` to add, remove, or modify the default items available in every
+session. One row per item; `id` is assigned automatically from the row number.
 
-```js
-{
-  id: 'longsword',
-  name: 'Longsword',
-  rarity: 'common',           // common | uncommon | rare | very_rare | legendary | artifact
-  description: 'A standard longsword.',
-  cost: 15,                   // gold pieces
-  tags: ['weapon', 'melee'],
-  damage: '1d8',              // optional
-  damageType: 'slashing',     // optional
-  attunement: false,
-  stackable: false,
-  shape: [                    // 2D array of 0/1; weight = number of 1s (1 lb per cell)
-    [1, 1, 1],
-    [0, 0, 1],
-  ],
-  image: 'items/images/longsword.png', // optional
-}
-```
+| Column | Notes |
+|--------|-------|
+| `name` | Required — rows without a name are skipped |
+| `rarity` | `common` \| `uncommon` \| `rare` \| `very_rare` \| `legendary` \| `artifact` \| `special` |
+| `description` | Free text |
+| `cost` | `15 gp`, `2 sp 4 cp`, … (a bare number is read as gp) |
+| `tags` | Pipe-separated — `weapon\|melee\|finesse` |
+| `damage`, `damageType`, `mastery` | Optional weapon fields |
+| `attunement`, `stackable`, `container` | `true` / `false` |
+| `weightEach` | For stackables; `maxStack = 1 / weightEach` |
+| `shape` | Rows pipe-separated, each row 0/1 digits — `11\|01\|10`. Weight = number of `1`s |
+| `containerRows`, `containerCols` | Interior grid size for containers |
+| `properties` | Semicolon-separated — `finesse;light;thrown` |
+| `image` | Path to artwork, relative to the project root |
+
+`tools/shape-editor.html` draws a shape visually and prints the `shape` string to paste in.
 
 Custom items created in-app are saved to `localStorage` and persist between sessions.
 
@@ -80,7 +111,7 @@ Party sync uses Firebase Realtime Database. To enable it:
 
 1. Create a project at [Firebase Console](https://console.firebase.google.com/)
 2. Enable the Realtime Database
-3. Add your config to the `firebaseConfig` object near the bottom of `app.js`
+3. Add your config to the `FIREBASE_CONFIG` object in `src/js/firebase-config.js`
 
 Without a Firebase config the app runs fully offline; party features are simply unavailable.
 

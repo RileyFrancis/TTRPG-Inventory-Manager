@@ -1,7 +1,7 @@
 // =============================================================================
-// DEFAULT ITEM DATABASE — items/items.csv
+// DEFAULT ITEM DATABASE — data/items.csv
 // =============================================================================
-// Edit items/items.csv to add, remove, or modify the built-in item list.
+// Edit data/items.csv to add, remove, or modify the built-in item list.
 //
 // Columns: name, rarity, description, cost, tags, damage, damageType,
 //          attunement, stackable, weightEach, image, shape,
@@ -64,7 +64,7 @@ function parseShape(str) {
 function loadDefaultItems() {
   try {
     const xhr = new XMLHttpRequest();
-    xhr.open('GET', 'items/items.csv', false); // synchronous
+    xhr.open('GET', 'data/items.csv', false); // synchronous
     xhr.send();
     if (xhr.status !== 200) throw new Error(`HTTP ${xhr.status}`);
     const lines = xhr.responseText.split('\n').map(l => l.trim()).filter(l => l);
@@ -95,6 +95,6 @@ function loadDefaultItems() {
       };
     }).filter(t => t.name);
   } catch (err) {
-    console.error('Failed to load items/items.csv:', err);
+    console.error('Failed to load data/items.csv:', err);
   }
 }

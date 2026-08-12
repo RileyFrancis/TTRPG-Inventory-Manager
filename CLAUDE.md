@@ -15,13 +15,51 @@ Opening `index.html` directly as a `file://` URL works but is not recommended.
 
 ## Architecture
 
-Three files, no framework, no bundler, no dependencies:
+No framework, no bundler, no dependencies. Static files served as-is:
 
-- **`index.html`** — Static shell. All DOM elements referenced by JS are declared here with stable IDs. Script tag at the bottom loads `app.js`.
-- **`style.css`** — CSS custom properties drive the theme (`--cell`, `--cols`, rarity colors). Item rarity coloring is purely CSS via the `rarity-<name>` class + `--rc` variable inheritance.
-- **`app.js`** — All logic in one file, organized into clearly labeled sections (see section headers).
+```
+index.html          Static shell — every DOM element referenced by JS, with stable IDs
+src/css/style.css   All styles
+src/js/*.js         Application logic, one file per concern
+data/items.csv      Default item database
+tools/              Standalone dev helpers (not part of the app)
+```
 
-### State model (`app.js`)
+- **`index.html`** — The script block at the bottom lists every JS file **in load order**.
+  Adding a new file means adding a `<script>` tag there, in the right position.
+- **`src/css/style.css`** — CSS custom properties drive the theme (`--cell`, `--cols`, rarity colors). Item rarity coloring is purely CSS via the `rarity-<name>` class + `--rc` variable inheritance.
+- **`src/js/`** — Plain classic scripts sharing globals; **not** ES modules. There are no
+  `import`/`export` statements — a `function` or `const` declared at the top level of one
+  file is visible to all later files. Each file carries its own `'use strict';` (strict mode
+  is per-script). Top-level code (element lookups, `addEventListener` calls) runs at load
+  time in file order, so order changes are behavior changes.
+
+### JS file map
+
+| File | Contents |
+|------|----------|
+| `items.js` | CSV parsing → `DEFAULT_ITEMS` (`loadDefaultItems`) |
+| `constants.js` | `CELL`, `GRID_COLS`, `RARITY_META`, `RARITY_ORDER`, `EQUIP_SLOTS` |
+| `state.js` | The `state` object and convenience accessors |
+| `shapes.js` | `rotateShapeCW`, `getRotatedShape`, shape cell/bbox math |
+| `grid.js` | Fit tests, place/remove, `rebuildGrid`, id generation |
+| `render-grid.js` | `renderGrid`, `renderAllItems` |
+| `render-sidebar.js` | `renderItemList`, details panel |
+| `render-stats.js` | Header weight / encumbrance readout |
+| `drag-ghost.js` | Ghost element (`initGhostEl`, `moveGhost`, `highlightCells`) |
+| `interaction-placing.js` | PLACING mode |
+| `interaction-drag.js` | DRAGGING mode + R-key rotation |
+| `interaction-context.js` | Item clicks, context menu |
+| `modals.js` | Tabs, filters, character / item-editor / stack modals |
+| `helpers.js` | Shared formatting + lookup helpers |
+| `persistence.js` | `saveState`, `loadState`, `exportItemsCSV` |
+| `firebase-config.js` | `FIREBASE_CONFIG` only |
+| `party.js` | Firebase party sync + party UI |
+| `equipment.js` | Equip slots, layout editor, equip/unequip |
+| `tooltip.js` | Hover tooltip |
+| `main.js` | `init()` and the single call to it |
+
+### State model (`src/js/state.js`)
 
 ```
 state.character   { name, strength }
@@ -68,4 +106,8 @@ DRAGGING
 
 ### Persistence
 
-`saveState` / `loadState` use `localStorage` key `dnd_inventory_v1`. Only custom items (not in `DEFAULT_ITEMS`) are saved; default items are always re-hydrated from the hardcoded array on init. Placed instances are saved in full and re-placed via `rebuildGrid` on load.
+`saveState` / `loadState` use `localStorage` key `dnd_inventory_v1`. Only custom items (not in `DEFAULT_ITEMS`) are saved; default items are always re-hydrated from `data/items.csv` on init. Placed instances are saved in full and re-placed via `rebuildGrid` on load.
+
+`items.js` reads `data/items.csv` with a **synchronous** `XMLHttpRequest` so `DEFAULT_ITEMS`
+is populated before `init()` runs. That is why the app needs an HTTP server rather than
+`file://`, and why the CSV path is relative to the project root, not to `src/js/`.

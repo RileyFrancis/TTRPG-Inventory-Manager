@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>D&D Inventory Manager</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="src/css/style.css">
 </head>
 <body>
 <div id="app">
@@ -431,7 +431,32 @@
 <!-- ===== FIREBASE ===== -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-<script src="items.js"></script>
-<script src="app.js"></script>
+<!-- ===== APP SCRIPTS (load order matters: constants → state → logic → main) ===== -->
+<script src="src/js/items.js"></script>
+
+<script src="src/js/constants.js"></script>
+<script src="src/js/state.js"></script>
+<script src="src/js/shapes.js"></script>
+<script src="src/js/grid.js"></script>
+
+<script src="src/js/render-grid.js"></script>
+<script src="src/js/render-sidebar.js"></script>
+<script src="src/js/render-stats.js"></script>
+<script src="src/js/drag-ghost.js"></script>
+
+<script src="src/js/interaction-placing.js"></script>
+<script src="src/js/interaction-drag.js"></script>
+<script src="src/js/interaction-context.js"></script>
+
+<script src="src/js/modals.js"></script>
+<script src="src/js/helpers.js"></script>
+<script src="src/js/persistence.js"></script>
+
+<script src="src/js/firebase-config.js"></script>
+<script src="src/js/party.js"></script>
+<script src="src/js/equipment.js"></script>
+<script src="src/js/tooltip.js"></script>
+
+<script src="src/js/main.js"></script>
 </body>
 </html>

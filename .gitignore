@@ -1,0 +1,27 @@
+# Secrets / local environment
+.env
+.env.*
+!.env.example
+
+# OS cruft
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# Local Claude Code settings (shared settings live in .claude/settings.json)
+.claude/settings.local.json
+
+# Python http.server / tooling byproducts
+__pycache__/
+*.pyc
+
+# Logs and scratch files
+*.log
+scratch/
+tmp/
