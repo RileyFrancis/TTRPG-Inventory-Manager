@@ -30,6 +30,8 @@ Then open [http://localhost:8787](http://localhost:8787).
 
 ```
 index.html              Static shell — all DOM elements with stable IDs
+.env                    Firebase credentials (gitignored, optional)
+.env.example            Template for .env
 src/
   css/style.css         All styles; CSS custom properties drive the theme
   js/                   Application logic, one file per concern (see below)
@@ -63,7 +65,7 @@ in dependency order; **that order matters** and is documented in the script bloc
 | `modals.js` | Tabs, filters, character / item-editor / stack modals |
 | `helpers.js` | Shared formatting and lookup helpers |
 | `persistence.js` | `localStorage` save/load and CSV export |
-| `firebase-config.js` | Firebase credentials — edit to use your own project |
+| `firebase-config.js` | Reads Firebase credentials from `.env` into `FIREBASE_CONFIG` |
 | `party.js` | Party sync over Firebase + party UI |
 | `equipment.js` | Equipment slots, layout editor, equip/unequip |
 | `tooltip.js` | Hover tooltip for items |
@@ -111,9 +113,37 @@ Party sync uses Firebase Realtime Database. To enable it:
 
 1. Create a project at [Firebase Console](https://console.firebase.google.com/)
 2. Enable the Realtime Database
-3. Add your config to the `FIREBASE_CONFIG` object in `src/js/firebase-config.js`
+3. Copy `.env.example` to `.env` and fill in your project's values:
 
-Without a Firebase config the app runs fully offline; party features are simply unavailable.
+```bash
+cp .env.example .env
+```
+
+```ini
+FIREBASE_API_KEY=AIza...
+FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+FIREBASE_DATABASE_URL=https://your-project-default-rtdb.firebaseio.com
+FIREBASE_PROJECT_ID=your-project
+FIREBASE_STORAGE_BUCKET=your-project.firebasestorage.app
+FIREBASE_MESSAGING_SENDER_ID=000000000000
+FIREBASE_APP_ID=1:000000000000:web:abc123
+```
+
+`src/js/firebase-config.js` fetches `.env` at page load and parses it into
+`FIREBASE_CONFIG`. `.env` is gitignored, so your credentials stay out of the repo.
+Without it the app runs fully offline and party features are simply unavailable —
+you'll see one informational line in the console.
+
+> **`.env` is not a secret store here.** It is fetched by the browser, so anyone
+> who can reach the site can read it at `/.env`. That is fine for Firebase web
+> config — those values are public by design, and access is enforced by your
+> [Realtime Database security rules](https://firebase.google.com/docs/database/security),
+> not by hiding the keys. Never put real secrets (API tokens, private keys,
+> passwords) in this file.
+
+> **Deploying to GitHub Pages?** Jekyll skips files beginning with `.`, which
+> would make `/.env` a 404 and silently disable party play. Add an empty
+> `.nojekyll` file at the repo root to turn that off.
 
 ## Keyboard Shortcuts
 

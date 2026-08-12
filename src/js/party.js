@@ -10,6 +10,7 @@ let firebaseDb = null;
 let partyPlayersRef = null;
 
 function initFirebase() {
+  if (!FIREBASE_CONFIG) return; // firebase-config.js already explained why
   try {
     firebase.initializeApp(FIREBASE_CONFIG);
     firebaseDb = firebase.database();

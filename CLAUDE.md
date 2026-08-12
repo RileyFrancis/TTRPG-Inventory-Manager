@@ -53,7 +53,7 @@ tools/              Standalone dev helpers (not part of the app)
 | `modals.js` | Tabs, filters, character / item-editor / stack modals |
 | `helpers.js` | Shared formatting + lookup helpers |
 | `persistence.js` | `saveState`, `loadState`, `exportItemsCSV` |
-| `firebase-config.js` | `FIREBASE_CONFIG` only |
+| `firebase-config.js` | Parses `.env` → `FIREBASE_CONFIG` (`null` when absent) |
 | `party.js` | Firebase party sync + party UI |
 | `equipment.js` | Equip slots, layout editor, equip/unequip |
 | `tooltip.js` | Hover tooltip |
@@ -111,3 +111,17 @@ DRAGGING
 `items.js` reads `data/items.csv` with a **synchronous** `XMLHttpRequest` so `DEFAULT_ITEMS`
 is populated before `init()` runs. That is why the app needs an HTTP server rather than
 `file://`, and why the CSV path is relative to the project root, not to `src/js/`.
+
+### Configuration
+
+`firebase-config.js` uses the same synchronous-XHR pattern to read `.env` from the project
+root and parse it into `FIREBASE_CONFIG`. Both paths are relative to the **document**, not
+the script.
+
+- `.env` is gitignored; `.env.example` is the committed template. Keep them in sync when
+  adding a key.
+- When `.env` is absent or has no `FIREBASE_DATABASE_URL`, `FIREBASE_CONFIG` is `null` and
+  `initFirebase()` returns early — the app must stay fully usable offline. Preserve that
+  guard when touching party code.
+- `.env` is served to the browser and readable at `/.env`. It holds Firebase web config,
+  which is public by design. Never move real secrets into it.
