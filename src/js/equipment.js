@@ -131,14 +131,14 @@ function renderEquipPanel() {
   coinPurse.appendChild(cpHdr);
   const cpGrid = document.createElement('div');
   cpGrid.className = 'coin-purse-grid';
-  const { cp, sp, ep, gp, pp } = getCoinCounts();
-  const coinDefs = [
-    { templateId: 'coin_pp', label: 'PP', count: pp, color: coinColor('pp') },
-    { templateId: 'coin_gp', label: 'GP', count: gp, color: coinColor('gp') },
-    { templateId: 'coin_ep', label: 'EP', count: ep, color: coinColor('ep') },
-    { templateId: 'coin_sp', label: 'SP', count: sp, color: coinColor('sp') },
-    { templateId: 'coin_cp', label: 'CP', count: cp, color: coinColor('cp') },
-  ];
+  const counts = getCoinCounts();
+  const coinTemplates = getCoinTemplates();
+  const coinDefs = ['pp', 'gp', 'ep', 'sp', 'cp'].map(denom => ({
+    templateId: coinTemplates[denom],   // null if the CSV has no coin of this denomination
+    label: denom.toUpperCase(),
+    count: counts[denom],
+    color: coinColor(denom),
+  }));
   coinDefs.forEach(({ templateId, label, count, color }) => {
     const item = document.createElement('div');
     item.className = 'coin-item' + (count === 0 ? ' empty' : '');
@@ -151,7 +151,9 @@ function renderEquipPanel() {
     cnt.textContent = count.toLocaleString();
     item.appendChild(lbl);
     item.appendChild(cnt);
-    if (!isReadOnly()) {
+    // No template for this denomination means nothing to add or remove — show
+    // the tally, but don't offer buttons that could only fail.
+    if (!isReadOnly() && templateId) {
       item.classList.add('clickable');
       const actions = document.createElement('div');
       actions.className = 'coin-actions';

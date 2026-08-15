@@ -53,12 +53,40 @@ function formatCost(cost) {
   return parts.length ? parts.join(' ') : '—';
 }
 
+// ─── COINS ─────────────────────────────────────────────────────────────────
+// The coin templates are found in the database, never hard-coded: a default
+// item's id is its row number in data/items.csv, so any id written into the
+// code breaks the moment a row is inserted above it (which is exactly how the
+// purse went dead). A coin identifies itself instead — it is the `currency`
+// item whose cost is one of its own denomination, and nothing else costs
+// exactly 1cp but a copper piece.
+const COIN_DENOMS = ['cp', 'sp', 'ep', 'gp', 'pp'];
+
+function getCoinTemplates() {
+  const found = { cp: null, sp: null, ep: null, gp: null, pp: null };
+  Object.values(state.db).forEach(t => {
+    if (!t.tags?.includes('currency')) return;
+    const cost = parseCostObj(t.cost);
+    const denom = COIN_DENOMS.find(d => cost[d] === 1 && COIN_DENOMS.every(o => o === d || !cost[o]));
+    if (denom && !found[denom]) found[denom] = t.id;
+  });
+  return found;
+}
+
+function coinDenomOf(templateId) {
+  const templates = getCoinTemplates();
+  return COIN_DENOMS.find(d => templates[d] === templateId) ?? null;
+}
+
+// Every coin carried, wherever it sits — stashed or placed on the grid.
 function getCoinCounts() {
   const counts = { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 };
-  const coinMap = { coin_cp: 'cp', coin_sp: 'sp', coin_ep: 'ep', coin_gp: 'gp', coin_pp: 'pp' };
+  const templates = getCoinTemplates();
+  const denomOf = {};
+  COIN_DENOMS.forEach(d => { if (templates[d]) denomOf[templates[d]] = d; });
   Object.values(state.instances).forEach(inst => {
-    const denom = coinMap[inst.templateId];
-    if (denom !== undefined) counts[denom] += inst.stackCount ?? 1;
+    const denom = denomOf[inst.templateId];
+    if (denom) counts[denom] += inst.stackCount ?? 1;
   });
   return counts;
 }
@@ -144,8 +172,7 @@ function openRemoveCoinsModal(templateId) {
   if (isReadOnly()) return;
   const t = state.db[templateId];
   if (!t) return;
-  const coinMap = { coin_cp: 'cp', coin_sp: 'sp', coin_ep: 'ep', coin_gp: 'gp', coin_pp: 'pp' };
-  const denom = coinMap[templateId];
+  const denom = coinDenomOf(templateId);
   const total = denom ? getCoinCounts()[denom] : 0;
   if (total === 0) return;
   stackModalCallback = count => removeCoinsFromInventory(templateId, count);

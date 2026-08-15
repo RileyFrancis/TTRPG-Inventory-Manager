@@ -88,6 +88,19 @@ state.dragging    { instanceId, anchorRow, anchorCol, origRow, origCol, origRota
 
 Shapes are 2D arrays of `0`/`1`. Weight = count of `1`s (1 lb per cell). `rotateShapeCW` rotates 90° clockwise; instances store a `rotation` index (0–3) and `getRotatedShape(baseShape, rotation)` applies it. Stackable items always use `[[1]]` and carry a `stackSize` — how many units fit in that one cell, so each unit weighs `1 / stackSize`. `stackSize` absent or `1` means the item does not stack. Read it through `stackSizeOf` / `isStackable` / `unitWeight` in `helpers.js`, never off the template directly: those helpers also translate the pre-`stackSize` `stackable` + `weightEach` pair still present in old saves and party data.
 
+### Coins
+
+Coins are ordinary stackable items — the coin purse is a readout over
+`state.instances`, not a separate store, so coins weigh what they weigh and
+`removeCoinsFromInventory` will pull them off the grid as well as the stash.
+
+**A default item's id is its row number in `data/items.csv`**, so it changes the
+moment a row is inserted above it — never write one into the code (hard-coded
+`coin_cp`-style ids are exactly how the purse silently went dead). The coins are
+found by identity instead, in `getCoinTemplates()`: the `currency`-tagged item
+whose cost is exactly one of its own denomination. Keeping the tag and the `1cp`
+/ `1sp` / … costs on those CSV rows is what keeps the purse wired up.
+
 ### Interaction state machine
 
 ```
