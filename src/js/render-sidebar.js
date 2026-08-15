@@ -26,120 +26,223 @@ function renderItemList() {
   });
 
   listEl.innerHTML = '';
-  items.forEach(t => {
-    const card = document.createElement('div');
-    card.className = 'item-card';
-    card.dataset.templateId = t.id;
-    if (state.placing && state.placing.templateId === t.id) card.classList.add('placing');
+  listEl.classList.toggle('foldered', state.folders.length > 0);
 
-    const color = rarityColor(t.rarity);
-
-    const swatch = document.createElement('div');
-    swatch.className = 'item-card-swatch';
-    swatch.style.background = color;
-
-    const info = document.createElement('div');
-    info.className = 'item-card-info';
-    const nm = document.createElement('div');
-    nm.className = 'item-card-name';
-    nm.textContent = t.name;
-    const sub = document.createElement('div');
-    sub.className = 'item-card-sub';
-    const w = isStackable(t)
-      ? `${formatWeight(unitWeight(t))} lb ea · stack ×${stackSizeOf(t)}`
-      : `${shapeWeight(t.shape)} lb`;
-    sub.textContent = `${RARITY_META[t.rarity]?.label} · ${w}`;
-
-    info.appendChild(nm);
-    info.appendChild(sub);
-
-    const shapePreview = buildMiniShapePreview(t.shape, color);
-
-    card.appendChild(swatch);
-    card.appendChild(info);
-    card.appendChild(shapePreview);
-
-    card.addEventListener('pointerdown', e => {
-      if (e.button !== 0 || isReadOnly()) return;
-      e.preventDefault(); // prevent text selection on mousedown
-      const tid = t.id;
-      const startX = e.clientX, startY = e.clientY;
-      let dragging = false;
-
-      const onMove = me => {
-        if (!dragging && Math.hypot(me.clientX - startX, me.clientY - startY) < 5) return;
-        if (!dragging) {
-          dragging = true;
-          document.body.style.userSelect = 'none';
-          cancelPlacing(); // exit any existing placing mode cleanly
-        }
-        const tmpl = state.db[tid];
-        if (!tmpl) return;
-        const shape = getRotatedShape(tmpl.shape, 0);
-        initGhostEl(shape, tmpl.rarity);
-
-        const pos = cursorToGridPos(me.clientX, me.clientY, 0, 0);
-        if (pos) {
-          const sp = getGhostScreenPos(0, 0, pos.row, pos.col);
-          const valid = canPlace(shape, pos.row, pos.col);
-          setGhostVisibility(true);
-          moveGhost(sp.x, sp.y, valid);
-          highlightCells(shape, pos.row, pos.col, valid);
-        } else {
-          setGhostVisibility(false);
-          clearHighlights();
-        }
-        // No equip-slot highlighting for new items (not yet placed)
-        document.querySelectorAll('.eq-card.drag-hover').forEach(c => c.classList.remove('drag-hover'));
-      };
-
-      const onUp = ue => {
-        document.removeEventListener('pointermove', onMove);
-        document.removeEventListener('pointerup', onUp);
-        document.body.style.userSelect = '';
-        if (!dragging) {
-          // Treat as click → enter placing mode as before
-          startPlacing(tid);
-          return;
-        }
-        // End of drag: restore ghost visibility and clean up
-        setGhostVisibility(true);
-        hideGhost();
-        clearHighlights();
-        document.querySelectorAll('.eq-card.drag-hover').forEach(c => c.classList.remove('drag-hover'));
-
-        const tmpl = state.db[tid];
-        if (!tmpl) return;
-        const shape = getRotatedShape(tmpl.shape, 0);
-        const pos = cursorToGridPos(ue.clientX, ue.clientY, 0, 0);
-        if (pos && canPlace(shape, pos.row, pos.col)) {
-          if (isStackable(tmpl)) {
-            openStackModal(stackSizeOf(tmpl),
-              count => finalizePlacement(tmpl, shape, 0, pos.row, pos.col, count));
-          } else {
-            finalizePlacement(tmpl, shape, 0, pos.row, pos.col, 1);
-          }
-        }
-        // If dropped outside/invalid, silently cancel — no placing mode
-      };
-
-      document.addEventListener('pointermove', onMove);
-      document.addEventListener('pointerup', onUp);
+  if (state.folders.length === 0) {
+    // No folders made yet — the plain flat list.
+    items.forEach(t => listEl.appendChild(buildItemCard(t)));
+  } else {
+    const filtering = !!(search || rarityF || tagF);
+    groupItemsByFolder(items).forEach(group => {
+      // While filtering, a folder with no matches is noise; unfiltered, empty
+      // folders stay visible so there is something to drop items onto.
+      if (group.items.length === 0 && (filtering || group.id === UNFILED_ID)) return;
+      // A search expands everything: a collapsed folder hiding the only match
+      // would read as "no results".
+      const expanded = !!search || !isFolderCollapsed(group.id);
+      listEl.appendChild(buildFolderHeader(group, expanded, !!search));
+      if (expanded) group.items.forEach(t => listEl.appendChild(buildItemCard(t)));
     });
-    card.addEventListener('pointerenter', e => {
-      tooltipTimer = setTimeout(() => showTemplateTooltip(t.id, e.clientX, e.clientY), 1000);
-    });
-    card.addEventListener('pointerleave', clearTooltip);
-    card.addEventListener('contextmenu', e => {
-      e.preventDefault();
-      showTemplateContextMenu(t.id, e.clientX, e.clientY);
-    });
-
-    listEl.appendChild(card);
-  });
+  }
 
   // Rebuild tag filter
   populateTagFilter();
+}
+
+function buildFolderHeader(group, expanded, searchLocked) {
+  const el = document.createElement('div');
+  el.className = 'folder-header' + (expanded ? '' : ' collapsed');
+  el.dataset.folderId = group.id;
+
+  const caret = document.createElement('span');
+  caret.className = 'folder-caret';
+  caret.textContent = expanded ? '▾' : '▸';
+
+  const name = document.createElement('span');
+  name.className = 'folder-name';
+  name.textContent = group.name;
+
+  const count = document.createElement('span');
+  count.className = 'folder-count';
+  count.textContent = group.items.length;
+
+  el.appendChild(caret);
+  el.appendChild(name);
+  el.appendChild(count);
+
+  // Unfiled is virtual: nothing to rename, nothing to delete.
+  if (group.id !== UNFILED_ID) {
+    const rename = document.createElement('button');
+    rename.className = 'folder-btn';
+    rename.title = 'Rename folder';
+    rename.textContent = '✎';
+    rename.addEventListener('click', e => {
+      e.stopPropagation();
+      openFolderNameModal(
+        { title: 'Rename Folder', value: group.name, confirmLabel: 'Rename' },
+        newName => { renameFolder(group.id, newName); renderItemList(); }
+      );
+    });
+
+    const del = document.createElement('button');
+    del.className = 'folder-btn danger';
+    del.title = 'Delete folder (items move to Unfiled)';
+    del.textContent = '✕';
+    del.addEventListener('click', e => {
+      e.stopPropagation();
+      const n = folderItemCount(group.id);
+      const msg = n
+        ? `Delete the folder “${group.name}”?\n\nIts ${n} item${n > 1 ? 's' : ''} will move to Unfiled — no items are deleted.`
+        : `Delete the folder “${group.name}”?`;
+      if (!confirm(msg)) return;
+      deleteFolder(group.id);
+      renderItemList();
+    });
+
+    el.appendChild(rename);
+    el.appendChild(del);
+  }
+
+  // While a search forces every folder open, collapsing would do nothing
+  // visible — so the header simply isn't a toggle until the search clears.
+  if (searchLocked) el.classList.add('search-locked');
+  else el.addEventListener('click', () => { toggleFolderCollapsed(group.id); renderItemList(); });
+
+  return el;
+}
+
+function buildItemCard(t) {
+  const card = document.createElement('div');
+  card.className = 'item-card';
+  card.dataset.templateId = t.id;
+  if (state.placing && state.placing.templateId === t.id) card.classList.add('placing');
+
+  const color = rarityColor(t.rarity);
+
+  const swatch = document.createElement('div');
+  swatch.className = 'item-card-swatch';
+  swatch.style.background = color;
+
+  const info = document.createElement('div');
+  info.className = 'item-card-info';
+  const nm = document.createElement('div');
+  nm.className = 'item-card-name';
+  nm.textContent = t.name;
+  const sub = document.createElement('div');
+  sub.className = 'item-card-sub';
+  const w = isStackable(t)
+    ? `${formatWeight(unitWeight(t))} lb ea · stack ×${stackSizeOf(t)}`
+    : `${shapeWeight(t.shape)} lb`;
+  sub.textContent = `${RARITY_META[t.rarity]?.label} · ${w}`;
+
+  info.appendChild(nm);
+  info.appendChild(sub);
+
+  const shapePreview = buildMiniShapePreview(t.shape, color);
+
+  card.appendChild(swatch);
+  card.appendChild(info);
+  card.appendChild(shapePreview);
+
+  card.addEventListener('pointerdown', e => {
+    if (e.button !== 0 || isReadOnly()) return;
+    e.preventDefault(); // prevent text selection on mousedown
+    const tid = t.id;
+    const startX = e.clientX, startY = e.clientY;
+    let dragging = false;
+
+    const onMove = me => {
+      if (!dragging && Math.hypot(me.clientX - startX, me.clientY - startY) < 5) return;
+      if (!dragging) {
+        dragging = true;
+        document.body.style.userSelect = 'none';
+        cancelPlacing(); // exit any existing placing mode cleanly
+      }
+      const tmpl = state.db[tid];
+      if (!tmpl) return;
+      const shape = getRotatedShape(tmpl.shape, 0);
+      initGhostEl(shape, tmpl.rarity);
+
+      // No equip-slot highlighting for new items (not yet placed)
+      document.querySelectorAll('.eq-card.drag-hover').forEach(c => c.classList.remove('drag-hover'));
+
+      // A folder header under the cursor wins over the grid: this drag files
+      // the item instead of placing it.
+      clearFolderDropTargets();
+      const folderEl = getFolderHeaderAtPoint(me.clientX, me.clientY);
+      if (folderEl) {
+        folderEl.classList.add('drop-target');
+        setGhostVisibility(false);
+        clearHighlights();
+        return;
+      }
+
+      const pos = cursorToGridPos(me.clientX, me.clientY, 0, 0);
+      if (pos) {
+        const sp = getGhostScreenPos(0, 0, pos.row, pos.col);
+        const valid = canPlace(shape, pos.row, pos.col);
+        setGhostVisibility(true);
+        moveGhost(sp.x, sp.y, valid);
+        highlightCells(shape, pos.row, pos.col, valid);
+      } else {
+        setGhostVisibility(false);
+        clearHighlights();
+      }
+    };
+
+    const onUp = ue => {
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      document.body.style.userSelect = '';
+      if (!dragging) {
+        // Treat as click → enter placing mode as before
+        startPlacing(tid);
+        return;
+      }
+      // End of drag: restore ghost visibility and clean up
+      const folderEl = getFolderHeaderAtPoint(ue.clientX, ue.clientY);
+      setGhostVisibility(true);
+      hideGhost();
+      clearHighlights();
+      clearFolderDropTargets();
+      document.querySelectorAll('.eq-card.drag-hover').forEach(c => c.classList.remove('drag-hover'));
+
+      // Dropped on a folder header → reclassify, nothing enters the grid
+      if (folderEl) {
+        const fid = folderEl.dataset.folderId;
+        setItemFolder(tid, fid === UNFILED_ID ? null : fid);
+        renderItemList();
+        return;
+      }
+
+      const tmpl = state.db[tid];
+      if (!tmpl) return;
+      const shape = getRotatedShape(tmpl.shape, 0);
+      const pos = cursorToGridPos(ue.clientX, ue.clientY, 0, 0);
+      if (pos && canPlace(shape, pos.row, pos.col)) {
+        if (isStackable(tmpl)) {
+          openStackModal(stackSizeOf(tmpl),
+            count => finalizePlacement(tmpl, shape, 0, pos.row, pos.col, count));
+        } else {
+          finalizePlacement(tmpl, shape, 0, pos.row, pos.col, 1);
+        }
+      }
+      // If dropped outside/invalid, silently cancel — no placing mode
+    };
+
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+  });
+  card.addEventListener('pointerenter', e => {
+    tooltipTimer = setTimeout(() => showTemplateTooltip(t.id, e.clientX, e.clientY), 1000);
+  });
+  card.addEventListener('pointerleave', clearTooltip);
+  card.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    showTemplateContextMenu(t.id, e.clientX, e.clientY);
+  });
+
+  return card;
 }
 
 function buildMiniShapePreview(shape, color) {

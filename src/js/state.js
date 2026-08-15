@@ -23,6 +23,11 @@ const state = {
   // Shape editor state (inside item modal)
   editorShape: [[1]],
   editingItemId: null, // null = new item
+  // Browse-list folders — user-made grouping of the item catalogue.
+  // Persisted per browser by folders.js, deliberately not in the save file.
+  folders: [],         // ordered [{ id, name }]
+  folderAssign: {},    // { [templateId]: folderId }
+  folderCollapsed: {}, // { [folderId]: true }
   // Equipped items: { [slotId]: instanceId | null }
   equipped: {},
   // Equipment panel layout — ordered array of header/slot items (persisted separately)

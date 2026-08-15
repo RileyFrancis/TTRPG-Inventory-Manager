@@ -598,6 +598,7 @@ textarea { resize: vertical; }
 #item-search { width: 100%; }
 #filter-row { display: flex; gap: 6px; }
 #filter-row select { flex: 1; }
+#folder-row { display: flex; justify-content: flex-end; }
 
 /* Item list */
 #item-list {
@@ -655,6 +656,60 @@ textarea { resize: vertical; }
   gap: 1px;
   flex-shrink: 0;
 }
+
+/* Folder headers — group dividers in the item list, also drag drop targets */
+.folder-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 7px;
+  margin-top: 3px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 82%, var(--emboss-hi)), var(--surface));
+  box-shadow: inset 0 1px 0 var(--emboss-hi);
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+.folder-header:first-child { margin-top: 0; }
+.folder-header:hover { border-color: var(--accent); }
+.folder-header.search-locked { cursor: default; }
+.folder-header.drop-target {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 20%, var(--panel));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.folder-caret { font-size: 9px; width: 9px; color: var(--text-dim); }
+.folder-name {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.folder-count { font-size: 10px; color: var(--text-dim); }
+
+.folder-btn {
+  font-size: 11px;
+  line-height: 1;
+  padding: 2px 3px;
+  border-radius: 2px;
+  color: var(--text-dim);
+  opacity: 0;
+  transition: opacity 0.12s, color 0.12s;
+}
+.folder-header:hover .folder-btn { opacity: 1; }
+.folder-btn:hover { color: var(--accent); }
+.folder-btn.danger:hover { color: var(--danger); }
+
+/* Cards sit under their header once folders exist */
+#item-list.foldered .item-card { margin-left: 10px; }
 .card-cell {
   width: 7px;
   height: 7px;
@@ -1415,7 +1470,7 @@ body.party-readonly #details-delete-btn { display: none !important; }
 }
 
 /* ─── EQUIP MODAL — SLOT PICKER ──────────────────────────── */
-#equip-slot-picker {
+#equip-slot-picker, #folder-picker-list {
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -1424,14 +1479,14 @@ body.party-readonly #details-delete-btn { display: none !important; }
   overflow-y: auto;
 }
 
-.equip-slot-pick-btn {
+.equip-slot-pick-btn, .folder-pick-btn {
   width: 100%;
   text-align: left;
   padding: 8px 12px;
   font-size: 13px;
 }
 
-.equip-slot-pick-btn.active {
+.equip-slot-pick-btn.active, .folder-pick-btn.active {
   border-color: var(--accent);
   color: var(--accent);
 }
@@ -1440,6 +1495,8 @@ body.party-readonly #details-delete-btn { display: none !important; }
   color: var(--danger);
   border-color: var(--danger);
 }
+
+.folder-pick-btn.new { color: var(--accent); font-style: italic; }
 
 /* ─── EQUIP BADGE ────────────────────────────────────────── */
 .equip-badge {

@@ -42,6 +42,7 @@ tools/              Standalone dev helpers (not part of the app)
 | `items.js` | CSV parsing → `DEFAULT_ITEMS` (`loadDefaultItems`) |
 | `constants.js` | `CELL`, `GRID_COLS`, `RARITY_META`, `RARITY_ORDER`, `EQUIP_SLOTS` |
 | `state.js` | The `state` object and convenience accessors |
+| `folders.js` | Browse-list folders: model, per-browser persistence, folder modals |
 | `shapes.js` | `rotateShapeCW`, `getRotatedShape`, shape cell/bbox math |
 | `grid.js` | Fit tests, place/remove, `rebuildGrid`, id generation |
 | `render-grid.js` | `renderGrid`, `renderAllItems` |
@@ -68,6 +69,9 @@ state.character   { name, strength }
 state.grid        2D array [row][col] → instanceId | null
 state.instances   { [instanceId]: { id, templateId, rotation, row, col, stackCount } }
 state.db          { [templateId]: ItemTemplate }   (default + custom items)
+state.folders     [{ id, name }]                    (Browse-list folders, ordered)
+state.folderAssign    { [templateId]: folderId }
+state.folderCollapsed { [folderId]: true }
 state.mode        'idle' | 'placing' | 'dragging'
 state.placing     { templateId, rotation }
 state.dragging    { instanceId, anchorRow, anchorCol, origRow, origCol, origRotation }
@@ -113,6 +117,26 @@ DRAGGING
 `items.js` reads `data/items.csv` with a **synchronous** `XMLHttpRequest` so `DEFAULT_ITEMS`
 is populated before `init()` runs. That is why the app needs an HTTP server rather than
 `file://`, and why the CSV path is relative to the project root, not to `src/js/`.
+
+### Browse-list folders
+
+User-made groups for the Browse tab, in `src/js/folders.js`. Like the theme, they
+describe the *catalogue*, not the character, so they live in their own
+`localStorage` key (`dnd_inventory_folders`) and are **not** part of
+`dnd_inventory_v1` and never synced to the party — a GM paging through players'
+sheets keeps their own folders.
+
+- A folder never owns items: `state.folderAssign` maps templateId → folderId. So
+  deleting a folder only drops assignments (`deleteFolder`); the items themselves
+  are untouched and fall back to **Unfiled**, a virtual group rendered last that is
+  never stored. An assignment to a missing folder reads as Unfiled too — always go
+  through `folderOf()`.
+- With no folders created, `renderItemList` renders the flat list exactly as before.
+- Folder headers double as drop targets: `buildItemCard`'s drag checks
+  `getFolderHeaderAtPoint` (bounding-rect hit test, same approach as the equip
+  cards) *before* the grid, so a drop on a header files the item instead of placing it.
+- A non-empty search expands every folder — a collapsed folder hiding the only
+  match would read as "no results" — and the headers stop toggling while it does.
 
 ### Theming
 

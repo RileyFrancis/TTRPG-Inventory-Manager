@@ -29,6 +29,7 @@ function showInstanceContextMenu(instanceId, x, y) {
   document.getElementById('ctx-unequip').style.display   = equipped ? '' : 'none';
   document.getElementById('ctx-duplicate').style.display = '';
   document.getElementById('ctx-stash').style.display     = '';
+  document.getElementById('ctx-folder').style.display    = 'none'; // templates only
   ctxMenu.style.left = x + 'px';
   ctxMenu.style.top  = y + 'px';
   ctxMenu.classList.remove('hidden');
@@ -41,6 +42,9 @@ function showTemplateContextMenu(templateId, x, y) {
   ctxMenu.style.top  = y + 'px';
   document.getElementById('ctx-rotate').style.display = 'none';
   ctxMenu.classList.remove('hidden');
+  const folderBtn = document.getElementById('ctx-folder');
+  folderBtn.style.display = '';
+  folderBtn.onclick = () => { openMoveToFolderModal(templateId); hideContextMenu(); };
   document.getElementById('ctx-edit').onclick = () => { openItemModal(templateId); hideContextMenu(); };
   document.getElementById('ctx-remove').onclick = () => { deleteTemplate(templateId); hideContextMenu(); };
 }
@@ -52,6 +56,7 @@ function hideContextMenu() {
   document.getElementById('ctx-unequip').style.display   = 'none';
   document.getElementById('ctx-duplicate').style.display = 'none';
   document.getElementById('ctx-stash').style.display     = 'none';
+  document.getElementById('ctx-folder').style.display    = 'none';
 }
 
 document.getElementById('ctx-rotate').addEventListener('click', () => {
@@ -141,6 +146,7 @@ function removeInstance(instanceId) {
 function deleteTemplate(templateId) {
   if (!confirm(`Delete "${state.db[templateId]?.name}" from the item database? Placed items will remain.`)) return;
   delete state.db[templateId];
+  forgetItemFolder(templateId);
   renderItemList();
   document.getElementById('details-content').classList.add('hidden');
   document.getElementById('details-placeholder').classList.remove('hidden');

@@ -113,6 +113,9 @@
               <option value="">All Tags</option>
             </select>
           </div>
+          <div id="folder-row">
+            <button id="new-folder-btn" class="btn-sm" title="Create a folder to group items">+ New Folder</button>
+          </div>
         </div>
         <div id="item-list">
           <!-- item cards injected by JS -->
@@ -203,6 +206,7 @@
   <button id="ctx-unequip">Unequip</button>
   <button id="ctx-duplicate">Duplicate</button>
   <button id="ctx-stash">Move to Stash</button>
+  <button id="ctx-folder">Move to Folder…</button>
   <button id="ctx-edit">Edit Item</button>
   <button id="ctx-remove">Remove</button>
 </div>
@@ -266,6 +270,11 @@
       <label class="field">
         <span>Tags (comma separated)</span>
         <input type="text" id="f-tags" placeholder="weapon, melee, …">
+      </label>
+
+      <label class="field">
+        <span>Folder</span>
+        <select id="f-folder"><!-- options injected by populateFolderSelect() --></select>
       </label>
 
       <div class="field">
@@ -383,6 +392,33 @@
   </div>
 </div>
 
+<!-- ===== FOLDER NAME MODAL (create + rename) ===== -->
+<div id="folder-modal" class="modal hidden">
+  <div class="modal-box narrow">
+    <h2 id="folder-modal-title">New Folder</h2>
+    <label class="field">
+      <span>Folder Name</span>
+      <input type="text" id="folder-name-input" maxlength="40" placeholder="e.g. Camp Supplies">
+    </label>
+    <div class="modal-footer">
+      <button id="folder-confirm-btn" class="btn-primary">Create</button>
+      <button class="cancel-btn btn-sm">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== FOLDER PICKER MODAL ===== -->
+<div id="folder-picker-modal" class="modal hidden">
+  <div class="modal-box narrow">
+    <h2>Move to Folder</h2>
+    <p id="folder-picker-desc" class="modal-note"></p>
+    <div id="folder-picker-list"><!-- choices injected by openMoveToFolderModal() --></div>
+    <div class="modal-footer">
+      <button class="cancel-btn btn-sm">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== EQUIP MODAL ===== -->
 <div id="equip-modal" class="modal hidden">
   <div class="modal-box narrow">
@@ -477,6 +513,7 @@
 
 <script src="src/js/constants.js"></script>
 <script src="src/js/state.js"></script>
+<script src="src/js/folders.js"></script>
 <script src="src/js/shapes.js"></script>
 <script src="src/js/grid.js"></script>
 

@@ -96,6 +96,25 @@ function getEquipCardAtPoint(x, y) {
   return null;
 }
 
+// Folder headers in the browse list double as drop targets for item cards.
+// Same bounding-rect approach as the equip cards above; the extra check against
+// the list's own rect keeps headers scrolled out of view from catching drops.
+function getFolderHeaderAtPoint(x, y) {
+  const listEl = document.getElementById('item-list');
+  const lr = listEl.getBoundingClientRect();
+  if (x < lr.left || x > lr.right || y < lr.top || y > lr.bottom) return null;
+  for (const header of listEl.querySelectorAll('.folder-header')) {
+    const r = header.getBoundingClientRect();
+    if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return header;
+  }
+  return null;
+}
+
+function clearFolderDropTargets() {
+  document.querySelectorAll('.folder-header.drop-target')
+    .forEach(h => h.classList.remove('drop-target'));
+}
+
 // Highlight / unhighlight cells
 let highlightedCells = [];
 function highlightCells(shape, gridRow, gridCol, valid) {
