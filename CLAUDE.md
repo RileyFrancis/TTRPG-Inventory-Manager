@@ -70,7 +70,7 @@ state.grid        2D array [row][col] → instanceId | null
 state.instances   { [instanceId]: { id, templateId, rotation, row, col, stackCount } }
 state.db          { [templateId]: ItemTemplate }   (default + custom items)
 state.folders     [{ id, name }]                    (Browse-list folders, ordered)
-state.folderAssign    { [templateId]: folderId }
+state.folderAssign    { [templateId]: folderId }    (overrides only; '__unfiled' = no folder)
 state.folderCollapsed { [folderId]: true }
 state.mode        'idle' | 'placing' | 'dragging'
 state.placing     { templateId, rotation }
@@ -128,15 +128,29 @@ sheets keeps their own folders.
 
 - A folder never owns items: `state.folderAssign` maps templateId → folderId. So
   deleting a folder only drops assignments (`deleteFolder`); the items themselves
-  are untouched and fall back to **Unfiled**, a virtual group rendered last that is
-  never stored. An assignment to a missing folder reads as Unfiled too — always go
-  through `folderOf()`.
-- With no folders created, `renderItemList` renders the flat list exactly as before.
+  are untouched and fall back to their default folder, or to **Unfiled** — a
+  virtual group rendered last that is never stored — when that folder is gone too.
+- Every item is filed by default. `DEFAULT_FOLDERS` (Weapons / Armor / Currency /
+  Gear, the last matching everything) is seeded once per browser — first run, or
+  the first load for a browser whose stored folders predate it, tracked by the
+  `seeded` flag in the folder payload. They are ordinary folders afterwards:
+  renaming or deleting them sticks, and nothing re-creates them.
+- `folderAssign` therefore holds only *overrides*. An item with no entry follows
+  `defaultFolderIdFor()` (matched on tags, by id, falling back to a name match so
+  a renamed default keeps working); the `UNFILED_ID` sentinel is stored to mean a
+  deliberate "no folder", telling it apart from "never filed by hand". Read the
+  resolved folder with `folderOf()` and the override with `explicitFolderOf()` —
+  the item editor and the picker modal show the override, so an auto-filed item
+  reads as *Automatic*, and `setItemFolder(id, null)` hands it back to auto.
+- With no folders at all (the user deleted every one), `renderItemList` renders
+  the flat list exactly as before.
 - Folder headers double as drop targets: `buildItemCard`'s drag checks
   `getFolderHeaderAtPoint` (bounding-rect hit test, same approach as the equip
   cards) *before* the grid, so a drop on a header files the item instead of placing it.
 - A non-empty search expands every folder — a collapsed folder hiding the only
-  match would read as "no results" — and the headers stop toggling while it does.
+  match would read as "no results" — and the headers stop toggling while it does,
+  as does the Collapse/Expand All button (`updateFolderToolbar`, disabled and
+  labelled from the *stored* state, which is what clearing the search restores).
 
 ### Theming
 

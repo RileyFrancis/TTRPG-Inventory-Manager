@@ -45,6 +45,8 @@ function renderItemList() {
     });
   }
 
+  updateFolderToolbar(!!search);
+
   // Rebuild tag filter
   populateTagFilter();
 }
@@ -68,7 +70,6 @@ function buildFolderHeader(group, expanded, searchLocked) {
 
   el.appendChild(caret);
   el.appendChild(name);
-  el.appendChild(count);
 
   // Unfiled is virtual: nothing to rename, nothing to delete.
   if (group.id !== UNFILED_ID) {
@@ -86,13 +87,13 @@ function buildFolderHeader(group, expanded, searchLocked) {
 
     const del = document.createElement('button');
     del.className = 'folder-btn danger';
-    del.title = 'Delete folder (items move to Unfiled)';
+    del.title = 'Delete folder (its items are re-filed, never deleted)';
     del.textContent = '✕';
     del.addEventListener('click', e => {
       e.stopPropagation();
       const n = folderItemCount(group.id);
       const msg = n
-        ? `Delete the folder “${group.name}”?\n\nIts ${n} item${n > 1 ? 's' : ''} will move to Unfiled — no items are deleted.`
+        ? `Delete the folder “${group.name}”?\n\nIts ${n} item${n > 1 ? 's' : ''} will be re-filed automatically — no items are deleted.`
         : `Delete the folder “${group.name}”?`;
       if (!confirm(msg)) return;
       deleteFolder(group.id);
@@ -102,6 +103,10 @@ function buildFolderHeader(group, expanded, searchLocked) {
     el.appendChild(rename);
     el.appendChild(del);
   }
+
+  // Last, so every folder's count sits flush against the same right edge —
+  // the hidden buttons above still hold their space, Unfiled has none.
+  el.appendChild(count);
 
   // While a search forces every folder open, collapsing would do nothing
   // visible — so the header simply isn't a toggle until the search clears.
@@ -207,10 +212,10 @@ function buildItemCard(t) {
       clearFolderDropTargets();
       document.querySelectorAll('.eq-card.drag-hover').forEach(c => c.classList.remove('drag-hover'));
 
-      // Dropped on a folder header → reclassify, nothing enters the grid
+      // Dropped on a folder header → reclassify, nothing enters the grid.
+      // Dropping on Unfiled is a deliberate "no folder", not a reset to auto.
       if (folderEl) {
-        const fid = folderEl.dataset.folderId;
-        setItemFolder(tid, fid === UNFILED_ID ? null : fid);
+        setItemFolder(tid, folderEl.dataset.folderId);
         renderItemList();
         return;
       }

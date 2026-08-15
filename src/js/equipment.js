@@ -190,30 +190,23 @@ function openEquipSettings() {
 
   const list = document.getElementById('equip-settings-list');
 
+  // Index of the row being dragged, or null. The rows are rebuilt on every
+  // crossing, so the drag is tracked by position in `draft`, not by element.
+  let dragIndex = null;
+
   function renderDraft() {
     list.innerHTML = '';
 
     draft.forEach((item, idx) => {
       const row = document.createElement('div');
-      row.className = 'es-row' + (item.type === 'header' ? ' es-header-row' : '');
+      row.className = 'es-row' + (item.type === 'header' ? ' es-header-row' : '')
+        + (idx === dragIndex ? ' es-dragging' : '');
 
-      const upBtn = document.createElement('button');
-      upBtn.className = 'btn-icon';
-      upBtn.title = 'Move up';
-      upBtn.textContent = '▲';
-      upBtn.disabled = idx === 0;
-      upBtn.addEventListener('click', () => {
-        if (idx > 0) { [draft[idx - 1], draft[idx]] = [draft[idx], draft[idx - 1]]; renderDraft(); }
-      });
-
-      const dnBtn = document.createElement('button');
-      dnBtn.className = 'btn-icon';
-      dnBtn.title = 'Move down';
-      dnBtn.textContent = '▼';
-      dnBtn.disabled = idx === draft.length - 1;
-      dnBtn.addEventListener('click', () => {
-        if (idx < draft.length - 1) { [draft[idx + 1], draft[idx]] = [draft[idx], draft[idx + 1]]; renderDraft(); }
-      });
+      const grip = document.createElement('span');
+      grip.className = 'es-grip';
+      grip.title = 'Drag to reorder';
+      grip.textContent = '⠿';
+      grip.addEventListener('pointerdown', e => startRowDrag(e, idx));
 
       const labelInput = document.createElement('input');
       labelInput.type = 'text';
@@ -227,8 +220,7 @@ function openEquipSettings() {
       delBtn.textContent = '×';
       delBtn.addEventListener('click', () => { draft.splice(idx, 1); renderDraft(); });
 
-      row.appendChild(upBtn);
-      row.appendChild(dnBtn);
+      row.appendChild(grip);
       row.appendChild(labelInput);
 
       if (item.type === 'slot') {
@@ -254,38 +246,69 @@ function openEquipSettings() {
       row.appendChild(delBtn);
       list.appendChild(row);
     });
+  }
 
-    const addRow = document.createElement('div');
-    addRow.className = 'es-add-row';
+  // Grab a row by its grip and drag it through the list. The move/up listeners
+  // live on the document, not the grip: re-rendering destroys the element the
+  // drag started on, which would drop a pointer capture on the spot.
+  function startRowDrag(e, idx) {
+    if (e.button !== 0) return;
+    e.preventDefault(); // no text selection, and the label input keeps its focus
+    dragIndex = idx;
+    document.body.style.userSelect = 'none';
+    renderDraft();
 
-    const addHdrBtn = document.createElement('button');
-    addHdrBtn.className = 'btn-sm';
-    addHdrBtn.textContent = '+ Header';
-    addHdrBtn.addEventListener('click', () => {
-      draft.push({ type: 'header', label: 'New Section' });
+    const onMove = me => {
+      // Reorder as soon as the cursor passes another row's midpoint, so the
+      // list under the cursor always shows where the row would land.
+      const rows = [...list.querySelectorAll('.es-row')];
+      let target = rows.findIndex(r => {
+        const b = r.getBoundingClientRect();
+        return me.clientY < b.top + b.height / 2;
+      });
+      if (target === -1) target = rows.length - 1;
+
+      // Dragging against either end of a scrolled list pulls it along.
+      const box = list.getBoundingClientRect();
+      if (me.clientY < box.top + 24)         list.scrollTop -= 8;
+      else if (me.clientY > box.bottom - 24) list.scrollTop += 8;
+
+      if (target === dragIndex) return;
+      const [moved] = draft.splice(dragIndex, 1);
+      draft.splice(target, 0, moved);
+      dragIndex = target;
       renderDraft();
-    });
+    };
 
-    const addSlotBtn = document.createElement('button');
-    addSlotBtn.className = 'btn-sm';
-    addSlotBtn.textContent = '+ Slot';
-    addSlotBtn.addEventListener('click', () => {
-      draft.push({ type: 'slot', id: 'slot_' + Math.random().toString(36).slice(2, 6), label: 'New Slot', panelLabel: '', attuneOnly: false, inRow: false, visible: true });
+    const onUp = () => {
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      document.body.style.userSelect = '';
+      dragIndex = null;
       renderDraft();
-    });
+    };
 
-    const resetBtn = document.createElement('button');
-    resetBtn.className = 'btn-sm';
-    resetBtn.textContent = '↺ Defaults';
-    resetBtn.addEventListener('click', () => { draft = getDefaultEquipLayout(); renderDraft(); });
-
-    addRow.appendChild(addHdrBtn);
-    addRow.appendChild(addSlotBtn);
-    addRow.appendChild(resetBtn);
-    list.appendChild(addRow);
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
   }
 
   renderDraft();
+
+  // New rows land at the bottom of the list, which the pinned toolbar is no
+  // longer next to — scroll down so the row you just added is on screen.
+  function addRow(item) {
+    draft.push(item);
+    renderDraft();
+    list.scrollTop = list.scrollHeight;
+  }
+
+  document.getElementById('es-add-header-btn').onclick = () =>
+    addRow({ type: 'header', label: 'New Section' });
+
+  document.getElementById('es-add-slot-btn').onclick = () =>
+    addRow({ type: 'slot', id: 'slot_' + Math.random().toString(36).slice(2, 6), label: 'New Slot', panelLabel: '', attuneOnly: false, inRow: false, visible: true });
+
+  document.getElementById('es-reset-btn').onclick = () => { draft = getDefaultEquipLayout(); renderDraft(); };
 
   document.getElementById('equip-settings-apply-btn').onclick = () => {
     state.equipLayout = draft;

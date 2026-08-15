@@ -159,7 +159,9 @@ function openItemModal(templateId) {
   document.getElementById('f-cost-sp').value = cost.sp;
   document.getElementById('f-cost-cp').value = cost.cp;
   document.getElementById('f-tags').value    = t?.tags.join(', ') ?? '';
-  populateFolderSelect(document.getElementById('f-folder'), templateId ? folderOf(templateId) : null);
+  // The *explicit* folder, not the resolved one: an item that files itself by
+  // type should read as Automatic rather than look hand-placed.
+  populateFolderSelect(document.getElementById('f-folder'), templateId ? explicitFolderOf(templateId) : null);
   document.getElementById('f-image').value        = t?.image ?? '';
   document.getElementById('f-damage').value       = t?.damage ?? '';
   document.getElementById('f-damage-type').value  = t?.damageType ?? '';

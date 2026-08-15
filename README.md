@@ -117,11 +117,11 @@ Click **⚙ Configure Slots** at the bottom of the equipment panel to open the l
 
 - **+ Header** — add a new section label
 - **+ Slot** — add a new equipment slot
-- **▲ / ▼** — reorder items
+- **⠿** — drag the grip to reorder sections and slots
 - **👁** — show or hide the slot in the panel
 - **⇔** — render the slot side-by-side with adjacent `⇔` slots (useful for weapon rows)
 - **✦** — restrict the slot to items that require attunement
-- **↺ Defaults** — reset to the standard D&D 5e layout
+- **↺** — reset to the standard D&D 5e layout
 
 ## Party Play
 
