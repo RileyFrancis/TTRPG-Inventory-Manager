@@ -45,8 +45,8 @@ function renderItemList() {
     nm.textContent = t.name;
     const sub = document.createElement('div');
     sub.className = 'item-card-sub';
-    const w = t.stackable
-      ? `${t.weightEach} lb ea · stack ×${computeMaxStack(t.weightEach)}`
+    const w = isStackable(t)
+      ? `${formatWeight(unitWeight(t))} lb ea · stack ×${stackSizeOf(t)}`
       : `${shapeWeight(t.shape)} lb`;
     sub.textContent = `${RARITY_META[t.rarity]?.label} · ${w}`;
 
@@ -113,8 +113,8 @@ function renderItemList() {
         const shape = getRotatedShape(tmpl.shape, 0);
         const pos = cursorToGridPos(ue.clientX, ue.clientY, 0, 0);
         if (pos && canPlace(shape, pos.row, pos.col)) {
-          if (tmpl.stackable) {
-            openStackModal(computeMaxStack(tmpl.weightEach),
+          if (isStackable(tmpl)) {
+            openStackModal(stackSizeOf(tmpl),
               count => finalizePlacement(tmpl, shape, 0, pos.row, pos.col, count));
           } else {
             finalizePlacement(tmpl, shape, 0, pos.row, pos.col, 1);
@@ -226,8 +226,8 @@ function showInstanceDetails(instanceId) {
 function populateDetailsPanel(t, inst) {
   const color = rarityColor(t.rarity);
   const shape = inst ? getRotatedShape(t.shape, inst.rotation ?? 0) : t.shape;
-  const weight = t.stackable
-    ? (inst ? `${Math.round(t.weightEach * (inst.stackCount ?? 1) * 100) / 100} lb (×${inst.stackCount ?? 1})` : `${t.weightEach} lb each`)
+  const weight = isStackable(t)
+    ? (inst ? `${formatWeight(unitWeight(t) * (inst.stackCount ?? 1))} lb (×${inst.stackCount ?? 1})` : `${formatWeight(unitWeight(t))} lb each`)
     : `${shapeWeight(shape)} lb`;
 
   document.getElementById('details-placeholder').classList.add('hidden');
@@ -251,11 +251,11 @@ function populateDetailsPanel(t, inst) {
     hasCost(t.cost) ? formatCost(t.cost) : 'Priceless';
 
   const stackRow = document.getElementById('details-stack-row');
-  if (t.stackable) {
+  if (isStackable(t)) {
     stackRow.classList.remove('hidden');
     document.getElementById('details-stack').textContent = inst
-      ? `${inst.stackCount ?? 1} / ${computeMaxStack(t.weightEach)}`
-      : `×${computeMaxStack(t.weightEach)} max`;
+      ? `${inst.stackCount ?? 1} / ${stackSizeOf(t)}`
+      : `×${stackSizeOf(t)} max`;
   } else {
     stackRow.classList.add('hidden');
   }

@@ -1,0 +1,15 @@
+name,rarity,description,cost,tags,damage,damageType,attunement,stackSize,image,shape,container,containerRows,containerCols,properties,mastery
+<string>,common,<string>,<number><denom>,<tag>|<tag>,<count>d<sides>,acid,true,<integer >= 2>,<path or url>,<0/1 rows joined by |>,true,<integer>,<integer>,<prop>; <prop>,Cleave
+(required - rows with a blank name are skipped),uncommon,(blank allowed),cp,weapon,1d4,bludgeoning,(blank = false),(how many fit in one cell),(blank = none),1,(blank = false),(blank = 5),(blank = 5),Finesse,Graze
+,rare,,sp,"(free-form, lowercase, pipe-separated)",1d6,cold,,(each unit weighs 1 / stackSize lb),,1|1,,,,Light,Nick
+,very_rare,,ep,(drives the sidebar tag filter),1d8,fire,,(a full stack = 1 lb = 1 cell),,11|01,,,,Heavy,Push
+,legendary,,gp,,1d10,force,,(stacked items always use shape 1),,111|010|010,,,,Reach,Sap
+,artifact,,pp,,1d12,lightning,,(blank or 1 = does not stack),,(blank = 1),,,,Loading,Slow
+,special,,"(e.g. 5gp, or 2gp 5sp)",,2d6,necrotic,,,,(1 lb per filled cell),,,,Special,Topple
+,(blank = common),,(bare number = gp),,(blank = none),piercing,,,,,,,,Two-Handed,Vex
+,,,(blank = 0),,,poison,,,,,,,,Versatile (1d10),(blank = none)
+,,,,,,psychic,,,,,,,,Thrown (Range 20/60),
+,,,,,,radiant,,,,,,,,"Ammunition (Range 80/320, Bolt)",
+,,,,,,slashing,,,,,,,,(semicolon-separated),
+,,,,,,thunder,,,,,,,,,
+,,,,,,(blank = none),,,,,,,,,

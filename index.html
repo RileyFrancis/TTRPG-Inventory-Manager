@@ -313,14 +313,14 @@
       <div class="field-group">
         <label class="checkbox-label">
           <input type="checkbox" id="f-stackable">
-          <span>Stackable (item weighs less than 1 lb each)</span>
+          <span>Stackable (several fit in one cell)</span>
         </label>
         <div id="stackable-fields" class="hidden">
           <label class="field">
-            <span>Weight per item (lb) — must divide evenly into 1</span>
-            <input type="number" id="f-weight-each" min="0.01" max="0.99" step="0.01" value="0.1">
+            <span>Stack size — items per cell</span>
+            <input type="number" id="f-stack-size" min="2" step="1" value="10">
           </label>
-          <p class="modal-note">Max stack: <strong id="f-max-stack-display">10</strong> items (= 1 lb = 1 cell)</p>
+          <p class="modal-note">Each weighs <strong id="f-unit-weight-display">0.1</strong> lb (a full stack = 1 lb = 1 cell)</p>
         </div>
         <label class="checkbox-label">
           <input type="checkbox" id="f-attunement">

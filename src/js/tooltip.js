@@ -26,8 +26,8 @@ function showItemTooltip(instanceId, x, y) {
   if (!inst) return;
   const t = state.db[inst.templateId];
   if (!t) return;
-  const weight = t.stackable
-    ? `${Math.round(t.weightEach * (inst.stackCount ?? 1) * 100) / 100} lb (×${inst.stackCount ?? 1})`
+  const weight = isStackable(t)
+    ? `${formatWeight(unitWeight(t) * (inst.stackCount ?? 1))} lb (×${inst.stackCount ?? 1})`
     : `${shapeWeight(getRotatedShape(t.shape, inst.rotation))} lb`;
   renderTooltip(t, weight, x, y);
 }
@@ -35,7 +35,7 @@ function showItemTooltip(instanceId, x, y) {
 function showTemplateTooltip(templateId, x, y) {
   const t = state.db[templateId];
   if (!t) return;
-  const weight = t.stackable ? `${t.weightEach} lb each` : `${shapeWeight(t.shape)} lb`;
+  const weight = isStackable(t) ? `${formatWeight(unitWeight(t))} lb each` : `${shapeWeight(t.shape)} lb`;
   renderTooltip(t, weight, x, y);
 }
 

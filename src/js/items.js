@@ -4,13 +4,15 @@
 // Edit data/items.csv to add, remove, or modify the built-in item list.
 //
 // Columns: name, rarity, description, cost, tags, damage, damageType,
-//          attunement, stackable, weightEach, image, shape,
+//          attunement, stackSize, image, shape,
 //          container, containerRows, containerCols, properties, mastery
 //
 // tags       — pipe-separated list, e.g.  weapon|melee|finesse
 // properties — semicolon-separated list, e.g.  finesse;light;thrown
 // shape      — rows pipe-separated, each row is 0/1 digits,  e.g.  11|01|10
 //              weight = number of 1s (1 lb per cell)
+// stackSize  — how many fit in one cell, e.g. 20 (each then weighs 1/20 lb)
+//              blank or 1 = does not stack
 // id is auto-assigned from the row number (no id column needed)
 
 let DEFAULT_ITEMS = [];
@@ -61,6 +63,13 @@ function parseShape(str) {
   return str.trim().split('|').map(row => row.split('').map(c => parseInt(c, 10)));
 }
 
+function parseStackSize(str, legacyStackable, legacyWeightEach) {
+  if (str && str.trim()) return parseInt(str, 10);
+  // CSVs written before the stackSize column carried stackable + weightEach.
+  if (legacyStackable === 'true' && legacyWeightEach) return Math.round(1 / parseFloat(legacyWeightEach));
+  return undefined;
+}
+
 function loadDefaultItems() {
   try {
     const xhr = new XMLHttpRequest();
@@ -83,8 +92,7 @@ function loadDefaultItems() {
         damage:      v('damage')     || undefined,
         damageType:  v('damageType') || undefined,
         attunement:  v('attunement') === 'true',
-        stackable:   v('stackable')  === 'true',
-        weightEach:  v('weightEach') ? parseFloat(v('weightEach')) : undefined,
+        stackSize:   parseStackSize(v('stackSize'), v('stackable'), v('weightEach')),
         image:       v('image') || '',
         shape:       parseShape(v('shape')),
         container:      v('container') === 'true',

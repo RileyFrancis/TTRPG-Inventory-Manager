@@ -311,7 +311,7 @@ function computeCarriedWeightFor(instances, customDb) {
   return Object.values(instances ?? {}).reduce((sum, inst) => {
     const t = db[inst.templateId];
     if (!t) return sum;
-    return sum + (t.stackable ? t.weightEach * inst.stackCount : shapeWeight(getRotatedShape(t.shape, inst.rotation)));
+    return sum + (isStackable(t) ? unitWeight(t) * inst.stackCount : shapeWeight(getRotatedShape(t.shape, inst.rotation)));
   }, 0);
 }
 

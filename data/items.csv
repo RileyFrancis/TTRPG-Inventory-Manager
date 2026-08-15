@@ -1,39 +1,57 @@
-name,rarity,description,cost,tags,damage,damageType,attunement,stackable,weightEach,image,shape,container,containerRows,containerCols,properties,mastery
-Club,common,,1sp,weapon,1d4,bludgeoning,,,2,,1|1,,,,Light,Slow
-Dagger,common,,2gp,weapon,1d4,piercing,,,1,,1,,,,Finesse; Light; Thrown (Range 20/60),Nick
-Greatclub,common,,2sp,weapon,1d8,bludgeoning,,,10,,111|111|010|010|010|010,,,,Two-Handed,Push
-Handaxe,common,,5gp,weapon,1d6,slashing,,,2,,1|1,,,,Light; Thrown (Range 20/60),Vex
-Javelin,common,,5sp,weapon,1d6,piercing,,,2,,1|1,,,,Thrown (Range 30/120),Slow
-Light Hammer,common,,2gp,weapon,1d4,bludgeoning,,,2,,1|1,,,,Light; Thrown (Range 20/60),Nick
-Mace,common,,5gp,weapon,1d6,bludgeoning,,,4,,11|01|01,,,,,Sap
-Quarterstaff,common,,2sp,weapon,1d6,bludgeoning,,,4,,1|1|1|1,,,,Versatile (1d8),Topple
-Sickle,common,,1gp,weapon,1d4,slashing,,,2,,1|1,,,,Light,Nick
-Spear,common,,1gp,weapon,1d6,piercing,,,3,,1|1|1,,,,Thrown (Range 20/60); Versatile (1d8),Sap
-Dart,common,,5cp,weapon,1d4,piercing,,true,0.25,,,,,,Finesse; Thrown (Range 20/60),Vex
-Light Crossbow,common,,25gp,weapon,1d8,piercing,,,5,,111|010|010,,,,,"Ammunition (Range 80/320, Bolt); Loading; Two-Handed",Slow
-Shortbow,common,,25gp,weapon,1d6,piercing,,,2,,1|1,,,,,"Ammunition (Range 80/320, Arrow); Two-Handed",Vex
-Sling,common,,1sp,weapon,1d4,bludgeoning,,,,,,1,,,,,"Ammunition (Range 30/120, Bullet)",Slow
-Battleaxe,common,,10gp,weapon,1d8,slashing,,,4,,11|01|01,,,,Versatile (1d10),Topple
-Flail,common,,10gp,weapon,1d8,bludgeoning,,,2,,1|1,,,,,Sap
-Glaive,common,,20gp,weapon,1d10,slashing,,,6,,11|01|01|01|01,,,,Heavy; Reach; Two-Handed,Graze
-Greataxe,common,,30gp,weapon,1d12,slashing,,,7,,111|010|010|010|010,,,,Heavy; Two-Handed,Cleave
-Greatsword,common,,50gp,weapon,2d6,slashing,,,6,,010|110|010|010|010,,,,Heavy; Two-Handed,Graze
-Halberd,common,,20gp,weapon,1d10,slashing,,,6,,110|010|010|010|010,,,,Heavy; Reach; Two-Handed,Cleave
-Lance,common,,10gp,weapon,1d10,piercing,,,6,,1|1|1|1|1|1,,,,Heavy; Reach; Two-Handed (unless mounted),Topple
-Longsword,common,,15gp,weapon,1d8,slashing,,,3,,1|1|1,,,,Versatile (1d10),Sap
-Maul,common,,10gp,weapon,2d6,bludgeoning,,,10,,111|111|111|010,,,,Heavy; Two-Handed,Topple
-Morningstar,common,,15gp,weapon,1d8,piercing,,,4,,111|010,,,,,Sap
-Pike,common,,5gp,weapon,1d10,piercing,,,18,,11|11|11|11|11|11|11|11|11,,,,Heavy; Reach; Two-Handed,Push
-Rapier,common,,25gp,weapon,1d8,piercing,,,2,,1|1,,,,Finesse,Vex
-Scimitar,common,,25gp,weapon,1d6,slashing,,,3,,1|1|1,,,,Finesse; Light,Nick
-Shortsword,common,,10gp,weapon,1d6,piercing,,,2,,1|1,,,,Finesse; Light,Vex
-Trident,common,,5gp,weapon,1d8,piercing,,,4,,101|010|010,,,,Thrown (Range 20/60); Versatile (1d10),Topple
-Warhammer,common,,15gp,weapon,1d8,bludgeoning,,,5,,11|11|01,,,,Versatile (1d10),Push
-War Pick,common,,5gp,weapon,1d8,piercing,,,2,,1|1,,,,Versatile (1d10),Sap
-Whip,common,,2gp,weapon,1d4,slashing,,,3,,1|1|1,,,,Finesse; Reach,Slow
-Blowgun,common,,10gp,weapon,1,piercing,,,1,,1,,,,,"Ammunition (Range 25/100, Needle); Loading",Vex
-Hand Crossbow,common,,75gp,weapon,1d6,piercing,,,3,,11|01,,,,,"Ammunition (Range 30/120, Bolt); Light; Loading",Vex
-Heavy Crossbow,common,,50gp,weapon,1d10,piercing,,,18,,111111|111111|111111,,,,,"Ammunition (Range 100/400, Bolt); Heavy; Loading; Two-Handed",Push
-Longbow,common,,50gp,weapon,1d8,piercing,,,2,,1|1,,,,,"Ammunition (Range 150/600, Arrow); Heavy; Two-Handed",Slow
-Musket,common,,500gp,weapon,1d12,piercing,,,10,,11111|11111,,,,,"Ammunition (Range 40/120, Bullet); Loading; Two-Handed",Slow
-Pistol,common,,250gp,weapon,1d10,piercing,,,3,,11|10,,,,,"Ammunition (Range 30/90, Bullet); Loading",Vex
+name,rarity,description,cost,tags,damage,damageType,attunement,stackSize,image,shape,container,containerRows,containerCols,properties,mastery
+Copper Piece,special,"Ooh, shiny!",1cp,currency|valuable,,,,50,,1,,,,,
+Silver Piece,special,"Ooh, shiny!",1sp,currency|valuable,,,,50,,1,,,,,
+Electrum Piece,special,"Ooh, shiny!",1ep,currency|valuable,,,,50,,1,,,,,
+Gold Piece,special,"Ooh, shiny!",1gp,currency|valuable,,,,50,,1,,,,,
+Platinum Piece,special,"Ooh, shiny!",1pp,currency|valuable,,,,50,,1,,,,,
+Club,,,1sp,weapon|simple mele weapon,1d4,bludgeoning,,,,1|1,,,,Light,Slow
+Dagger,,,2gp,weapon|simple mele weapon,1d4,piercing,,,,1,,,,Finesse; Light; Thrown (Range 20/60),Nick
+Greatclub,,,2sp,weapon|simple mele weapon,1d8,bludgeoning,,,,111|111|110|010|010,,,,Two-Handed,Push
+Handaxe,,,5gp,weapon|simple mele weapon,1d6,slashing,,,,1|1,,,,Light; Thrown (Range 20/60),Vex
+Javelin,,,5sp,weapon|simple mele weapon,1d6,piercing,,,,1|1,,,,Thrown (Range 30/120),Slow
+Light Hammer,,,2gp,weapon|simple mele weapon,1d4,bludgeoning,,,,1|1,,,,Light; Thrown (Range 20/60),Nick
+Mace,,,5gp,weapon|simple mele weapon,1d6,bludgeoning,,,,11|01|01,,,,,Sap
+Quarterstaff,,,2sp,weapon|simple mele weapon,1d6,bludgeoning,,,,1|1|1|1,,,,Versatile (1d8),Topple
+Sickle,,,1gp,weapon|simple mele weapon,1d4,slashing,,,,1|1,,,,Light,Nick
+Spear,,,1gp,weapon|simple mele weapon,1d6,piercing,,,,1|1|1,,,,Thrown (Range 20/60); Versatile (1d8),Sap
+Dart,,,5cp,weapon|simple ranged weapon,1d4,piercing,,4,,1,,,,Finesse; Thrown (Range 20/60),Vex
+Light Crossbow,,,25gp,weapon|simple ranged weapon,1d8,piercing,,,,111|010|010,,,,"Ammunition (Range 80/320, Bolt); Loading; Two-Handed",Slow
+Shortbow,,,25gp,weapon|simple ranged weapon,1d6,piercing,,,,1|1,,,,"Ammunition (Range 80/320, Arrow); Two-Handed",Vex
+Sling,,,1sp,weapon|simple ranged weapon,1d4,bludgeoning,,,,1,,,,"Ammunition (Range 30/120, Bullet)",Slow
+Battleaxe,,,10gp,weapon|martial mele weapon,1d8,slashing,,,,11|01|01,,,,Versatile (1d10),Topple
+Flail,,,10gp,weapon|martial mele weapon,1d8,bludgeoning,,,,1|1,,,,,Sap
+Glaive,,,20gp,weapon|martial mele weapon,1d10,slashing,,,,11|01|01|01|01,,,,Heavy; Reach; Two-Handed,Graze
+Greataxe,,,30gp,weapon|martial mele weapon,1d12,slashing,,,,111|110|010|010,,,,Heavy; Two-Handed,Cleave
+Greatsword,,,50gp,weapon|martial mele weapon,2d6,slashing,,,,010|010|111|010,,,,Heavy; Two-Handed,Graze
+Halberd,,,20gp,weapon|martial mele weapon,1d10,slashing,,,,01|11|01|01|01,,,,Heavy; Reach; Two-Handed,Cleave
+Lance,,,10gp,weapon|martial mele weapon,1d10,piercing,,,,1|1|1|1|1|1,,,,Heavy; Reach; Two-Handed (unless mounted),Topple
+Longsword,,,15gp,weapon|martial mele weapon,1d8,slashing,,,,1|1|1,,,,Versatile (1d10),Sap
+Maul,,,10gp,weapon|martial mele weapon,2d6,bludgeoning,,,,1111|1110|0010|0010|0010,,,,Heavy; Two-Handed,Topple
+Morningstar,,,15gp,weapon|martial mele weapon,1d8,piercing,,,,01|11|10,,,,,Sap
+Pike,,,5gp,weapon|martial mele weapon,1d10,piercing,,,,010|111|111|010|010|010|110|010|010|010|010|010|010,,,,Heavy; Reach; Two-Handed,Push
+Rapier,,,25gp,weapon|martial mele weapon,1d8,piercing,,,,1|1,,,,Finesse,Vex
+Scimitar,,,25gp,weapon|martial mele weapon,1d6,slashing,,,,1|1|1,,,,Finesse; Light,Nick
+Shortsword,,,10gp,weapon|martial mele weapon,1d6,piercing,,,,1|1,,,,Finesse; Light,Vex
+Trident,,,5gp,weapon|martial mele weapon,1d8,piercing,,,,1|1|1|1,,,,Thrown (Range 20/60); Versatile (1d10),Topple
+Warhammer,,,15gp,weapon|martial mele weapon,1d8,bludgeoning,,,,111|010|010,,,,Versatile (1d10),Push
+War Pick,,,5gp,weapon|martial mele weapon,1d8,piercing,,,,1|1,,,,Versatile (1d10),Sap
+Whip,,,2gp,weapon|martial mele weapon,1d4,slashing,,,,11|01,,,,Finesse; Reach,Slow
+Blowgun,,,10gp,weapon|martial ranged weapon,1,piercing,,,,1,,,,"Ammunition (Range 25/100, Needle); Loading",Vex
+Hand Crossbow,,,75gp,weapon|martial ranged weapon,1d6,piercing,,,,11|01,,,,"Ammunition (Range 30/120, Bolt); Light; Loading",Vex
+Heavy Crossbow,,,50gp,weapon|martial ranged weapon,1d10,piercing,,,,01110|11111|01110|01110|01110|00100,,,,"Ammunition (Range 100/400, Bolt); Heavy; Loading; Two-Handed",Push
+Longbow,,,50gp,weapon|martial ranged weapon,1d8,piercing,,,,1|1,,,,"Ammunition (Range 150/600, Arrow); Heavy; Two-Handed",Slow
+Musket,,,500gp,weapon|martial ranged weapon,1d12,piercing,,,,11111|11111,,,,"Ammunition (Range 40/120, Bullet); Loading; Two-Handed",Slow
+Pistol,,,250gp,weapon|martial ranged weapon,1d10,piercing,,,,11|10,,,,"Ammunition (Range 30/90, Bullet); Loading",Vex
+Padded Armor,,,5gp,armor|light armor,,,,,,1111|1111,,,,AC 11 + Dex; Stealth Disadvantage,
+Leather Armor,,,10gp,armor|light armor,,,,,,11111|11111,,,,AC 11 + Dex,
+Studded Leather Armor,,,45gp,armor|light armor,,,,,,11111|11111|11100,,,,AC 12 + Dex,
+Hide Armor,,,10gp,armor|medium armor,,,,,,1111|1111|1111,,,,AC 12 + Dex (max 2),
+Chain Shirt,,,50gp,armor|medium armor,,,,,,11111|11111|11111|11111,,,,AC 13 + Dex (max 2),
+Scale Mail,,,50gp,armor|medium armor,,,,,,111111111|111111111|111111111|111111111|111111111,,,,AC 14 + Dex (max 2); Stealth Disadvantage,
+Breastplate,,,400gp,armor|medium armor,,,,,,1111|1111|1111|1111|1111,,,,AC 14 + Dex (max 2),
+Half Plate Armor,,,750gp,armor|medium armor,,,,,,11111111|11111111|11111111|11111111|11111111,,,,AC 15 + Dex (max 2); Stealth Disadvantage,
+Ring Mail,,,30gp,armor|heavy armor,,,,,,1111111111|1111111111|1111111111|1111111111,,,,AC 14; Stealth Disadvantage,
+Chain Mail,,,75gp,armor|heavy armor,,,,,,11111111111|11111111111|11111111111|11111111111|11111111111,,,,AC 16; Str 13; Stealth Disadvantage,
+Splint Armor,,,200gp,armor|heavy armor,,,,,,1111111111|1111111111|1111111111|1111111111|1111111111|1111111111,,,,AC 17; Str 15; Stealth Disadvantage,
+Plate Armor,,,1500gp,armor|heavy armor,,,,,,1111111111111|1111111111111|1111111111111|1111111111111|1111111111111,,,,AC 18; Str 15; Stealth Disadvantage,
+Shield,,,10gp,armor|shield,,,,,,111|111,,,,AC +2,

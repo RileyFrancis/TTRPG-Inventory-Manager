@@ -32,11 +32,11 @@ function costToCSVStr(cost) {
 
 function exportItemsCSV() {
   const headers = ['name','rarity','description','cost','tags','damage','damageType',
-                   'attunement','stackable','weightEach','image','shape','container','containerRows','containerCols',
+                   'attunement','stackSize','image','shape','container','containerRows','containerCols',
                    'properties','mastery'];
   const rows = [headers.join(',')];
   Object.values(state.db).forEach(t => {
-    const shapeStr = t.stackable ? '1' : normalizeShape(t.shape).map(r => r.join('')).join('|');
+    const shapeStr = isStackable(t) ? '1' : normalizeShape(t.shape).map(r => r.join('')).join('|');
     rows.push([
       t.name,
       t.rarity,
@@ -46,8 +46,7 @@ function exportItemsCSV() {
       t.damage || '',
       t.damageType || '',
       t.attunement ? 'true' : '',
-      t.stackable ? 'true' : '',
-      t.weightEach != null ? t.weightEach : '',
+      isStackable(t) ? stackSizeOf(t) : '',
       t.image || '',
       shapeStr,
       t.container ? 'true' : '',

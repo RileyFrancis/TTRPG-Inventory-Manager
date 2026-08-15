@@ -177,7 +177,7 @@ function renderPlacedItem(inst) {
   el.style.top  = inst.row * CELL + 'px';
 
   // Stack badge
-  if (template.stackable && inst.stackCount > 1) {
+  if (isStackable(template) && inst.stackCount > 1) {
     const badge = document.createElement('div');
     badge.className = 'stack-badge';
     badge.textContent = inst.stackCount;

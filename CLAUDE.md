@@ -22,6 +22,7 @@ index.html          Static shell — every DOM element referenced by JS, with st
 src/css/style.css   All styles
 src/js/*.js         Application logic, one file per concern
 data/items.csv      Default item database
+data/item_dtypes.csv  Reference only — the allowed values for each items.csv column
 tools/              Standalone dev helpers (not part of the app)
 ```
 
@@ -81,7 +82,7 @@ state.dragging    { instanceId, anchorRow, anchorCol, origRow, origCol, origRota
 
 ### Item shapes
 
-Shapes are 2D arrays of `0`/`1`. Weight = count of `1`s (1 lb per cell). `rotateShapeCW` rotates 90° clockwise; instances store a `rotation` index (0–3) and `getRotatedShape(baseShape, rotation)` applies it. Stackable items always use `[[1]]`; `weightEach < 1` with `maxStack = 1 / weightEach` (must divide evenly).
+Shapes are 2D arrays of `0`/`1`. Weight = count of `1`s (1 lb per cell). `rotateShapeCW` rotates 90° clockwise; instances store a `rotation` index (0–3) and `getRotatedShape(baseShape, rotation)` applies it. Stackable items always use `[[1]]` and carry a `stackSize` — how many units fit in that one cell, so each unit weighs `1 / stackSize`. `stackSize` absent or `1` means the item does not stack. Read it through `stackSizeOf` / `isStackable` / `unitWeight` in `helpers.js`, never off the template directly: those helpers also translate the pre-`stackSize` `stackable` + `weightEach` pair still present in old saves and party data.
 
 ### Interaction state machine
 

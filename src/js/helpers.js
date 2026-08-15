@@ -6,8 +6,29 @@
 // =============================================================================
 // HELPERS
 // =============================================================================
-function computeMaxStack(weightEach) {
-  return Math.round(1 / weightEach);
+// ─── STACKING ──────────────────────────────────────────────────────────────
+// A template's `stackSize` is how many of the item fit in one grid cell. A cell
+// is 1 lb, so each unit weighs 1 / stackSize. A stackSize of 1 (or absent) means
+// the item does not stack. Templates written before stackSize existed carry
+// `stackable` + `weightEach` instead — old saves and party data are read through
+// these helpers, so they keep working.
+function stackSizeOf(t) {
+  if (t?.stackSize) return t.stackSize;
+  if (t?.stackable && t.weightEach) return Math.round(1 / t.weightEach);
+  return 1;
+}
+
+function isStackable(t) {
+  return stackSizeOf(t) > 1;
+}
+
+function unitWeight(t) {
+  return 1 / stackSizeOf(t);
+}
+
+// Stack weights are fractions of a pound; trim the float noise (1/3 → 0.333).
+function formatWeight(lb) {
+  return String(Math.round(lb * 1000) / 1000);
 }
 
 function parseCostObj(val) {
@@ -46,7 +67,7 @@ function addCoinsToInventory(templateId, totalToAdd) {
   if (totalToAdd <= 0) return;
   const t = state.db[templateId];
   if (!t) return;
-  const maxStack = computeMaxStack(t.weightEach);
+  const maxStack = stackSizeOf(t);
   let remaining = totalToAdd;
 
   // Fill existing non-full stacks first (least-full first)

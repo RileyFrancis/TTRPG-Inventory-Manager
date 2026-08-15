@@ -170,10 +170,11 @@ function openItemModal(templateId) {
   document.getElementById('f-container-cols').value = t?.containerCols ?? 5;
   document.getElementById('f-container-rows').value = t?.containerRows ?? 5;
 
-  const stackable = t?.stackable ?? false;
+  const stackable = isStackable(t);
   document.getElementById('f-stackable').checked = stackable;
-  document.getElementById('f-weight-each').value = t?.weightEach ?? 0.1;
+  document.getElementById('f-stack-size').value = stackable ? stackSizeOf(t) : 10;
   document.getElementById('stackable-fields').classList.toggle('hidden', !stackable);
+  updateUnitWeightDisplay();
 
   state.editorShape = t ? t.shape.map(r => [...r]) : [[1]];
   document.getElementById('shape-editor-section').classList.toggle('hidden', stackable);
@@ -191,10 +192,11 @@ document.getElementById('f-container').addEventListener('change', e => {
   document.getElementById('container-fields').classList.toggle('hidden', !e.target.checked);
 });
 
-document.getElementById('f-weight-each').addEventListener('input', updateMaxStackDisplay);
-function updateMaxStackDisplay() {
-  const w = parseFloat(document.getElementById('f-weight-each').value) || 0.1;
-  document.getElementById('f-max-stack-display').textContent = computeMaxStack(w);
+document.getElementById('f-stack-size').addEventListener('input', updateUnitWeightDisplay);
+function updateUnitWeightDisplay() {
+  const n = parseInt(document.getElementById('f-stack-size').value, 10);
+  document.getElementById('f-unit-weight-display').textContent =
+    n >= 1 ? formatWeight(1 / n) : '—';
 }
 
 // Shape controls
@@ -248,14 +250,11 @@ document.getElementById('save-item-btn').addEventListener('click', () => {
   if (!name) { alert('Item name is required.'); return; }
 
   const stackable = document.getElementById('f-stackable').checked;
-  const weightEach = parseFloat(document.getElementById('f-weight-each').value) || 0.1;
+  const stackSize = parseInt(document.getElementById('f-stack-size').value, 10);
 
-  if (stackable) {
-    const max = computeMaxStack(weightEach);
-    if (!Number.isInteger(1 / weightEach) || max <= 0) {
-      alert('Weight must divide evenly into 1 lb (e.g. 0.5, 0.25, 0.1, 0.05, 0.02).');
-      return;
-    }
+  if (stackable && !(stackSize >= 2)) {
+    alert('Stack size must be a whole number of 2 or more.');
+    return;
   }
 
   const id = state.editingItemId ?? newTemplateId();
@@ -280,8 +279,7 @@ document.getElementById('save-item-btn').addEventListener('click', () => {
     damage:      document.getElementById('f-damage').value.trim() || undefined,
     damageType:  document.getElementById('f-damage-type').value || undefined,
     attunement:  document.getElementById('f-attunement').checked || undefined,
-    stackable,
-    weightEach:  stackable ? weightEach : undefined,
+    stackSize:   stackable ? stackSize : undefined,
     shape:       stackable ? [[1]] : state.editorShape.map(r => [...r]),
     container:      isContainer || undefined,
     containerRows:  isContainer ? (parseInt(document.getElementById('f-container-rows').value) || 5) : undefined,

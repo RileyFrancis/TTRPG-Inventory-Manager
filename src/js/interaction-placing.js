@@ -113,7 +113,7 @@ function renderStash() {
     card.className = 'stash-card' + (isActive ? ' placing' : '');
     card.title = 'Click to place';
 
-    const shape = normalizeShape(t.stackable ? [[1]] : t.shape);
+    const shape = normalizeShape(isStackable(t) ? [[1]] : t.shape);
     const { rows, cols } = shapeDims(shape);
     const preview = document.createElement('div');
     preview.className = 'stash-shape';
@@ -197,9 +197,8 @@ function onPlacingClick(e) {
 
   e.stopPropagation();
 
-  if (t.stackable) {
-    const max = computeMaxStack(t.weightEach);
-    openStackModal(max, count => finalizePlacement(t, shape, rotation, pos.row, pos.col, count));
+  if (isStackable(t)) {
+    openStackModal(stackSizeOf(t), count => finalizePlacement(t, shape, rotation, pos.row, pos.col, count));
     cancelPlacing();
   } else {
     finalizePlacement(t, shape, rotation, pos.row, pos.col, 1);

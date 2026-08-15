@@ -45,7 +45,7 @@ function totalCarriedWeight() {
   return Object.values(state.instances).reduce((sum, inst) => {
     const template = state.db[inst.templateId];
     if (!template) return sum;
-    if (template.stackable) return sum + template.weightEach * inst.stackCount;
+    if (isStackable(template)) return sum + unitWeight(template) * inst.stackCount;
     return sum + shapeWeight(getRotatedShape(template.shape, inst.rotation));
   }, 0);
 }
