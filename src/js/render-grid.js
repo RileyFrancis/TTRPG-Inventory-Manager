@@ -176,6 +176,14 @@ function renderPlacedItem(inst) {
   el.style.left = inst.col * CELL + 'px';
   el.style.top  = inst.row * CELL + 'px';
 
+  // Badges sit in the bottom-right *filled* cell, not the bounding box corner, so
+  // they never float in the hollow of a non-rectangular shape. The CSS rules add
+  // their own small inset on top of these.
+  const dims = shapeDims(shape);
+  const anchor = bottomRightFilledCell(shape);
+  el.style.setProperty('--badge-bottom', (dims.rows - anchor.row - 1) * CELL + 'px');
+  el.style.setProperty('--badge-right',  (dims.cols - anchor.col - 1) * CELL + 'px');
+
   // Stack badge
   if (isStackable(template) && inst.stackCount > 1) {
     const badge = document.createElement('div');

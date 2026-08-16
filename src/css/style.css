@@ -566,8 +566,10 @@ textarea { resize: vertical; }
 /* Stack count badge */
 .stack-badge {
   position: absolute;
-  bottom: 2px;
-  right: 3px;
+  /* --badge-bottom / --badge-right land the badge on the bottom-right filled cell
+     of the item's shape; renderPlacedItem sets them, 0 = bounding-box corner */
+  bottom: calc(var(--badge-bottom, 0px) + 2px);
+  right: calc(var(--badge-right, 0px) + 3px);
   font-size: 9px;
   font-weight: 900;
   color: var(--item-label-fg);
@@ -1714,8 +1716,9 @@ body.party-readonly #details-delete-btn { display: none !important; }
 /* ─── EQUIP BADGE ────────────────────────────────────────── */
 .equip-badge {
   position: absolute;
-  bottom: 2px;
-  right: 2px;
+  /* see .stack-badge — pinned to the bottom-right filled cell, not the bbox */
+  bottom: calc(var(--badge-bottom, 0px) + 2px);
+  right: calc(var(--badge-right, 0px) + 2px);
   font-size: 9px;
   line-height: 14px;
   background: var(--accent);

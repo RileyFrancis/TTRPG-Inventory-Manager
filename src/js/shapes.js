@@ -50,6 +50,15 @@ function getShapeCells(shape, gridRow, gridCol) {
   return cells;
 }
 
+// Bottom-right-most filled cell — where a corner badge must sit so it lands on the
+// item itself and not in the hollow of a non-rectangular shape
+function bottomRightFilledCell(shape) {
+  for (let r = shape.length - 1; r >= 0; r--)
+    for (let c = shape[r].length - 1; c >= 0; c--)
+      if (shape[r][c]) return { row: r, col: c };
+  return { row: shape.length - 1, col: shape[0].length - 1 };
+}
+
 // Rotate anchor cell through a CW rotation
 function rotateAnchorCW(anchorRow, anchorCol, rows, cols) {
   return { row: anchorCol, col: rows - 1 - anchorRow };
