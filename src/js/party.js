@@ -361,6 +361,10 @@ function updatePartyUI() {
 }
 
 function updatePartyPanel() {
+  // The character tabs are this same roster and selection in another shape, so
+  // they refresh from the same signal — including the roster arriving empty.
+  syncCharacterViewUI();
+
   const listEl = document.getElementById('party-player-list');
   if (!listEl) return;
   listEl.innerHTML = '';
@@ -431,15 +435,19 @@ function updateViewingBanner() {
   }
 
   banner.classList.remove('hidden');
-  const name = state.party.players[viewId]?.name ?? 'Player';
+  // The character's name, to match the tab you picked them from — the player
+  // behind it is already named in the Party panel.
+  const player = state.party.players[viewId];
+  const name = player?.character?.name ?? player?.name ?? 'Player';
   const textEl = document.getElementById('viewing-banner-text');
   const returnBtn = document.getElementById('return-to-own-btn');
 
+  const what = state.view === 'sheet' ? 'character sheet' : 'inventory';
   if (state.party.role === 'gm') {
-    textEl.textContent = `Editing ${name}'s inventory`;
+    textEl.textContent = `Editing ${name}'s ${what}`;
     returnBtn.textContent = 'Deselect Player';
   } else {
-    textEl.textContent = `Viewing ${name}'s inventory (read-only)`;
+    textEl.textContent = `Viewing ${name}'s ${what} (read-only)`;
     returnBtn.textContent = 'Return to Your Inventory';
   }
 

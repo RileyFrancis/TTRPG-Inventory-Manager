@@ -369,7 +369,71 @@ textarea { resize: vertical; }
   display: flex;
   flex: 1;
   overflow: hidden;
+  position: relative; /* the reopen buttons anchor to its corners */
 }
+
+/* ─── SIDE PANEL RESIZING ────────────────────────────────── */
+/* Widths live on #app as custom properties so panels.js can set them from one
+   place; these are the defaults before anything is stored. */
+:root {
+  --equip-w: 210px;
+  --sidebar-w: 300px;
+}
+
+/* The handle straddles the seam between panel and inventory: 7px of grab area
+   pulled back by its own negative margins, so it costs no layout width. */
+.panel-resizer {
+  width: 7px;
+  margin: 0 -4px;
+  flex-shrink: 0;
+  /* Positioned so the z-index actually applies: #inventory-panel is itself
+     positioned and comes later in the DOM, so without this it paints over —
+     and swallows the clicks on — the half of the handle overlapping it. */
+  position: relative;
+  z-index: 8;
+  cursor: col-resize;
+  background: transparent;
+  touch-action: none;
+  transition: background 0.12s;
+}
+.panel-resizer:hover,
+.panel-resizer.dragging {
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+#app.equip-collapsed #equip-panel,
+#app.equip-collapsed #equip-resizer,
+#app.sidebar-collapsed #sidebar,
+#app.sidebar-collapsed #sidebar-resizer { display: none; }
+
+/* Round button in the corner the panel folded away from. */
+.panel-reopen-btn {
+  position: absolute;
+  top: 7px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  box-shadow: var(--shadow-deep), inset 0 1px 0 var(--emboss-hi);
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1;
+  z-index: 20;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.panel-reopen-btn:hover { color: var(--accent); border-color: var(--accent); }
+.panel-reopen-btn.left  { left: 8px; }
+.panel-reopen-btn.right { right: 8px; }
+#app.equip-collapsed   #show-equip-btn   { display: flex; }
+#app.sidebar-collapsed #show-sidebar-btn { display: flex; }
+
+/* Keep the character tabs clear of whichever button is showing. */
+#app.equip-collapsed   #character-tabs { padding-left: 42px; }
+#app.sidebar-collapsed #character-tabs { padding-right: 42px; }
 
 /* ─── INVENTORY PANEL ────────────────────────────────────── */
 #inventory-panel {
@@ -549,7 +613,7 @@ textarea { resize: vertical; }
 
 /* ─── SIDEBAR ────────────────────────────────────────────── */
 #sidebar {
-  width: 300px;
+  width: var(--sidebar-w);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -1024,6 +1088,104 @@ textarea { resize: vertical; }
 }
 
 /* ─── PARTY — INVENTORY PANEL ────────────────────────────── */
+/* ─── CHARACTER TABS ─────────────────────────────────────── */
+/* One tab per character, right-aligned above the inventory. Positioned so it
+   stacks above #gm-placeholder, which otherwise paints over the whole panel —
+   a GM with nobody selected still needs these to pick someone. */
+#character-tabs {
+  display: flex;
+  justify-content: flex-start;
+  gap: 2px;
+  padding: 0 8px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  position: relative;
+  z-index: 6;
+}
+#character-tabs::-webkit-scrollbar { display: none; }
+
+.char-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  border-bottom: 2px solid transparent;
+  border-radius: 0 0 7px 7px; /* hanging from the top edge of the panel */
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.char-tab:hover:not(.active) { color: var(--text); }
+.char-tab.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+}
+.char-tab-caret { font-size: 8px; opacity: 0.7; }
+
+#char-tab-menu {
+  position: fixed;
+  z-index: 2000;
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  box-shadow: var(--shadow-deep), inset 0 0 0 1px var(--emboss-hi);
+  display: flex;
+  flex-direction: column;
+  min-width: 150px;
+  padding: 3px;
+}
+.char-view-btn {
+  padding: 7px 12px;
+  text-align: left;
+  border-radius: 2px;
+  font-size: 12px;
+  transition: background 0.1s, color 0.1s;
+}
+.char-view-btn:hover {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+.char-view-btn.active { color: var(--accent); }
+.char-view-btn.active::after { content: ' ✓'; }
+
+/* ─── CHARACTER SHEET ────────────────────────────────────── */
+/* One switch drives the swap: the sheet and the inventory never both show. */
+#character-sheet { display: none; }
+#inventory-panel.sheet-view #character-sheet {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+}
+#inventory-panel.sheet-view #grid-scroll,
+#inventory-panel.sheet-view #stash-section,
+#inventory-panel.sheet-view #container-tabs { display: none; }
+
+.sheet-inner { text-align: center; max-width: 420px; padding: 32px 24px; }
+#sheet-char-name {
+  font-family: var(--font-display);
+  font-size: 22px;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+.sheet-sub {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 18px;
+}
+.sheet-placeholder { font-size: 13px; line-height: 1.6; color: var(--text-dim); }
+
 #viewing-banner {
   display: flex;
   align-items: center;
@@ -1250,7 +1412,7 @@ body.party-readonly #details-delete-btn { display: none !important; }
 
 /* ─── EQUIP PANEL ────────────────────────────────────────── */
 #equip-panel {
-  width: 210px;
+  width: var(--equip-w);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;

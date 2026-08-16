@@ -32,6 +32,9 @@ const state = {
   equipped: {},
   // Equipment panel layout — ordered array of header/slot items (persisted separately)
   equipLayout: [],
+  // Which view of the selected character the inventory panel shows.
+  // *Which* character is selected lives in state.party.viewingPlayerId.
+  view: 'inventory', // 'inventory' | 'sheet'
   // Container view: null = main inventory, instanceId = viewing that container's interior
   activeContainer: null,
   // Per-container internal grids: { [instanceId]: 2D array }

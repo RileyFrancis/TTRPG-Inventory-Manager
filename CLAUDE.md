@@ -56,8 +56,10 @@ tools/              Standalone dev helpers (not part of the app)
 | `helpers.js` | Shared formatting + lookup helpers |
 | `persistence.js` | `saveState`, `loadState`, `exportItemsCSV` |
 | `theme.js` | Light/dark palette switching + the settings modal |
+| `panels.js` | Side-panel resize handles, collapse, and reopen buttons |
 | `firebase-config.js` | Parses `.env` → `FIREBASE_CONFIG` (`null` when absent) |
 | `party.js` | Firebase party sync + party UI |
+| `character-tabs.js` | Per-character tabs above the inventory + sheet/inventory switch |
 | `equipment.js` | Equip slots, layout editor, equip/unequip |
 | `tooltip.js` | Hover tooltip |
 | `main.js` | `init()` and the single call to it |
@@ -72,6 +74,7 @@ state.db          { [templateId]: ItemTemplate }   (default + custom items)
 state.folders     [{ id, name }]                    (Browse-list folders, ordered)
 state.folderAssign    { [templateId]: folderId }    (overrides only; '__unfiled' = no folder)
 state.folderCollapsed { [folderId]: true }
+state.view        'inventory' | 'sheet'             (which view of the selected character)
 state.mode        'idle' | 'placing' | 'dragging'
 state.placing     { templateId, rotation }
 state.dragging    { instanceId, anchorRow, anchorCol, origRow, origCol, origRotation }
@@ -87,6 +90,48 @@ state.dragging    { instanceId, anchorRow, anchorCol, origRow, origCol, origRota
 ### Item shapes
 
 Shapes are 2D arrays of `0`/`1`. Weight = count of `1`s (1 lb per cell). `rotateShapeCW` rotates 90° clockwise; instances store a `rotation` index (0–3) and `getRotatedShape(baseShape, rotation)` applies it. Stackable items always use `[[1]]` and carry a `stackSize` — how many units fit in that one cell, so each unit weighs `1 / stackSize`. `stackSize` absent or `1` means the item does not stack. Read it through `stackSizeOf` / `isStackable` / `unitWeight` in `helpers.js`, never off the template directly: those helpers also translate the pre-`stackSize` `stackable` + `weightEach` pair still present in old saves and party data.
+
+### Side panels
+
+Both side panels resize by the handle on their inner border (`panels.js`), and
+fold away entirely when dragged narrower than `PANEL_COLLAPSE_AT`, leaving a
+round reopen button in that corner. Widths and collapsed flags are this
+*browser's* window furniture, so like the theme and the folders they live in
+their own key (`dnd_inventory_panels`) and never enter the save file or party
+data.
+
+- Widths are CSS custom properties (`--equip-w` / `--sidebar-w`) set on `#app`;
+  `:root` holds the defaults. One class per side (`equip-collapsed` /
+  `sidebar-collapsed`) hides the panel *and* its handle, shows the reopen
+  button, and pads `#character-tabs` clear of it.
+- Collapse happens live from the raw cursor position, not on release, so
+  dragging back out brings the panel straight back without the button.
+- `.panel-resizer` **must stay `position: relative`**. It straddles the seam on
+  negative margins, and `#inventory-panel` is positioned and later in the DOM —
+  unpositioned, the handle's `z-index` does nothing and the inventory panel eats
+  the clicks on half of it.
+
+### Character tabs
+
+The strip above the inventory (`character-tabs.js`) holds one tab per character —
+your own, plus every other member of the party — and clicking one opens a
+two-item menu, because each character has two views.
+
+- The selection is split in two, and only half of it is new. **Which** character
+  is shown remains `state.party.viewingPlayerId`, so the tabs and the sidebar's
+  Party panel are two faces of one selection; **which view** is `state.view`.
+  Neither is saved: both are UI position, not character data.
+- `syncCharacterViewUI()` is the single entry point for "who or what we're
+  looking at changed". `updatePartyPanel()` calls it, which is what keeps the
+  tabs in step with roster updates arriving from Firebase, and stops a
+  deselected player's sheet from staying on screen.
+- The sheet/inventory swap is one class, `sheet-view` on `#inventory-panel`, so
+  the grid, stash and container tabs stay hidden by CSS rather than by JS that
+  would fight their own `.hidden` toggling.
+- A GM has no own-tab (no character of their own) and no active tab until they
+  pick a player. `#character-tabs` is positioned above `#gm-placeholder`, which
+  paints over the whole panel — that is exactly when the tabs are needed.
+- `#character-sheet` is a placeholder pending the real sheet.
 
 ### Coins
 

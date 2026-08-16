@@ -123,6 +123,7 @@ function loadState() {
     rebuildGrid();
     renderItemList();
     renderEquipPanel();
+    syncCharacterViewUI();
     flashButton(document.getElementById('load-btn'), 'Loaded!');
   } catch {
     alert('Failed to load save data.');

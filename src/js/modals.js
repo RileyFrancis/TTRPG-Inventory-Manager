@@ -46,6 +46,7 @@ document.getElementById('save-char-btn').addEventListener('click', () => {
   state.character.name = name;
   state.character.strength = str;
   rebuildGrid();
+  syncCharacterViewUI(); // the tab and the sheet both carry the name
   hideModal('character-modal');
   debouncedSync();
 });

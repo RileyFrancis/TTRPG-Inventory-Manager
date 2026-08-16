@@ -53,9 +53,13 @@
 
     <!-- ===== EQUIP PANEL ===== -->
     <div id="equip-panel"><!-- rendered by renderEquipPanel() --></div>
+    <div class="panel-resizer" id="equip-resizer" data-side="equip"
+         title="Drag to resize · double-click to collapse"></div>
 
     <!-- ===== INVENTORY PANEL ===== -->
     <div id="inventory-panel">
+      <!-- One tab per character — yours, plus everyone else in the party -->
+      <div id="character-tabs"><!-- rendered by renderCharacterTabs() --></div>
       <div id="viewing-banner" class="hidden">
         <span id="viewing-banner-text"></span>
         <button id="return-to-own-btn" class="btn-sm">Return to Your Inventory</button>
@@ -77,6 +81,15 @@
         <div id="stash-list"></div>
       </div>
 
+      <!-- Shown in place of the grid when a tab's "Character Sheet" is picked -->
+      <div id="character-sheet">
+        <div class="sheet-inner">
+          <h2 id="sheet-char-name">Unnamed Hero</h2>
+          <p id="sheet-char-sub" class="sheet-sub">STR 10</p>
+          <p class="sheet-placeholder">The character sheet will live here.</p>
+        </div>
+      </div>
+
       <div id="gm-placeholder" class="hidden">
         <div class="gm-ph-inner">
           <div class="gm-ph-icon">&#9876;</div>
@@ -85,6 +98,9 @@
         </div>
       </div>
     </div>
+
+    <div class="panel-resizer" id="sidebar-resizer" data-side="sidebar"
+         title="Drag to resize · double-click to collapse"></div>
 
     <!-- ===== SIDEBAR ===== -->
     <aside id="sidebar">
@@ -194,6 +210,12 @@
 
     </aside>
 
+    <!-- Shown only while the panel on that side is collapsed -->
+    <button id="show-equip-btn" class="panel-reopen-btn left" title="Show the equipment panel"
+            aria-label="Show the equipment panel">&raquo;</button>
+    <button id="show-sidebar-btn" class="panel-reopen-btn right" title="Show the item browser"
+            aria-label="Show the item browser">&laquo;</button>
+
   </div>
 </div>
 
@@ -210,6 +232,12 @@
   <button id="ctx-folder">Move to Folder…</button>
   <button id="ctx-edit">Edit Item</button>
   <button id="ctx-remove">Remove</button>
+</div>
+
+<!-- ===== CHARACTER TAB MENU ===== -->
+<div id="char-tab-menu" class="hidden">
+  <button class="char-view-btn" data-view="sheet">Character Sheet</button>
+  <button class="char-view-btn" data-view="inventory">Inventory</button>
 </div>
 
 <!-- ===== MODAL BACKDROP ===== -->
@@ -538,9 +566,11 @@
 <script src="src/js/helpers.js"></script>
 <script src="src/js/persistence.js"></script>
 <script src="src/js/theme.js"></script>
+<script src="src/js/panels.js"></script>
 
 <script src="src/js/firebase-config.js"></script>
 <script src="src/js/party.js"></script>
+<script src="src/js/character-tabs.js"></script>
 <script src="src/js/equipment.js"></script>
 <script src="src/js/tooltip.js"></script>
 

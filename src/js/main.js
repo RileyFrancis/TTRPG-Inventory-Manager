@@ -8,6 +8,7 @@
 // =============================================================================
 function init() {
   initTheme();      // Before any render: rarity colours are read from the active palette
+  loadPanelLayout(); // Side-panel widths / collapsed state — stored per browser
   loadDefaultItems();
   DEFAULT_ITEMS.forEach(t => { state.db[t.id] = t; });
   autoLoad();       // Restore last session (includes equipLayout if saved)
@@ -16,6 +17,7 @@ function init() {
   rebuildGrid(); // Sizes grid from restored character.strength, places saved instances
   renderItemList();
   renderEquipPanel();
+  syncCharacterViewUI(); // character tabs — solo, that is the one own-tab
   initFirebase();
 }
 
