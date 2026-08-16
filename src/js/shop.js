@@ -67,8 +67,40 @@ function shopEntryTemplate(entry) {
   try { return JSON.parse(entry.template); } catch { return null; }
 }
 
-function shopEntryPrice(entry) {
+// Two prices per line, and the difference matters. The *base* is what the GM
+// typed (or the item's own cost, untouched); the shop's markup then scales every
+// base together, so a hard season or a gouging trader is one number rather than
+// a pass over the whole stock list. The editor edits the base; everything else —
+// the listing, the buy dialog, what actually leaves the purse — uses the scaled
+// price, so the two can never disagree.
+function shopEntryBasePrice(entry) {
   return parseCostObj(entry.price ?? shopEntryTemplate(entry)?.cost);
+}
+
+// Stored as whole percent, 100 = the price as written. Absent means 100.
+function shopPriceModifier(shop) {
+  const pct = shop?.priceModifier;
+  return Number.isFinite(pct) && pct >= 0 ? pct : 100;
+}
+
+function shopEntryPriceCp(shop, entry) {
+  const base = costToCp(shopEntryBasePrice(entry));
+  if (!base) return 0; // free stays free, whatever the markup
+  // Scaling happens in copper, so a markup can move a price by less than a coin
+  // of its own denomination. Never rounds a real cost away to nothing.
+  return Math.max(1, Math.round(base * shopPriceModifier(shop) / 100));
+}
+
+function shopEntryPrice(shop, entry) {
+  return cpToCoins(shopEntryPriceCp(shop, entry));
+}
+
+// "+10%" / "−25%", or null when the shop charges what the list says.
+function priceModifierLabel(shop) {
+  const pct = shopPriceModifier(shop);
+  if (pct === 100) return null;
+  const delta = pct - 100;
+  return `${delta > 0 ? '+' : '−'}${Math.abs(delta)}%`;
 }
 
 function stockLabel(entry) {
@@ -201,6 +233,7 @@ function renderShopList(pane) {
   shops.forEach(shop => {
     const row = document.createElement('button');
     row.className = 'shop-row' + (shop.revealed ? ' revealed' : '');
+    row.dataset.shopId = shop.id; // a card dragged out of Browse can land here
     const nm = document.createElement('span');
     nm.className = 'shop-row-name';
     nm.textContent = shop.name;
@@ -269,7 +302,10 @@ function renderShopDetail(pane, shop) {
     body.appendChild(d);
   }
 
-  if (gm) buildShopRevealControls(body, shop);
+  if (gm) {
+    buildShopRevealControls(body, shop);
+    buildShopPriceControls(body, shop);
+  }
 
   const hdr = document.createElement('div');
   hdr.className = 'shop-section-hdr';
@@ -342,6 +378,60 @@ function buildShopRevealControls(body, shop) {
   });
 }
 
+// One number over the whole stock list. A hard winter, a gouging trader or a
+// friendly discount is a markup rather than a pass over every line — and because
+// it scales the base prices instead of rewriting them, winding it back to 100
+// restores exactly what the GM originally typed.
+function buildShopPriceControls(body, shop) {
+  const hdr = document.createElement('div');
+  hdr.className = 'shop-section-hdr';
+  hdr.textContent = 'Prices';
+  body.appendChild(hdr);
+
+  const row = document.createElement('div');
+  row.className = 'shop-price-row';
+
+  const stepper = (label, delta) => {
+    const b = document.createElement('button');
+    b.className = 'shop-price-step';
+    b.type = 'button';
+    b.textContent = label;
+    b.title = `${delta > 0 ? 'Raise' : 'Lower'} every price by ${Math.abs(delta)}%`;
+    b.addEventListener('click', () => setShopPriceModifier(shop, shopPriceModifier(shop) + delta));
+    return b;
+  };
+
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.className = 'shop-price-input';
+  input.min = 0;
+  input.max = 1000;
+  input.step = 5;
+  input.value = shopPriceModifier(shop);
+  input.title = 'Percent of the listed price — 100 is the price as written';
+  // On change, not input: every keystroke would be its own write to Firebase.
+  input.addEventListener('change', () => setShopPriceModifier(shop, parseInt(input.value, 10)));
+
+  row.appendChild(stepper('−10', -10));
+  row.appendChild(input);
+  row.appendChild(stepper('+10', 10));
+  body.appendChild(row);
+
+  const note = document.createElement('p');
+  note.className = 'shop-price-note';
+  const label = priceModifierLabel(shop);
+  note.textContent = label
+    ? `Everything sells at ${shopPriceModifier(shop)}% — ${label} on the listed prices.`
+    : 'Everything sells at the listed price.';
+  if (label) note.classList.add('marked');
+  body.appendChild(note);
+}
+
+function setShopPriceModifier(shop, pct) {
+  const clamped = Math.max(0, Math.min(1000, Number.isFinite(pct) ? Math.round(pct) : 100));
+  shopRef(shop.id).update({ priceModifier: clamped });
+}
+
 function buildStockRow(shop, entry, gm) {
   const t = shopEntryTemplate(entry);
   const sold = isSoldOut(entry);
@@ -358,7 +448,7 @@ function buildStockRow(shop, entry, gm) {
   const nm = document.createElement('span');
   nm.className = 'shop-item-name';
   nm.textContent = t?.name ?? 'Unknown item';
-  const price = shopEntryPrice(entry);
+  const price = shopEntryPrice(shop, entry);
   const sub = document.createElement('span');
   sub.className = 'shop-item-sub';
   sub.textContent = `${hasCost(price) ? formatCost(price) : 'Free'} · ${stockLabel(entry)}`;
@@ -373,7 +463,7 @@ function buildStockRow(shop, entry, gm) {
     row.addEventListener('click', () => openShopEntryModal(shop, entry));
   } else {
     // The row is small, so looking an item over happens in the Details tab.
-    row.addEventListener('click', () => showShopItemDetails(entry));
+    row.addEventListener('click', () => showShopItemDetails(shop, entry));
     const buy = document.createElement('button');
     buy.className = 'btn-sm shop-buy-btn';
     buy.textContent = sold ? 'Sold' : 'Buy';
@@ -389,15 +479,50 @@ function buildStockRow(shop, entry, gm) {
 // A shop item may be something the viewer has never owned, so the details panel
 // is handed the shop's own snapshot instead of a lookup in state.db — and the
 // action buttons go away, since none of them mean anything for goods on a shelf.
-function showShopItemDetails(entry) {
+function showShopItemDetails(shop, entry) {
   const t = shopEntryTemplate(entry);
   if (!t) return;
   state.selected = null;
   populateDetailsPanel(t);
-  const price = shopEntryPrice(entry);
+  const price = shopEntryPrice(shop, entry);
   document.getElementById('details-cost').textContent = hasCost(price) ? formatCost(price) : 'Free';
   document.getElementById('details-actions').classList.add('hidden');
   switchTab('details');
+}
+
+// =============================================================================
+// SHOP — DROP TARGET
+// =============================================================================
+// A card dragged out of Browse can be dropped straight onto a shop. Same
+// bounding-rect hit test the folder headers and equip cards use, and checked by
+// buildItemCard's drag *before* the grid, so a drop over the shop stocks the
+// item instead of trying to place one in an inventory the GM may not even have.
+//
+// On a shop's own page the whole pane is that shop's target — there is only one
+// shop it could mean. In the list, each row is its own target, so a GM can fill
+// several shops without opening any of them.
+function getShopDropTargetAtPoint(x, y) {
+  if (!isShopGM()) return null;
+  const pane = document.getElementById('left-pane-shop');
+  if (!pane || !pane.classList.contains('active')) return null;
+
+  const inside = el => {
+    const b = el.getBoundingClientRect();
+    return x >= b.left && x <= b.right && y >= b.top && y <= b.bottom;
+  };
+
+  for (const row of pane.querySelectorAll('.shop-row')) {
+    if (inside(row)) return { el: row, shopId: row.dataset.shopId };
+  }
+  if (state.shopOpenId && state.shops[state.shopOpenId] && inside(pane)) {
+    return { el: pane, shopId: state.shopOpenId };
+  }
+  return null;
+}
+
+function clearShopDropTargets() {
+  document.querySelectorAll('#left-pane-shop.drop-target, #left-pane-shop .drop-target')
+    .forEach(el => el.classList.remove('drop-target'));
 }
 
 // =============================================================================
@@ -518,15 +643,31 @@ function updateShopAddButton() {
 
 document.getElementById('shop-add-search').addEventListener('input', renderShopAddList);
 
-document.getElementById('shop-add-confirm-btn').addEventListener('click', () => {
-  const shop = state.shops[shopAddTargetId];
-  if (!shop) { hideModal('shop-add-modal'); return; }
+// The one way stock arrives, from the picker modal and from a card dragged out
+// of Browse alike. An item already on the shelf gains one to its count rather
+// than a second line — dragging the same sword twice means two swords, not two
+// entries reading "1 left".
+function addItemsToShop(shopId, templateIds) {
+  const shop = state.shops[shopId];
+  if (!shop || !templateIds.length || !firebaseDb) return 0;
 
+  const existing = shopStockEntries(shop);
   const updates = {};
-  let order = shopStockEntries(shop).length;
-  shopAddSelection.forEach(templateId => {
+  let order = existing.length;
+  let added = 0;
+
+  templateIds.forEach(templateId => {
     const t = state.db[templateId];
     if (!t) return;
+    added++;
+
+    const already = existing.find(e => e.templateId === templateId);
+    if (already) {
+      if (already.qty === SHOP_UNLIMITED) return; // bottomless: nothing to top up
+      updates[`${already.entryId}/qty`] = (already.qty ?? 0) + 1;
+      return;
+    }
+
     const entryId = 'e_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
     updates[entryId] = {
       templateId,
@@ -536,7 +677,12 @@ document.getElementById('shop-add-confirm-btn').addEventListener('click', () => 
     };
   });
 
-  firebaseDb.ref(shopsPath(shop.id) + '/stock').update(updates);
+  if (Object.keys(updates).length) firebaseDb.ref(shopsPath(shopId) + '/stock').update(updates);
+  return added;
+}
+
+document.getElementById('shop-add-confirm-btn').addEventListener('click', () => {
+  addItemsToShop(shopAddTargetId, [...shopAddSelection]);
   hideModal('shop-add-modal');
 });
 
@@ -555,8 +701,21 @@ function openShopEntryModal(shop, entry) {
   qtyInput.value = unlimited ? 1 : (entry.qty ?? 0);
   qtyInput.disabled = unlimited;
 
-  setShopPriceFields(shopEntryPrice(entry));
+  // The field holds the base price; the note under it says what the shop's
+  // markup turns that into, so the GM is never guessing at the shelf price.
+  setShopPriceFields(shopEntryBasePrice(entry));
+  updateShopEntryPriceNote();
   showModal('shop-entry-modal');
+}
+
+function updateShopEntryPriceNote() {
+  const note = document.getElementById('shop-entry-price-note');
+  const shop = state.shops[shopEntryTarget?.shopId];
+  const label = priceModifierLabel(shop);
+  note.classList.toggle('hidden', !label);
+  if (!label) return;
+  const scaled = shopEntryPrice(shop, { price: readShopPriceFields() });
+  note.textContent = `Shop markup ${label} — sells for ${hasCost(scaled) ? formatCost(scaled) : 'free'}.`;
 }
 
 function setShopPriceFields(cost) {
@@ -576,9 +735,15 @@ document.getElementById('shop-entry-unlimited').addEventListener('change', e => 
   document.getElementById('shop-entry-qty').disabled = e.target.checked;
 });
 
+PRICE_DENOMS.forEach(d => {
+  document.getElementById('shop-price-' + d).addEventListener('input', updateShopEntryPriceNote);
+});
+
 document.getElementById('shop-entry-reset-price').addEventListener('click', () => {
-  const entry = currentStockEntry(shopEntryTarget);
-  if (entry) setShopPriceFields(shopEntryTemplate(entry)?.cost);
+  const found = currentStockEntry(shopEntryTarget);
+  if (!found) return;
+  setShopPriceFields(shopEntryTemplate(found.entry)?.cost);
+  updateShopEntryPriceNote();
 });
 
 document.getElementById('shop-entry-save-btn').addEventListener('click', () => {
@@ -598,10 +763,12 @@ document.getElementById('shop-entry-remove-btn').addEventListener('click', () =>
   hideModal('shop-entry-modal');
 });
 
+// Both halves, because a price cannot be worked out from the entry alone — the
+// shop's markup is the other half of it.
 function currentStockEntry(target) {
   const shop = target && state.shops[target.shopId];
   const entry = shop && (shop.stock ?? {})[target.entryId];
-  return entry ? { ...entry, entryId: target.entryId } : null;
+  return entry ? { shop, entry: { ...entry, entryId: target.entryId } } : null;
 }
 
 // =============================================================================
@@ -723,7 +890,7 @@ function openBuyModal(shop, entry) {
   shopBuyTarget = { shopId: shop.id, entryId: entry.entryId };
 
   const t = shopEntryTemplate(entry);
-  const price = shopEntryPrice(entry);
+  const price = shopEntryPrice(shop, entry);
   document.getElementById('shop-buy-title').textContent = t?.name ?? 'Buy';
   document.getElementById('shop-buy-sub').textContent =
     `${shop.name} · ${hasCost(price) ? formatCost(price) : 'Free'} each · ${stockLabel(entry)}`;
@@ -754,11 +921,12 @@ function updateBuySummary() {
   box.innerHTML = '';
   document.getElementById('shop-buy-error').classList.add('hidden');
 
-  const entry = currentStockEntry(shopBuyTarget);
-  if (!entry) { btn.disabled = true; return; }
+  const found = currentStockEntry(shopBuyTarget);
+  if (!found) { btn.disabled = true; return; }
+  const { shop, entry } = found;
 
   const count = buyQuantity();
-  const priceCp = costToCp(shopEntryPrice(entry)) * count;
+  const priceCp = shopEntryPriceCp(shop, entry) * count;
   const plan = planPayment(priceCp);
 
   box.appendChild(buildCoinLine('Total', cpToCoins(priceCp)));
@@ -818,11 +986,13 @@ function showBuyError(plan) {
 document.getElementById('shop-buy-confirm-btn').addEventListener('click', confirmPurchase);
 
 async function confirmPurchase() {
-  const entry = currentStockEntry(shopBuyTarget);
-  if (!entry || !canBuyFromShop()) { hideModal('shop-buy-modal'); return; }
+  const found = currentStockEntry(shopBuyTarget);
+  if (!found || !canBuyFromShop()) { hideModal('shop-buy-modal'); return; }
+  const { shop, entry } = found;
 
   const count = buyQuantity();
-  const plan = planPayment(costToCp(shopEntryPrice(entry)) * count);
+  const priceCp = shopEntryPriceCp(shop, entry) * count;
+  const plan = planPayment(priceCp);
   if (plan.error) { showBuyError(plan); return; }
 
   const btn = document.getElementById('shop-buy-confirm-btn');
@@ -859,7 +1029,7 @@ async function confirmPurchase() {
   // save landing from another device. Re-plan against what is actually there,
   // and fall back to the original only if the fresh one cannot be paid: the
   // stock is already claimed, so the buyer must not be left holding nothing.
-  const fresh = planPayment(costToCp(shopEntryPrice(entry)) * count);
+  const fresh = planPayment(priceCp);
   applyPayment(fresh.error ? plan : fresh);
   grantPurchase(entry, count);
   hideModal('shop-buy-modal');

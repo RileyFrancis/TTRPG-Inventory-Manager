@@ -143,6 +143,23 @@ shared pile of stock — a sword bought by one player is gone for the rest.
   `players` map. That map is keyed by player id, and **a rejoin mints a new
   one** — so `playerNames` is written beside it and matched as a fallback,
   otherwise a shop revealed before a reload goes dark on the player it was for.
+- Stock arrives two ways — the picker modal and a card **dragged out of Browse**
+  — and both go through `addItemsToShop()`. An item already on the shelf gains
+  one to its count rather than a second line. The drag is the folder-header
+  pattern again: `getShopDropTargetAtPoint` is a bounding-rect test that
+  `buildItemCard` checks *before* the grid, so a drop over the shop stocks the
+  item instead of trying to place one in an inventory a GM may not even have.
+  On a shop's own page the whole pane is the target; in the list each row is,
+  so several shops can be filled without opening any.
+- **Two prices per line.** The *base* is what the GM typed (or the item's own
+  cost); `shop.priceModifier` — whole percent, absent means 100 — then scales
+  every base together, so a hard season is one number rather than a pass over
+  the stock list. `shopEntryBasePrice()` is what the entry editor edits;
+  `shopEntryPrice(shop, entry)` / `shopEntryPriceCp()` is what the listing, the
+  buy dialog and the purse all use, so the two can never disagree, and winding
+  the markup back to 100 restores exactly what was typed. Scaling happens in
+  copper and never rounds a real cost away to nothing. Players see only the
+  scaled price — the markup is the GM's control, not a label on the shelf.
 - A stock entry snapshots the whole item as **JSON in `template`**, so a shop can
   stock something the buyer has never owned and a later edit to the GM's
   catalogue cannot change a listing under the players. A string for the reason

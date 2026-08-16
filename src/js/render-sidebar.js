@@ -171,9 +171,17 @@ function buildItemCard(t) {
       // No equip-slot highlighting for new items (not yet placed)
       document.querySelectorAll('.eq-card.drag-hover').forEach(c => c.classList.remove('drag-hover'));
 
-      // A folder header under the cursor wins over the grid: this drag files
-      // the item instead of placing it.
+      // A shop or a folder header under the cursor wins over the grid: those
+      // drags stock or file the item rather than placing one.
+      clearShopDropTargets();
       clearFolderDropTargets();
+      const shopDrop = getShopDropTargetAtPoint(me.clientX, me.clientY);
+      if (shopDrop) {
+        shopDrop.el.classList.add('drop-target');
+        setGhostVisibility(false);
+        clearHighlights();
+        return;
+      }
       const folderEl = getFolderHeaderAtPoint(me.clientX, me.clientY);
       if (folderEl) {
         folderEl.classList.add('drop-target');
@@ -205,12 +213,20 @@ function buildItemCard(t) {
         return;
       }
       // End of drag: restore ghost visibility and clean up
+      const shopDrop = getShopDropTargetAtPoint(ue.clientX, ue.clientY);
       const folderEl = getFolderHeaderAtPoint(ue.clientX, ue.clientY);
       setGhostVisibility(true);
       hideGhost();
       clearHighlights();
+      clearShopDropTargets();
       clearFolderDropTargets();
       document.querySelectorAll('.eq-card.drag-hover').forEach(c => c.classList.remove('drag-hover'));
+
+      // Dropped on a shop → onto the shelf it goes, nothing enters the grid.
+      if (shopDrop) {
+        addItemsToShop(shopDrop.shopId, [tid]);
+        return;
+      }
 
       // Dropped on a folder header → reclassify, nothing enters the grid.
       // Dropping on Unfiled is a deliberate "no folder", not a reset to auto.
