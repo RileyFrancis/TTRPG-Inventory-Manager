@@ -105,7 +105,27 @@ function initTheme() {
   }
 }
 
-document.getElementById('settings-btn').addEventListener('click', () => {
+function openSettingsModal() {
   updateThemePickerUI(getThemePreference());
   showModal('settings-modal');
+}
+
+document.getElementById('settings-btn').addEventListener('click', openSettingsModal);
+
+// The info pages replace the settings modal rather than stacking on top of it —
+// a click on the backdrop closes every open modal, so two at once would both go.
+document.getElementById('how-to-btn').addEventListener('click', () => {
+  hideModal('settings-modal');
+  showModal('how-to-modal');
+});
+document.getElementById('about-btn').addEventListener('click', () => {
+  hideModal('settings-modal');
+  showModal('about-modal');
+});
+document.querySelectorAll('.settings-back-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const modal = btn.closest('.modal');
+    if (modal) hideModal(modal.id);
+    openSettingsModal();
+  });
 });

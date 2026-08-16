@@ -132,6 +132,13 @@ two-item menu, because each character has two views.
   pick a player. `#character-tabs` is positioned above `#gm-placeholder`, which
   paints over the whole panel — that is exactly when the tabs are needed.
 - `#character-sheet` is a placeholder pending the real sheet.
+- One key per half of the selection: **Tab** flips the shown character between
+  their two views, **Shift+Tab** walks to the next tab, and **1–9** jump to a tab
+  by position. They keep the other half of the selection intact — cycling stays
+  on the same view, Tab stays on the same character. Suppressed while typing,
+  while any modal is open, and unless `state.mode === 'idle'`
+  (`characterShortcutsAllowed`), because a character swap mid-drag would strand
+  the item that dragging has taken out of the grid.
 
 ### Coins
 

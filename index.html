@@ -516,6 +516,25 @@
   <div class="modal-box narrow">
     <h2>Settings</h2>
 
+    <div class="setting-row" id="settings-nav">
+      <button id="how-to-btn" class="settings-nav-btn" type="button">
+        <span class="settings-nav-icon">&#9432;</span>
+        <span class="settings-nav-label">
+          <span class="settings-nav-title">How to Use</span>
+          <span class="settings-nav-sub">A walkthrough of the app</span>
+        </span>
+        <span class="settings-nav-chev">&#8250;</span>
+      </button>
+      <button id="about-btn" class="settings-nav-btn" type="button">
+        <span class="settings-nav-icon">&#10070;</span>
+        <span class="settings-nav-label">
+          <span class="settings-nav-title">About</span>
+          <span class="settings-nav-sub">About this project</span>
+        </span>
+        <span class="settings-nav-chev">&#8250;</span>
+      </button>
+    </div>
+
     <div class="setting-row">
       <span class="setting-label">Theme</span>
       <div class="segmented" id="theme-picker" role="group" aria-label="Theme">
@@ -533,6 +552,36 @@
     </div>
 
     <div class="modal-footer">
+      <button class="cancel-btn btn-sm">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== HOW TO USE MODAL ===== -->
+<!-- Opened from Settings; the Back button returns there. Fill in the prose
+     below — the .info-body wrapper carries the reading styles. -->
+<div id="how-to-modal" class="modal hidden">
+  <div class="modal-box">
+    <h2>How to Use</h2>
+    <div class="info-body">
+      <p class="info-placeholder">Instructions coming soon.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="settings-back-btn btn-sm">&#8249; Back</button>
+      <button class="cancel-btn btn-sm">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ABOUT MODAL ===== -->
+<div id="about-modal" class="modal hidden">
+  <div class="modal-box">
+    <h2>About</h2>
+    <div class="info-body">
+      <p class="info-placeholder">Project information coming soon.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="settings-back-btn btn-sm">&#8249; Back</button>
       <button class="cancel-btn btn-sm">Close</button>
     </div>
   </div>

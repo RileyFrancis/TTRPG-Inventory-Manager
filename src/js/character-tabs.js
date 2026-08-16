@@ -192,3 +192,63 @@ function renderCharacterSheet() {
   document.getElementById('sheet-char-name').textContent = state.character.name;
   document.getElementById('sheet-char-sub').textContent  = `STR ${state.character.strength}`;
 }
+
+// =============================================================================
+// KEYBOARD SHORTCUTS
+// =============================================================================
+// The two halves of the selection get a key each: Tab flips between the two
+// views of whoever is shown, Shift+Tab walks to the next character. The number
+// keys are that same walk by absolute position — 1 is the leftmost tab — so any
+// character in a small party is one keypress away.
+
+// Off while typing, while a modal is up, and mid-drag: switching character with
+// an item in the air would strand it, since a dragged item is out of the grid
+// until pointerup.
+function characterShortcutsAllowed(e) {
+  if (e.ctrlKey || e.altKey || e.metaKey) return false;
+  const t = e.target;
+  if (t && t.matches && t.matches('input, textarea, select')) return false;
+  if (t && t.isContentEditable) return false;
+  if (document.querySelector('.modal:not(.hidden)')) return false;
+  return state.mode === 'idle';
+}
+
+function toggleInventoryView() {
+  if (!hasViewedCharacter()) return; // a GM with nobody picked has no sheet to show
+  setInventoryView(state.view === 'sheet' ? 'inventory' : 'sheet');
+}
+
+// Keeps the current view: this half of the selection is about *who*, not about
+// which of their two pages you are reading.
+function showCharacterAt(index) {
+  const tab = characterTabList()[index];
+  if (tab) selectCharacterView(tab.key, state.view);
+}
+
+function cycleCharacter(step) {
+  const tabs = characterTabList();
+  if (!tabs.length) return;
+  // A GM who has picked nobody has no active tab, so findIndex gives -1 and the
+  // first step lands on the leftmost player — which is what they want anyway.
+  const current = tabs.findIndex(t => t.key === activeTabKey());
+  const next = (((current + step) % tabs.length) + tabs.length) % tabs.length;
+  showCharacterAt(next);
+}
+
+document.addEventListener('keydown', e => {
+  if (!characterShortcutsAllowed(e)) return;
+
+  if (e.key === 'Tab') {
+    e.preventDefault(); // a view switch, not focus movement
+    closeCharacterTabMenu();
+    if (e.shiftKey) cycleCharacter(1);
+    else toggleInventoryView();
+    return;
+  }
+
+  if (e.shiftKey) return;
+  if (e.key.length === 1 && e.key >= '1' && e.key <= '9') {
+    closeCharacterTabMenu();
+    showCharacterAt(Number(e.key) - 1);
+  }
+});
