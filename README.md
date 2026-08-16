@@ -30,23 +30,24 @@ Then open [http://localhost:8787](http://localhost:8787).
 
 ## Deploying
 
-The site is static, so any host will serve it as-is — but party play needs the
-Firebase settings to arrive, and `.env` is gitignored, so it never reaches the
-host. Cloudflare Pages would not serve it even if it did: it skips every path
-beginning with a dot.
+The site is static, so any host serves it as-is — but party play needs the
+Firebase settings to arrive, and `.env` cannot carry them: it is gitignored, so
+it never reaches the host, and Cloudflare Pages would not serve it even if it
+did, because it skips every path beginning with a dot.
 
-So generate the settings at deploy time instead. On **Cloudflare Pages** →
-Settings → Builds:
+So the deployed site reads them from the host instead, through
+`functions/firebase-env.js`. On **Cloudflare Pages** → Settings → Variables and
+Secrets, add the seven `FIREBASE_*` keys from `.env.example`, then redeploy.
+No build command and no build step: Pages turns anything under `functions/`
+into a Worker on its own, and the variables reach it at request time.
 
-| Setting | Value |
-|---------|-------|
-| Build command | `node tools/build-firebase-env.js` |
-| Build output directory | `/` |
+With no variables set the route 404s and the site still works — only party play
+stays off, exactly as a checkout with no `.env` behaves locally.
 
-and add the seven `FIREBASE_*` keys from `.env.example` under **Variables and
-Secrets**. The script writes them to `firebase.env` — an ordinary filename Pages
-will serve — which the app reads in preference to `.env`. With no variables set
-it writes nothing and the site still deploys; only party play stays off.
+> The values are still delivered to every visitor's browser; they have to be,
+> or the page could not reach Firebase. This keeps them out of the repo, not out
+> of public view. What actually guards your data is your Realtime Database
+> rules.
 
 ## Project Layout
 
@@ -54,7 +55,9 @@ it writes nothing and the site still deploys; only party play stays off.
 index.html              Static shell — all DOM elements with stable IDs
 .env                    Firebase credentials for local dev (gitignored, optional)
 .env.example            Template for .env
-firebase.env            Same, generated at deploy time (gitignored) — see Deploying
+functions/
+  firebase-env.js       Cloudflare Pages Function: serves the same keys on the
+                        deployed site, from the host's env vars — see Deploying
 src/
   css/style.css         All styles; CSS custom properties drive the theme
   js/                   Application logic, one file per concern (see below)
@@ -64,7 +67,6 @@ data/
   items_old.csv         Reference data, not loaded
 tools/
   shape-editor.html     Standalone helper for drawing item shapes
-  build-firebase-env.js Deploy-time: env vars → firebase.env
 ```
 
 ### `src/js/`

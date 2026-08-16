@@ -242,12 +242,17 @@ or it will be wrong in one of the two themes.
 from the project root and parse them into `FIREBASE_CONFIG`. Both paths are relative to the
 **document**, not the script.
 
-- Two files, same format, first hit wins: `firebase.env` then `.env`. `.env` is the local
-  copy; `firebase.env` is written at deploy time by `tools/build-firebase-env.js` from the
-  host's environment variables, because `.env` is gitignored and never reaches a deploy —
-  and **Cloudflare Pages will not serve any path beginning with a dot** regardless. Both
-  are gitignored; `.env.example` is the committed template. Keep it in sync when adding a
-  key, along with the `KEYS` list in the build script.
+- Two sources, same `KEY=value` text, first hit wins: `.env` locally, `/firebase-env` on a
+  deploy. The deploy needs its own source because `.env` is gitignored and never reaches
+  the host — and **Cloudflare Pages will not serve any path beginning with a dot**
+  regardless. `functions/firebase-env.js` is a Pages Function (anything under `functions/`
+  is deployed as a Worker with no build step) that reads the `FIREBASE_*` variables from
+  the Pages dashboard, which is what keeps them out of the public repo. `.env.example` is
+  the committed template — keep it in sync when adding a key, along with the `KEYS` list
+  in the Function.
+- Which is tried first depends on `location.hostname`, purely to avoid a certain miss: a
+  deploy has no `.env`, a plain local static server has no Functions runtime. Both are
+  always tried, so neither environment is locked out.
 - A missing file does **not** reliably mean a 404: Pages answers unknown paths with its
   index page, i.e. HTTP 200 and a pageful of HTML. `readEnvFile` rejects a body starting
   with `<` for that reason, and a file that parses but has no `FIREBASE_DATABASE_URL` is

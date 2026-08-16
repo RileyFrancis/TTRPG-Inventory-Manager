@@ -46,9 +46,9 @@ function partyUnavailableMessage() {
       return 'Party play is off because this deploy has no Firebase settings.\n\n' +
              '.env is gitignored, so it never reaches the host — and Cloudflare Pages ' +
              'will not serve a file whose name starts with a dot in any case.\n\n' +
-             'Set the FIREBASE_* variables in your host\'s build settings and run\n' +
-             '    node tools/build-firebase-env.js\n' +
-             'as the build command, which writes the firebase.env this page looks for.';
+             'Set the FIREBASE_* variables under Pages → Settings → Variables and Secrets, ' +
+             'then redeploy: functions/firebase-env.js serves them to this page at ' +
+             '/firebase-env, which is currently answering with nothing.';
     }
     return 'Party play is off because .env could not be read.\n\n' +
            'It must sit in the project root and be served alongside index.html — ' +

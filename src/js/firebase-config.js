@@ -6,22 +6,24 @@
 // =============================================================================
 // FIREBASE CONFIGURATION
 // =============================================================================
-// Values live in `.env` at the project root (gitignored — see .env.example).
 // Loaded with a synchronous XHR, the same way items.js loads data/items.csv, so
 // FIREBASE_CONFIG is populated before init() runs.
 //
-// Two files are tried, same format, first hit wins:
+// Two sources, same KEY=value text, first hit wins:
 //
-//   firebase.env  generated at deploy time by tools/build-firebase-env.js from
-//                 the host's environment variables. `.env` is gitignored so it
-//                 never reaches a deploy, and Cloudflare Pages would not serve
-//                 it anyway — it skips every path starting with a dot.
-//   .env          the local development copy.
+//   .env          the local development copy at the project root (gitignored —
+//                 see .env.example).
+//   /firebase-env the deployed site's Cloudflare Pages Function
+//                 (functions/firebase-env.js), which reads the FIREBASE_*
+//                 variables from the Pages dashboard. The deploy needs it
+//                 because `.env` is gitignored and so never reaches the host —
+//                 and Pages will not serve a dot-prefixed path in any case.
 //
-// Either file is fetched by the browser, so it is readable by anyone who can
-// reach the site. That is fine for Firebase web config — it is public by design
-// and access is enforced by your Realtime Database rules — but never put real
-// secrets in it.
+// Whichever answers, the browser receives the values, so they are readable by
+// anyone who can reach the site. That is unavoidable — the client cannot connect
+// to Firebase without them — and fine for Firebase web config, which is public
+// by design and guarded by your Realtime Database rules. Never put real secrets
+// in either source.
 
 // .env key → Firebase config key
 const FIREBASE_ENV_KEYS = {
@@ -53,15 +55,18 @@ function parseEnv(text) {
   return env;
 }
 
-// Tried in order; the deploy-time file wins so a stale local copy of it cannot
-// shadow the `.env` a developer is editing... and vice versa, only one of the
-// two normally exists at all.
-const FIREBASE_ENV_FILES = ['firebase.env', '.env'];
+// Ordered by where the page is running, so neither environment pays for a
+// request that is certain to miss: a deploy has no `.env`, and a plain local
+// static server has no Functions runtime to answer /firebase-env.
+const FIREBASE_ENV_SOURCES =
+  ['localhost', '127.0.0.1', '[::1]', ''].includes(location.hostname)
+    ? ['.env', 'firebase-env']
+    : ['firebase-env', '.env'];
 
-// Null when the file isn't there. Note the HTML guard: a static host that
-// answers 404s with its index page (Cloudflare Pages does) returns 200 and a
-// pageful of markup for a file that does not exist, which would otherwise parse
-// as an env file with no keys in it.
+// Null when nothing is there. Note the HTML guard: a static host that answers
+// 404s with its index page (Cloudflare Pages does) returns 200 and a pageful of
+// markup for a path that does not exist, which would otherwise parse as an env
+// file with no keys in it.
 function readEnvFile(path) {
   try {
     const xhr = new XMLHttpRequest();
@@ -76,7 +81,7 @@ function readEnvFile(path) {
 }
 
 function loadFirebaseConfig() {
-  for (const path of FIREBASE_ENV_FILES) {
+  for (const path of FIREBASE_ENV_SOURCES) {
     const env = readEnvFile(path);
     if (!env) continue;
 
@@ -100,9 +105,9 @@ function loadFirebaseConfig() {
     return config;
   }
 
-  console.info('No Firebase config found (looked for ' + FIREBASE_ENV_FILES.join(', ') + ') — ' +
+  console.info('No Firebase config found (looked for ' + FIREBASE_ENV_SOURCES.join(', ') + ') — ' +
                'party features disabled. Copy .env.example to .env to enable them locally; ' +
-               'when hosting, see tools/build-firebase-env.js.');
+               'when hosting, see functions/firebase-env.js.');
   return null;
 }
 
