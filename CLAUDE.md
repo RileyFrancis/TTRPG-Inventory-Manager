@@ -59,6 +59,8 @@ tools/              Standalone dev helpers (not part of the app)
 | `panels.js` | Side-panel resize handles, collapse, and reopen buttons |
 | `firebase-config.js` | Parses `.env` → `FIREBASE_CONFIG` (`null` when absent) |
 | `party.js` | Firebase party sync + party UI |
+| `auth.js` | Firebase sign-in, the login modal, the Settings account row |
+| `cloud-save.js` | Mirrors the save file to `users/<uid>/save` while signed in |
 | `character-tabs.js` | Per-character tabs above the inventory + sheet/inventory switch |
 | `equipment.js` | Equip slots, layout editor, equip/unequip |
 | `tooltip.js` | Hover tooltip |
@@ -74,6 +76,7 @@ state.db          { [templateId]: ItemTemplate }   (default + custom items)
 state.folders     [{ id, name }]                    (Browse-list folders, ordered)
 state.folderAssign    { [templateId]: folderId }    (overrides only; '__unfiled' = no folder)
 state.folderCollapsed { [folderId]: true }
+state.auth        { user, ready }                   (signed-in account, or null)
 state.view        'inventory' | 'sheet'             (which view of the selected character)
 state.mode        'idle' | 'placing' | 'dragging'
 state.placing     { templateId, rotation }
@@ -235,6 +238,37 @@ or it will be wrong in one of the two themes.
   `applyTheme()` clears the cache and re-renders everything that bakes a colour into an
   inline style. **If you add a render path that inlines a palette colour, it must be
   re-run from `rerenderThemedContent()`.**
+
+### Accounts and cloud save
+
+Signing in is never a door the app opens behind. The inventory is usable signed out,
+on `localStorage`, exactly as before — an account only unlocks **party play** (other
+people's data) and **cloud save**.
+
+- Every gated entry point goes through `requireAuth(reason, action)` in `auth.js`. It
+  runs `action` immediately when signed in, otherwise opens the login modal with the
+  reason showing and runs it on success. Only the party buttons use it; **do not gate
+  the inventory itself**.
+- Firebase restores a session asynchronously, hence `state.auth.ready`. Before it flips,
+  "no user" means "not known yet" — gating on `user` alone flashes the login screen at
+  someone who is already signed in.
+- `cloud-save.js` stores the entire save as **one JSON string** at `users/<uid>/save`.
+  Not a tree: RTDB drops nulls and empty objects, and the save file is full of both (an
+  unplaced item's `row` is `null`, an empty inventory is `{}`), so a tree write would
+  silently fail to replicate a deletion. Party sync still writes a tree — that is
+  deliberate, it is read field by field.
+- `buildSavePayload()` / `applySavePayload()` in `persistence.js` are the single shape
+  shared by the local and cloud copies. Anything added to one is in both for free.
+- Writes are suppressed while `state.party.viewingPlayerId !== null` — `state` is then
+  somebody else's character, and pushing it would overwrite your own save. Incoming
+  saves are held while `state.mode !== 'idle'` and retried, because replacing the world
+  mid-drag strands the item that dragging took out of the grid.
+- Our own writes echo back through the `on('value')` listener; `cloudClientId` tags each
+  write so they can be ignored. Conflicts are last-writer-wins, except the first sign-in
+  with real data on both sides, which asks (`openCloudConflictModal`).
+- The Firebase console needs Email/Password and Google enabled, the host in Authorized
+  domains, and the rules from `database.rules.example.json` — without those rules the
+  save writes are refused and the status line says so.
 
 ### Configuration
 

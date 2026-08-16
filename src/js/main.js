@@ -19,6 +19,7 @@ function init() {
   renderEquipPanel();
   syncCharacterViewUI(); // character tabs — solo, that is the one own-tab
   initFirebase();
+  initAuth();       // restores a previous session, which then starts cloud sync
 }
 
 init();

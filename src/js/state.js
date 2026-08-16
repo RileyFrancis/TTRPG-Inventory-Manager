@@ -39,6 +39,11 @@ const state = {
   activeContainer: null,
   // Per-container internal grids: { [instanceId]: 2D array }
   containerGrids: {},
+  // Signed-in user, or null. Identity only — the inventory itself still lives in
+  // localStorage; cloud-save.js mirrors it to the account while signed in.
+  // `ready` flips true once Firebase has reported the restored session, so the
+  // UI can tell "signed out" from "we don't know yet".
+  auth: { user: null, ready: false },
   // Party session
   party: {
     active: false,

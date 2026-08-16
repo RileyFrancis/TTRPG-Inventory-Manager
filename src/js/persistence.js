@@ -78,8 +78,11 @@ document.getElementById('stash-delete-all-btn').addEventListener('click', () => 
   debouncedSync();
 });
 
-function autoSave() {
-  const data = {
+// Everything that belongs to the character rather than to this browser. One
+// builder, so the localStorage copy and the cloud copy can never drift apart —
+// cloud-save.js stores the JSON of exactly this.
+function buildSavePayload() {
+  return {
     character:   state.character,
     instances:   state.instances,
     equipped:    state.equipped,
@@ -88,20 +91,34 @@ function autoSave() {
       Object.entries(state.db).filter(([id]) => !DEFAULT_ITEMS.find(t => t.id === id))
     ),
   };
-  localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+}
+
+// The inverse. Custom items merge over the defaults already in state.db;
+// everything else replaces. Renders are the caller's job — at boot there is
+// nothing on screen yet, while a cloud save arriving mid-session must redraw.
+function applySavePayload(data) {
+  if (!data) return;
+  if (data.character)   state.character   = data.character;
+  if (data.db)          Object.assign(state.db, data.db);
+  if (data.instances)   state.instances   = data.instances;
+  if (data.equipped)    state.equipped    = data.equipped;
+  if (data.equipLayout) state.equipLayout = data.equipLayout;
+  syncNextId();
+}
+
+function autoSave() {
+  localStorage.setItem(SAVE_KEY, JSON.stringify(buildSavePayload()));
+}
+
+function hasLocalSave() {
+  return !!localStorage.getItem(SAVE_KEY);
 }
 
 function autoLoad() {
   const raw = localStorage.getItem(SAVE_KEY);
   if (!raw) return;
   try {
-    const data = JSON.parse(raw);
-    if (data.character)   state.character   = data.character;
-    if (data.db)          Object.assign(state.db, data.db);
-    if (data.instances)   state.instances   = data.instances;
-    if (data.equipped)    state.equipped    = data.equipped;
-    if (data.equipLayout) state.equipLayout = data.equipLayout;
-    syncNextId();
+    applySavePayload(JSON.parse(raw));
   } catch {}
 }
 

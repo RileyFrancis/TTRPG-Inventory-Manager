@@ -2116,3 +2116,103 @@ body.party-readonly #details-delete-btn { display: none !important; }
 .info-body a { color: var(--accent); }
 
 .info-placeholder { color: var(--text-dim); font-style: italic; }
+
+/* ─── SIGN IN ────────────────────────────────────────────── */
+.auth-google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  padding: 9px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 92%, var(--emboss-hi)), var(--panel));
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  box-shadow: inset 0 1px 0 var(--emboss-hi);
+  transition: border-color 0.15s, color 0.15s;
+}
+.auth-google-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.auth-google-btn:active:not(:disabled) { box-shadow: inset 0 1px 3px var(--emboss-lo); }
+.auth-google-btn:disabled { opacity: 0.4; cursor: default; }
+.auth-google-mark { width: 15px; height: 15px; flex: none; }
+
+/* Rule with the word sitting in a gap punched out of it */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 14px 0 12px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-dim);
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.auth-error {
+  font-size: 11px;
+  line-height: 1.5;
+  margin: 2px 0 10px;
+  color: var(--danger);
+}
+.auth-error.notice { color: var(--accent); }
+
+.auth-alt-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 11px;
+}
+
+.auth-link-btn {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.auth-link-btn:hover { color: var(--accent); }
+
+/* ─── ACCOUNT (in Settings) ──────────────────────────────── */
+.account-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 8px;
+}
+#account-name  { font-size: 12px; font-weight: 700; }
+#account-email { font-size: 11px; color: var(--text-dim); }
+#account-sync-status.sync-error { color: var(--danger); font-style: normal; }
+
+/* ─── TWO INVENTORIES (first sign-in) ────────────────────── */
+.cloud-choice-row { display: flex; gap: 10px; }
+
+.cloud-choice {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 11px;
+  text-align: left;
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  box-shadow: inset 0 1px 0 var(--emboss-hi);
+  transition: border-color 0.15s, background 0.15s;
+}
+.cloud-choice:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--panel)); }
+
+.cloud-choice-title { font-size: 12px; font-weight: 700; letter-spacing: 0.03em; }
+.cloud-choice-summary {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-dim);
+  white-space: pre-line; /* the summary is two lines: character, then when */
+}

@@ -491,6 +491,73 @@
   </div>
 </div>
 
+<!-- ===== LOGIN MODAL ===== -->
+<div id="login-modal" class="modal hidden">
+  <div class="modal-box narrow">
+    <h2 id="login-title">Sign In</h2>
+    <p class="modal-note hidden" id="login-reason"></p>
+
+    <button id="google-signin-btn" class="auth-google-btn" type="button">
+      <svg class="auth-google-mark" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
+        <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/>
+        <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.02-3.7H.96v2.33A9 9 0 0 0 9 18z"/>
+        <path fill="#FBBC05" d="M3.98 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.02-2.33z"/>
+        <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.9 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.02 2.33C4.68 5.16 6.66 3.58 9 3.58z"/>
+      </svg>
+      Continue with Google
+    </button>
+
+    <div class="auth-divider"><span>or</span></div>
+
+    <label class="field">
+      <span>Email</span>
+      <input type="email" id="login-email" autocomplete="email" placeholder="you@example.com">
+    </label>
+    <label class="field">
+      <span>Password</span>
+      <input type="password" id="login-password" autocomplete="current-password" placeholder="••••••••">
+    </label>
+    <label class="field auth-signup-only hidden">
+      <span>Display Name</span>
+      <input type="text" id="login-name" maxlength="30" autocomplete="name" placeholder="What your party calls you">
+    </label>
+
+    <p id="login-error" class="auth-error hidden"></p>
+
+    <button id="login-submit-btn" class="btn-primary party-action-btn">Sign In</button>
+
+    <div class="auth-alt-row">
+      <button id="login-toggle-mode" class="auth-link-btn" type="button">Create an account</button>
+      <button id="login-reset-btn" class="auth-link-btn" type="button">Forgot password?</button>
+    </div>
+
+    <div class="modal-footer">
+      <button class="cancel-btn btn-sm">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CLOUD SAVE CONFLICT MODAL ===== -->
+<!-- First sign-in with an inventory already in both places. Never silent: one
+     of the two is about to be replaced, so the user picks which. -->
+<div id="cloud-conflict-modal" class="modal hidden">
+  <div class="modal-box">
+    <h2>Two Inventories</h2>
+    <p class="modal-note">This browser and your account each hold an inventory, and they differ.
+      Choose which one to keep — the other is replaced.</p>
+    <div class="cloud-choice-row">
+      <button id="cloud-keep-local" class="cloud-choice" type="button">
+        <span class="cloud-choice-title">Keep this browser's</span>
+        <span class="cloud-choice-summary" id="cloud-local-summary"></span>
+      </button>
+      <button id="cloud-keep-remote" class="cloud-choice" type="button">
+        <span class="cloud-choice-title">Use the account's</span>
+        <span class="cloud-choice-summary" id="cloud-remote-summary"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== EQUIP SETTINGS MODAL ===== -->
 <div id="equip-settings-modal" class="modal hidden">
   <div class="modal-box">
@@ -551,6 +618,25 @@
       <p class="setting-hint" id="theme-hint"></p>
     </div>
 
+    <!-- Hidden entirely when the deploy has no Firebase — see auth.js -->
+    <div class="setting-row hidden" id="account-row">
+      <span class="setting-label">Account</span>
+
+      <div id="account-signed-out">
+        <button id="account-signin-btn" class="btn-sm">Sign In</button>
+        <p class="setting-hint">Sign in to keep your inventory on your account and to play in a party.</p>
+      </div>
+
+      <div id="account-signed-in" class="hidden">
+        <div class="account-identity">
+          <span id="account-name"></span>
+          <span id="account-email"></span>
+        </div>
+        <p class="setting-hint hidden" id="account-sync-status"></p>
+        <button id="account-signout-btn" class="btn-sm danger">Sign Out</button>
+      </div>
+    </div>
+
     <div class="modal-footer">
       <button class="cancel-btn btn-sm">Close</button>
     </div>
@@ -593,6 +679,7 @@
 <!-- ===== FIREBASE ===== -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <!-- ===== APP SCRIPTS (load order matters: constants → state → logic → main) ===== -->
 <script src="src/js/items.js"></script>
 
@@ -619,6 +706,8 @@
 
 <script src="src/js/firebase-config.js"></script>
 <script src="src/js/party.js"></script>
+<script src="src/js/auth.js"></script>
+<script src="src/js/cloud-save.js"></script>
 <script src="src/js/character-tabs.js"></script>
 <script src="src/js/equipment.js"></script>
 <script src="src/js/tooltip.js"></script>

@@ -224,7 +224,7 @@ let syncTimer = null;
 function debouncedSync() {
   // Don't overwrite own save while a GM is editing a player's inventory
   const gmEditing = state.party.active && state.party.role === 'gm' && state.party.viewingPlayerId !== null;
-  if (!gmEditing) autoSave();
+  if (!gmEditing) { autoSave(); scheduleCloudSave(); }
   if (!state.party.active) return;
   clearTimeout(syncTimer);
   syncTimer = setTimeout(syncPartyState, 400);
@@ -367,7 +367,10 @@ function openPartyModal() {
   document.querySelectorAll('.party-role-btn').forEach(b => b.classList.toggle('active', b.dataset.role === 'player'));
   document.getElementById('party-player-fields').classList.remove('hidden');
   document.getElementById('party-gm-fields').classList.add('hidden');
-  document.getElementById('party-player-name').value = state.character.name || '';
+  // The account's name is the one the rest of the group will recognise; the
+  // character's is the fallback from before there were accounts.
+  document.getElementById('party-player-name').value =
+    (isSignedIn() && accountDisplayName()) || state.character.name || '';
   document.getElementById('party-join-code').value = '';
   showModal('party-modal');
 }
@@ -501,12 +504,20 @@ function updateViewingBanner() {
 }
 
 // Party UI event listeners
+//
+// Party play is the one part of the app that is other people's data, so it is
+// the one part that asks for an account. Everything else stays open — the
+// inventory itself never gates.
+const PARTY_AUTH_REASON = 'Party play needs an account, so your group can tell who is who.';
+
 document.getElementById('party-btn').addEventListener('click', () => {
   if (state.party.active) switchTab('party');
-  else openPartyModal();
+  else requireAuth(PARTY_AUTH_REASON, openPartyModal);
 });
 
-document.getElementById('open-party-modal-btn').addEventListener('click', openPartyModal);
+document.getElementById('open-party-modal-btn').addEventListener('click', () => {
+  requireAuth(PARTY_AUTH_REASON, openPartyModal);
+});
 
 document.querySelectorAll('.party-role-btn').forEach(btn => {
   btn.addEventListener('click', () => {

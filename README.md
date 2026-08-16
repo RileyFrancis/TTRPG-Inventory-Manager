@@ -28,6 +28,31 @@ Then open [http://localhost:8787](http://localhost:8787).
 > Opening `index.html` directly as a `file://` URL mostly works, but party play
 > will not: the browser refuses to let a `file://` page read `.env`.
 
+## Accounts
+
+Signing in is optional and never blocks the app: the inventory opens straight
+away and saves to this browser, signed in or not. An account buys two things —
+**party play**, which is the one place the login screen appears, and **cloud
+save**, which mirrors your inventory to the account so it follows you between
+machines. Sign in from ⚙ Settings → Account, or by clicking Party.
+
+Both need Firebase (see Deploying) plus a one-time setup in the
+[Firebase Console](https://console.firebase.google.com):
+
+1. **Authentication → Get started**, then under **Sign-in method** enable
+   **Email/Password** and **Google**.
+2. **Authentication → Settings → Authorized domains**: add the domain you host
+   on (`localhost` is there already). Google sign-in refuses to run anywhere
+   else.
+3. **Realtime Database → Rules**: paste `database.rules.example.json`. It gives
+   each account sole access to its own `users/<uid>` save and closes the party
+   tree to signed-in users, which is what stops strangers reading your data.
+
+Cloud save stores the whole save file as one JSON string at `users/<uid>/save`,
+so it round-trips exactly; last writer wins. The first time you sign in on a
+browser that already has an inventory, and the account has a different one, the
+app asks which to keep rather than choosing for you.
+
 ## Deploying
 
 The site is static, so any host serves it as-is — but party play needs the
@@ -94,6 +119,8 @@ in dependency order; **that order matters** and is documented in the script bloc
 | `theme.js` | Light/dark switching and the settings modal |
 | `firebase-config.js` | Reads Firebase credentials from `.env` into `FIREBASE_CONFIG` |
 | `party.js` | Party sync over Firebase + party UI |
+| `auth.js` | Sign-in (email/password, Google), the login modal, account UI |
+| `cloud-save.js` | Mirrors the save file to the signed-in account |
 | `equipment.js` | Equipment slots, layout editor, equip/unequip |
 | `tooltip.js` | Hover tooltip for items |
 | `main.js` | Entry point — boots the app |
@@ -150,7 +177,8 @@ Click **⚙ Configure Slots** at the bottom of the equipment panel to open the l
 
 ## Party Play
 
-Party sync uses Firebase Realtime Database. To enable it:
+Party sync uses Firebase Realtime Database, and asks everyone to sign in first —
+see [Accounts](#accounts) for the console setup that needs. To enable it:
 
 1. Create a project at [Firebase Console](https://console.firebase.google.com/)
 2. Enable the Realtime Database
