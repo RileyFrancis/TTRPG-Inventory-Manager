@@ -34,25 +34,35 @@ function initAuth() {
     return;
   }
 
-  firebaseAuth.onAuthStateChanged(user => {
-    state.auth.user = user
-      ? { uid: user.uid, email: user.email, displayName: user.displayName }
-      : null;
-    state.auth.ready = true;
-
-    updateAuthUI();
-    onAuthUserChanged(state.auth.user); // cloud-save.js picks it up from here
-
-    // Whatever the sign-in was for — the party modal, usually — happens now.
-    if (user && pendingAuthAction) {
-      const action = pendingAuthAction;
-      pendingAuthAction = null;
-      hideModal('login-modal');
-      action();
-    }
-  });
+  firebaseAuth.onAuthStateChanged(handleAuthStateChange);
 
   updateAuthUI();
+}
+
+// Every way in lands here — email, Google, a session restored at boot — so this
+// is the only place that has to know what "now signed in" looks like.
+function handleAuthStateChange(user) {
+  state.auth.user = user
+    ? { uid: user.uid, email: user.email, displayName: user.displayName }
+    : null;
+  state.auth.ready = true;
+
+  updateAuthUI();
+  onAuthUserChanged(state.auth.user); // cloud-save.js picks it up from here
+
+  if (!user) return;
+
+  // Unconditionally: the login screen has served its purpose the moment there
+  // is a user, whether something was waiting on it or not. Leaving it up made
+  // a successful Google sign-in look like it had done nothing at all.
+  hideModal('login-modal');
+
+  // Then whatever the sign-in was for — the party modal, or back to Settings.
+  if (pendingAuthAction) {
+    const action = pendingAuthAction;
+    pendingAuthAction = null;
+    action();
+  }
 }
 
 function isSignedIn() {
@@ -72,14 +82,17 @@ function requireAuth(reason, action) {
     return;
   }
   if (isSignedIn()) { action(); return; }
-  pendingAuthAction = action;
-  openLoginModal(reason);
+  openLoginModal(reason, action);
 }
 
 // =============================================================================
 // THE LOGIN MODAL
 // =============================================================================
-function openLoginModal(reason) {
+// `onSuccess` is what happens once they are through — the party modal, or the
+// Settings panel they started from. Something visible always follows, so
+// signing in never reads as nothing having happened.
+function openLoginModal(reason, onSuccess = null) {
+  pendingAuthAction = onSuccess;
   setLoginMode('signin');
   document.getElementById('login-email').value = '';
   document.getElementById('login-password').value = '';
@@ -268,9 +281,12 @@ document.querySelectorAll('#login-modal .cancel-btn').forEach(btn => {
   btn.addEventListener('click', () => { pendingAuthAction = null; });
 });
 
+// Straight back to Settings afterwards, where the Account row now shows who you
+// are and that the inventory is syncing — the confirmation for a sign-in that
+// was not on its way to anywhere else.
 document.getElementById('account-signin-btn').addEventListener('click', () => {
   hideModal('settings-modal');
-  openLoginModal('Sign in to sync this inventory to your account.');
+  openLoginModal('Sign in to sync this inventory to your account.', openSettingsModal);
 });
 
 document.getElementById('account-signout-btn').addEventListener('click', () => {
