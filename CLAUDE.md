@@ -19,6 +19,7 @@ No framework, no bundler, no dependencies. Static files served as-is:
 
 ```
 index.html          Static shell — every DOM element referenced by JS, with stable IDs
+VERSION             The app version, one line — bump by hand when deploying
 src/css/style.css   All styles
 src/js/*.js         Application logic, one file per concern
 data/items.csv      Default item database
@@ -238,6 +239,20 @@ or it will be wrong in one of the two themes.
   `applyTheme()` clears the cache and re-renders everything that bakes a colour into an
   inline style. **If you add a render path that inlines a palette colour, it must be
   re-run from `rerenderThemedContent()`.**
+
+### Versioning
+
+The version is a one-line `VERSION` file at the project root — deliberately not in the
+source, so a release bump never means editing code. `loadAppVersion()` in `main.js`
+fetches it into `APP_VERSION` and the Settings footer.
+
+- **Async, unlike `items.csv` and `.env`.** Those use blocking XHR because `init()` cannot
+  run without them; nothing waits on the version, so it must not hold up the boot.
+- A missing file leaves the footer blank and changes nothing else — and the same
+  `startsWith('<')` guard as `firebase-config.js` applies, since a host that answers
+  unknown paths with its index page would otherwise "find" a version made of HTML.
+- Pages serves everything `must-revalidate`, so the number on the live site is always the
+  deployed one rather than a cached leftover.
 
 ### Accounts and cloud save
 

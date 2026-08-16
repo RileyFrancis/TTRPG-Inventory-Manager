@@ -1021,6 +1021,18 @@ textarea { resize: vertical; }
   justify-content: flex-end;
 }
 
+/* Pushed to the far side of the footer, opposite the Close button. Centres
+   itself rather than the whole footer — the row stays `stretch`, which is what
+   keeps a btn-sm the same height as the btn-primary beside it. */
+.modal-version {
+  margin-right: auto;
+  align-self: center;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  opacity: 0.75;
+}
+
 /* ─── SHAPE EDITOR ───────────────────────────────────────── */
 #shape-editor-section { margin-bottom: 12px; }
 #shape-editor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }

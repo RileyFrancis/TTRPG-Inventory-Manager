@@ -28,6 +28,22 @@ Then open [http://localhost:8787](http://localhost:8787).
 > Opening `index.html` directly as a `file://` URL mostly works, but party play
 > will not: the browser refuses to let a `file://` page read `.env`.
 
+## Versioning
+
+The version is the whole contents of the `VERSION` file at the project root — one
+line, no code:
+
+```
+0.1.0
+```
+
+Bump it when you deploy. It appears in the bottom-left of the Settings modal, so you
+can open the live site and see which build is serving — Cloudflare Pages sends
+`must-revalidate` on every file, so that number is always the deployed one.
+
+`main.js` fetches it after boot rather than blocking on it; if the file is missing the
+footer is simply blank and nothing else changes.
+
 ## Accounts
 
 Signing in is optional and never blocks the app: the inventory opens straight
@@ -78,6 +94,7 @@ stays off, exactly as a checkout with no `.env` behaves locally.
 
 ```
 index.html              Static shell — all DOM elements with stable IDs
+VERSION                 The version number, one line — bump it when you deploy
 .env                    Firebase credentials for local dev (gitignored, optional)
 .env.example            Template for .env
 functions/
