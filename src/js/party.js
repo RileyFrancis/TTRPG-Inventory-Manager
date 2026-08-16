@@ -8,15 +8,60 @@
 // =============================================================================
 let firebaseDb = null;
 let partyPlayersRef = null;
+let firebaseInitError = null; // kept so the party buttons can say what went wrong
 
 function initFirebase() {
   if (!FIREBASE_CONFIG) return; // firebase-config.js already explained why
+  if (typeof firebase === 'undefined') {
+    firebaseInitError = 'sdk';
+    console.warn('The Firebase SDK did not load — party features unavailable. ' +
+                 'The <script> tags in index.html pull it from gstatic.com, which needs a network connection.');
+    return;
+  }
   try {
     firebase.initializeApp(FIREBASE_CONFIG);
     firebaseDb = firebase.database();
   } catch (e) {
+    firebaseInitError = e.message;
     console.warn('Firebase init failed — party features unavailable:', e);
   }
+}
+
+// Why party sync is off, phrased as the thing that actually fixes it. The three
+// causes look identical from the button — no database handle — but need
+// completely different answers, and by far the most common is opening
+// index.html straight off disk, where the browser refuses to read .env.
+function partyUnavailableMessage() {
+  if (!FIREBASE_CONFIG) {
+    if (location.protocol === 'file:') {
+      return 'Party play needs the app served over HTTP.\n\n' +
+             'Opened straight from disk (file://), the browser will not let it read .env, ' +
+             'so the Firebase settings never arrive.\n\n' +
+             'From the project folder run:\n' +
+             '    python3 -m http.server 8787\n' +
+             'then open http://localhost:8787';
+    }
+    const local = ['localhost', '127.0.0.1', ''].includes(location.hostname);
+    if (!local) {
+      return 'Party play is off because this deploy has no Firebase settings.\n\n' +
+             '.env is gitignored, so it never reaches the host — and Cloudflare Pages ' +
+             'will not serve a file whose name starts with a dot in any case.\n\n' +
+             'Set the FIREBASE_* variables in your host\'s build settings and run\n' +
+             '    node tools/build-firebase-env.js\n' +
+             'as the build command, which writes the firebase.env this page looks for.';
+    }
+    return 'Party play is off because .env could not be read.\n\n' +
+           'It must sit in the project root and be served alongside index.html — ' +
+           'check that opening /.env on this server returns the file, and that it sets ' +
+           'FIREBASE_DATABASE_URL.\n\nSee .env.example for the full list of keys.';
+  }
+  if (firebaseInitError === 'sdk') {
+    return 'Party play is off because the Firebase SDK did not load.\n\n' +
+           'index.html pulls it from gstatic.com, so it needs a working network connection ' +
+           '(and no extension blocking it).';
+  }
+  return 'Party play is off because Firebase failed to start:\n\n' + firebaseInitError +
+         '\n\nCheck the values in .env against Firebase Console → Project settings → Your apps.';
 }
 
 function generatePartyCode() {
@@ -52,7 +97,7 @@ function getSerializableInstances() {
 
 async function createParty() {
   if (!firebaseDb) {
-    alert('Firebase is not configured yet.\nOpen app.js and fill in FIREBASE_CONFIG with your Firebase project credentials.');
+    alert(partyUnavailableMessage());
     return;
   }
   const code = generatePartyCode();
@@ -81,7 +126,7 @@ async function createParty() {
 
 async function joinParty(code, playerName) {
   if (!firebaseDb) {
-    alert('Firebase is not configured yet.\nOpen app.js and fill in FIREBASE_CONFIG with your Firebase project credentials.');
+    alert(partyUnavailableMessage());
     return;
   }
   const upperCode = code.trim().toUpperCase();

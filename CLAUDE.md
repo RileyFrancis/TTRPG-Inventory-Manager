@@ -238,14 +238,26 @@ or it will be wrong in one of the two themes.
 
 ### Configuration
 
-`firebase-config.js` uses the same synchronous-XHR pattern to read `.env` from the project
-root and parse it into `FIREBASE_CONFIG`. Both paths are relative to the **document**, not
-the script.
+`firebase-config.js` uses the same synchronous-XHR pattern to read the Firebase settings
+from the project root and parse them into `FIREBASE_CONFIG`. Both paths are relative to the
+**document**, not the script.
 
-- `.env` is gitignored; `.env.example` is the committed template. Keep them in sync when
-  adding a key.
+- Two files, same format, first hit wins: `firebase.env` then `.env`. `.env` is the local
+  copy; `firebase.env` is written at deploy time by `tools/build-firebase-env.js` from the
+  host's environment variables, because `.env` is gitignored and never reaches a deploy —
+  and **Cloudflare Pages will not serve any path beginning with a dot** regardless. Both
+  are gitignored; `.env.example` is the committed template. Keep it in sync when adding a
+  key, along with the `KEYS` list in the build script.
+- A missing file does **not** reliably mean a 404: Pages answers unknown paths with its
+  index page, i.e. HTTP 200 and a pageful of HTML. `readEnvFile` rejects a body starting
+  with `<` for that reason, and a file that parses but has no `FIREBASE_DATABASE_URL` is
+  skipped rather than fatal, so the next candidate still gets its turn.
 - When `.env` is absent or has no `FIREBASE_DATABASE_URL`, `FIREBASE_CONFIG` is `null` and
   `initFirebase()` returns early — the app must stay fully usable offline. Preserve that
   guard when touching party code.
+- The party buttons then explain themselves through `partyUnavailableMessage()`, which
+  separates the three causes that all look alike from the button (no `.env` — usually
+  because the page was opened over `file://`, where it cannot be read; no SDK; or
+  `initializeApp` throwing). Keep it in step with any new failure mode.
 - `.env` is served to the browser and readable at `/.env`. It holds Firebase web config,
   which is public by design. Never move real secrets into it.

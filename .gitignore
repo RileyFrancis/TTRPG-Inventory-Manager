@@ -3,6 +3,9 @@
 .env.*
 !.env.example
 
+# Generated at deploy time by tools/build-firebase-env.js
+firebase.env
+
 # OS cruft
 .DS_Store
 Thumbs.db

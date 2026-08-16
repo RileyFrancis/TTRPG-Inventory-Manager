@@ -25,14 +25,36 @@ python3 -m http.server 8787
 
 Then open [http://localhost:8787](http://localhost:8787).
 
-> Opening `index.html` directly as a `file://` URL works but is not recommended.
+> Opening `index.html` directly as a `file://` URL mostly works, but party play
+> will not: the browser refuses to let a `file://` page read `.env`.
+
+## Deploying
+
+The site is static, so any host will serve it as-is — but party play needs the
+Firebase settings to arrive, and `.env` is gitignored, so it never reaches the
+host. Cloudflare Pages would not serve it even if it did: it skips every path
+beginning with a dot.
+
+So generate the settings at deploy time instead. On **Cloudflare Pages** →
+Settings → Builds:
+
+| Setting | Value |
+|---------|-------|
+| Build command | `node tools/build-firebase-env.js` |
+| Build output directory | `/` |
+
+and add the seven `FIREBASE_*` keys from `.env.example` under **Variables and
+Secrets**. The script writes them to `firebase.env` — an ordinary filename Pages
+will serve — which the app reads in preference to `.env`. With no variables set
+it writes nothing and the site still deploys; only party play stays off.
 
 ## Project Layout
 
 ```
 index.html              Static shell — all DOM elements with stable IDs
-.env                    Firebase credentials (gitignored, optional)
+.env                    Firebase credentials for local dev (gitignored, optional)
 .env.example            Template for .env
+firebase.env            Same, generated at deploy time (gitignored) — see Deploying
 src/
   css/style.css         All styles; CSS custom properties drive the theme
   js/                   Application logic, one file per concern (see below)
@@ -42,6 +64,7 @@ data/
   items_old.csv         Reference data, not loaded
 tools/
   shape-editor.html     Standalone helper for drawing item shapes
+  build-firebase-env.js Deploy-time: env vars → firebase.env
 ```
 
 ### `src/js/`
