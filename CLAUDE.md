@@ -64,6 +64,7 @@ tools/              Standalone dev helpers (not part of the app)
 | `cloud-save.js` | Mirrors the save file to `users/<uid>/save` while signed in |
 | `character-tabs.js` | Per-character tabs above the inventory + sheet/inventory switch |
 | `equipment.js` | Equip slots, layout editor, equip/unequip |
+| `shop.js` | The left panel's tabs, GM shop editor, player shopfront, paying |
 | `tooltip.js` | Hover tooltip |
 | `main.js` | `init()` and the single call to it |
 
@@ -77,6 +78,9 @@ state.db          { [templateId]: ItemTemplate }   (default + custom items)
 state.folders     [{ id, name }]                    (Browse-list folders, ordered)
 state.folderAssign    { [templateId]: folderId }    (overrides only; '__unfiled' = no folder)
 state.folderCollapsed { [folderId]: true }
+state.shops       { [shopId]: Shop }                (the party's shops, from Firebase)
+state.leftTab     'equip' | 'shop'                  (which left-panel pane shows)
+state.shopOpenId  shopId | null                     (null = the list of shops)
 state.auth        { user, ready }                   (signed-in account, or null)
 state.view        'inventory' | 'sheet'             (which view of the selected character)
 state.mode        'idle' | 'placing' | 'dragging'
@@ -114,6 +118,66 @@ data.
   negative margins, and `#inventory-panel` is positioned and later in the DOM —
   unpositioned, the handle's `z-index` does nothing and the inventory panel eats
   the clicks on half of it.
+
+### Shops
+
+A shop belongs to the *table*, not to a character: the GM builds it in advance,
+reveals it when the party walks in, and everyone who can see it draws from one
+shared pile of stock — a sword bought by one player is gone for the rest.
+
+- Firebase is therefore the only copy. `state.shops` is a read-through cache of
+  `parties/<code>/shops`, refreshed by the same subscription that carries the
+  roster (`subscribeToShops`, called from `subscribeToParty`), and every GM edit
+  writes straight there. **Nothing about a shop is in the save file** — a shop is
+  not part of a character, and the GM's copy is the only one.
+- **Stock is claimed by an RTDB `transaction()` before anything leaves the
+  buyer's purse.** That is the whole point of the feature: two players hitting
+  Buy on the last sword together, one wins, the loser is told and is not charged.
+  Coins move only after `committed`.
+- **Reveal is pacing, not security.** `shopVisibleToMe()` filters unrevealed
+  shops on the client; a player who reads the database directly can still see a
+  draft. Making that real would mean parking drafts under a GM-only path and
+  moving a shop between paths on reveal — the audience list has the same
+  caveat. If the rules ever gate `parties/<code>`, add `shops` to them.
+- Reveal is stored as `revealed` + `audience` (`'all' | 'select'`) + a
+  `players` map. That map is keyed by player id, and **a rejoin mints a new
+  one** — so `playerNames` is written beside it and matched as a fallback,
+  otherwise a shop revealed before a reload goes dark on the player it was for.
+- A stock entry snapshots the whole item as **JSON in `template`**, so a shop can
+  stock something the buyer has never owned and a later edit to the GM's
+  catalogue cannot change a listing under the players. A string for the reason
+  `cloud-save.js` uses one: RTDB drops nulls and empty objects and templates are
+  full of both. `resolveShopTemplate()` matches the snapshot against the buyer's
+  own `state.db` by id then by name before registering it as a custom item, so
+  buying a second longsword does not fork the catalogue.
+- `qty` of `-1` (`SHOP_UNLIMITED`) is a bottomless entry. It is a sentinel rather
+  than a null because RTDB drops nulls.
+- Paying is real: `planPayment()` spends the **smallest** coins first — that
+  sheds loose change and leaves the big coins whole — and when what is left to
+  pay is smaller than any coin still in the purse, breaks one and gives change.
+  It refuses rather than swallowing a difference it cannot hand back. It only
+  plans; `applyPayment()` moves the coins through the same
+  `addCoinsToInventory` / `removeCoinsFromInventory` the purse buttons use, so
+  coins come off the grid as well as the stash and the weight stays honest.
+
+### The left panel and its tabs
+
+The left panel is the equipment rack, plus — for a GM — their own tools. The tab
+strip (`syncLeftPanel()` in `shop.js`) only appears when there are two panes to
+choose between, so a solo player's panel is the bare equipment panel it always was.
+
+- **A GM has no character**, so the equipment rack is only theirs to look at
+  while a player is picked; with nobody picked the Shop is the whole panel
+  rather than an empty rack of slots. That is `leftTabsAvailable()`, and it is
+  also why the GM's tabs read Shop-then-Equipment while a player's read
+  Equipment-then-Shop: each role's own thing comes first.
+- A player has no Shop tab until a GM reveals one to them, at which point it
+  appears on its own.
+- Driven from `syncCharacterViewUI()`, the same single entry point the character
+  tabs use — the two strips answer the same question ("who are we looking at?")
+  and must not disagree.
+- Deliberately **not** `.tab-btn` / `.tab-pane`: those belong to the sidebar, and
+  `switchTab()` toggles every one of them on the page.
 
 ### Character tabs
 

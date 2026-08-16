@@ -91,7 +91,11 @@ function getCoinCounts() {
   return counts;
 }
 
-function addCoinsToInventory(templateId, totalToAdd) {
+// Add units of a stackable item, topping up part-filled stacks before starting
+// new ones in the stash. Coins were the first caller; shop purchases are the
+// second — neither wants a screenful of ×1 stacks. Mutation only: the caller
+// re-renders, so a run of these costs one redraw rather than one each.
+function addStackableUnits(templateId, totalToAdd) {
   if (totalToAdd <= 0) return;
   const t = state.db[templateId];
   if (!t) return;
@@ -118,7 +122,10 @@ function addCoinsToInventory(templateId, totalToAdd) {
     state.instances[id] = { id, templateId, rotation: 0, row: null, col: null, stackCount: count };
     remaining -= count;
   }
+}
 
+function addCoinsToInventory(templateId, totalToAdd) {
+  addStackableUnits(templateId, totalToAdd);
   renderAllItems();
   updateWeightDisplay();
   debouncedSync();

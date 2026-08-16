@@ -177,6 +177,7 @@ async function joinParty(code, playerName) {
 }
 
 function subscribeToParty(code) {
+  subscribeToShops(code); // the party's shops ride along with its roster
   if (partyPlayersRef) partyPlayersRef.off();
   partyPlayersRef = firebaseDb.ref(`parties/${code}/players`);
 
@@ -208,6 +209,7 @@ function subscribeToParty(code) {
 function leaveParty() {
   if (!state.party.active) return;
   if (partyPlayersRef) { partyPlayersRef.off(); partyPlayersRef = null; }
+  unsubscribeFromShops();
 
   if (state.party.viewingPlayerId !== null) restoreOwnState();
 

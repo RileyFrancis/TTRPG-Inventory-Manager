@@ -139,6 +139,7 @@ in dependency order; **that order matters** and is documented in the script bloc
 | `auth.js` | Sign-in (email/password, Google), the login modal, account UI |
 | `cloud-save.js` | Mirrors the save file to the signed-in account |
 | `equipment.js` | Equipment slots, layout editor, equip/unequip |
+| `shop.js` | Left-panel tabs, GM shop editor, player shopfront, paying |
 | `tooltip.js` | Hover tooltip for items |
 | `main.js` | Entry point — boots the app |
 

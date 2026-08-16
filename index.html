@@ -51,8 +51,14 @@
   <!-- ===== MAIN LAYOUT ===== -->
   <div id="main-layout">
 
-    <!-- ===== EQUIP PANEL ===== -->
-    <div id="equip-panel"><!-- rendered by renderEquipPanel() --></div>
+    <!-- ===== LEFT PANEL ===== -->
+    <!-- Equipment, plus the GM's tools. The tab strip only appears when there is
+         more than one pane to show — see syncLeftPanel() in shop.js. -->
+    <div id="equip-panel">
+      <div id="left-tabs" class="hidden"><!-- rendered by syncLeftPanel() --></div>
+      <div id="left-pane-equip" class="left-pane active"><!-- rendered by renderEquipPanel() --></div>
+      <div id="left-pane-shop" class="left-pane"><!-- rendered by renderShopPanel() --></div>
+    </div>
     <div class="panel-resizer" id="equip-resizer" data-side="equip"
          title="Drag to resize · double-click to collapse"></div>
 
@@ -491,6 +497,88 @@
   </div>
 </div>
 
+<!-- ===== SHOP MODAL (create + rename) ===== -->
+<div id="shop-modal" class="modal hidden">
+  <div class="modal-box narrow">
+    <h2 id="shop-modal-title">New Shop</h2>
+    <label class="field">
+      <span>Shop Name</span>
+      <input type="text" id="shop-name-input" maxlength="40" placeholder="e.g. The Rusty Anvil">
+    </label>
+    <label class="field">
+      <span>Description (optional)</span>
+      <textarea id="shop-desc-input" rows="2" placeholder="What the players read when it opens"></textarea>
+    </label>
+    <div class="modal-footer">
+      <button id="shop-confirm-btn" class="btn-primary">Create</button>
+      <button class="cancel-btn btn-sm">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SHOP: ADD ITEMS ===== -->
+<div id="shop-add-modal" class="modal hidden">
+  <div class="modal-box">
+    <h2>Stock the Shop</h2>
+    <p class="modal-note">Pick items from your catalogue. Quantity and price are set per item afterwards.</p>
+    <input type="text" id="shop-add-search" placeholder="Search items…" autocomplete="off">
+    <div id="shop-add-list"><!-- rows injected by renderShopAddList() --></div>
+    <div class="modal-footer">
+      <button id="shop-add-confirm-btn" class="btn-primary">Add</button>
+      <button class="cancel-btn btn-sm">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SHOP: STOCK ENTRY ===== -->
+<div id="shop-entry-modal" class="modal hidden">
+  <div class="modal-box narrow">
+    <h2 id="shop-entry-title">Stock</h2>
+    <label class="field">
+      <span>Quantity</span>
+      <input type="number" id="shop-entry-qty" min="0" step="1" value="1">
+    </label>
+    <label class="checkbox-label">
+      <input type="checkbox" id="shop-entry-unlimited">
+      <span>Unlimited — never runs out</span>
+    </label>
+    <div class="field">
+      <span>Price</span>
+      <div class="cost-inputs">
+        <label class="cost-denom"><span>PP</span><input type="number" id="shop-price-pp" min="0" step="1" value="0"></label>
+        <label class="cost-denom"><span>GP</span><input type="number" id="shop-price-gp" min="0" step="1" value="0"></label>
+        <label class="cost-denom"><span>EP</span><input type="number" id="shop-price-ep" min="0" step="1" value="0"></label>
+        <label class="cost-denom"><span>SP</span><input type="number" id="shop-price-sp" min="0" step="1" value="0"></label>
+        <label class="cost-denom"><span>CP</span><input type="number" id="shop-price-cp" min="0" step="1" value="0"></label>
+      </div>
+      <button type="button" id="shop-entry-reset-price" class="btn-sm">Use the item's own cost</button>
+    </div>
+    <div class="modal-footer">
+      <button id="shop-entry-save-btn" class="btn-primary">Save</button>
+      <button id="shop-entry-remove-btn" class="btn-sm danger">Remove from Shop</button>
+      <button class="cancel-btn btn-sm">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SHOP: BUY ===== -->
+<div id="shop-buy-modal" class="modal hidden">
+  <div class="modal-box narrow">
+    <h2 id="shop-buy-title">Buy</h2>
+    <p id="shop-buy-sub" class="modal-note"></p>
+    <label class="field hidden" id="shop-buy-qty-field">
+      <span>How many?</span>
+      <input type="number" id="shop-buy-qty" min="1" step="1" value="1">
+    </label>
+    <div id="shop-buy-summary"><!-- coin lines injected by updateBuySummary() --></div>
+    <p id="shop-buy-error" class="auth-error hidden"></p>
+    <div class="modal-footer">
+      <button id="shop-buy-confirm-btn" class="btn-primary">Buy</button>
+      <button class="cancel-btn btn-sm">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== LOGIN MODAL ===== -->
 <div id="login-modal" class="modal hidden">
   <div class="modal-box narrow">
@@ -711,6 +799,7 @@
 <script src="src/js/cloud-save.js"></script>
 <script src="src/js/character-tabs.js"></script>
 <script src="src/js/equipment.js"></script>
+<script src="src/js/shop.js"></script>
 <script src="src/js/tooltip.js"></script>
 
 <script src="src/js/main.js"></script>

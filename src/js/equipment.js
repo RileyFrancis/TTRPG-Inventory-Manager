@@ -32,7 +32,8 @@ function unequipInstance(instanceId) {
 }
 
 function renderEquipPanel() {
-  const panel = document.getElementById('equip-panel');
+  // The equipment pane, not the whole left panel — the Shop pane is its sibling.
+  const panel = document.getElementById('left-pane-equip');
   if (!panel) return;
   panel.innerHTML = '';
 

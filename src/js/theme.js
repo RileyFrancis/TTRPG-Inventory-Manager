@@ -62,6 +62,7 @@ function rerenderThemedContent() {
   renderItemList();
   renderStash();
   renderEquipPanel();
+  renderShopPanel(); // rarity swatches and coin colours are inlined there too
 
   // Repaint the details panel in place — deliberately not via
   // show*Details(), which would also yank the user to the Details tab.

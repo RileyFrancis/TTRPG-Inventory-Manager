@@ -291,6 +291,8 @@ function showTemplateDetails(templateId) {
   populateDetailsPanel(t);
   switchTab('details');
 
+  // showShopItemDetails() hides these — goods on a shelf are not yours to place.
+  document.getElementById('details-actions').classList.remove('hidden');
   document.getElementById('details-place-btn').classList.remove('hidden');
   document.getElementById('details-place-btn').onclick = () => startPlacing(t.id);
   document.getElementById('details-stash-btn').onclick = () => { addToStash(t.id); switchTab('browse'); };
@@ -309,6 +311,7 @@ function showInstanceDetails(instanceId) {
   populateDetailsPanel(t, inst);
   switchTab('details');
 
+  document.getElementById('details-actions').classList.remove('hidden');
   document.getElementById('details-place-btn').classList.add('hidden');
   document.getElementById('details-stash-btn').onclick = () => {
     if (inst.row !== null && inst.row !== undefined) {

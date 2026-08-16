@@ -32,6 +32,13 @@ const state = {
   equipped: {},
   // Equipment panel layout — ordered array of header/slot items (persisted separately)
   equipLayout: [],
+  // Left panel: which pane is showing, and which shop is open inside the Shop
+  // pane (null = the list of shops). Both are UI position, never saved.
+  leftTab: 'equip',   // 'equip' | 'shop'
+  shopOpenId: null,
+  // Shops the party can buy from — a read-through cache of the Firebase node,
+  // owned by the GM. Never in the save file: a shop belongs to the table.
+  shops: {},          // { [shopId]: Shop }
   // Which view of the selected character the inventory panel shows.
   // *Which* character is selected lives in state.party.viewingPlayerId.
   view: 'inventory', // 'inventory' | 'sheet'

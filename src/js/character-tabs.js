@@ -186,6 +186,9 @@ function syncCharacterViewUI() {
   document.getElementById('inventory-panel').classList.toggle('sheet-view', showSheet);
   if (showSheet) renderCharacterSheet();
   renderCharacterTabs();
+  // The left panel's tabs follow the same selection: a GM with nobody picked has
+  // no equipment to show, and deselecting must not leave a player's slots up.
+  syncLeftPanel();
 }
 
 function renderCharacterSheet() {
