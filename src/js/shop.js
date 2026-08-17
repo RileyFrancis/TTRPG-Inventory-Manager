@@ -451,12 +451,13 @@ function buildStockRow(shop, entry, gm) {
   const price = shopEntryPrice(shop, entry);
   const sub = document.createElement('span');
   sub.className = 'shop-item-sub';
-  sub.textContent = `${hasCost(price) ? formatCost(price) : 'Free'} · ${stockLabel(entry)}`;
+  sub.textContent = hasCost(price) ? formatCost(price) : 'Free';
   info.appendChild(nm);
   info.appendChild(sub);
 
   row.appendChild(swatch);
   row.appendChild(info);
+  row.appendChild(buildStockCount(entry));
 
   if (gm) {
     row.title = 'Set quantity and price';
@@ -474,6 +475,35 @@ function buildStockRow(shop, entry, gm) {
   }
 
   return row;
+}
+
+// How many are left is the thing you scan a shelf for — a GM checking what has
+// sold, a player deciding whether to hurry — so it is read as a number of its
+// own rather than tucked on the end of a line of small print.
+function buildStockCount(entry) {
+  const wrap = document.createElement('div');
+  wrap.className = 'shop-item-qty';
+
+  const num = document.createElement('span');
+  num.className = 'shop-qty-num';
+  const label = document.createElement('span');
+  label.className = 'shop-qty-label';
+
+  if (entry.qty === SHOP_UNLIMITED) {
+    wrap.classList.add('unlimited');
+    num.textContent = '∞';
+    label.textContent = 'stock';
+    wrap.title = 'Never runs out';
+  } else {
+    const q = entry.qty ?? 0;
+    num.textContent = q;
+    label.textContent = 'left';
+    if (q <= 0) { wrap.classList.add('out'); wrap.title = 'Sold out'; }
+  }
+
+  wrap.appendChild(num);
+  wrap.appendChild(label);
+  return wrap;
 }
 
 // A shop item may be something the viewer has never owned, so the details panel

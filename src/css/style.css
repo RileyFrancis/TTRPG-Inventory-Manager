@@ -1650,7 +1650,9 @@ body.party-readonly #details-delete-btn { display: none !important; }
 }
 .shop-item.clickable { cursor: pointer; }
 .shop-item.clickable:hover { border-color: var(--accent); }
-.shop-item.sold-out { opacity: 0.5; }
+/* Fade the goods, never the count — a sold-out row still has to say so legibly. */
+.shop-item.sold-out .shop-item-swatch,
+.shop-item.sold-out .shop-item-info { opacity: 0.45; }
 
 .shop-item-swatch {
   width: 4px;
@@ -1670,6 +1672,38 @@ body.party-readonly #details-delete-btn { display: none !important; }
   text-overflow: ellipsis;
 }
 .shop-item-sub { font-size: 10px; color: var(--text-dim); }
+
+/* The count, read as a number: the one thing you scan a shelf for. */
+.shop-item-qty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 24px;
+  line-height: 1;
+}
+
+.shop-qty-num {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  text-shadow: 0 1px 0 var(--emboss-lo);
+}
+
+.shop-qty-label {
+  margin-top: 2px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.shop-item-qty.out .shop-qty-num,
+.shop-item-qty.out .shop-qty-label { color: var(--danger); }
+.shop-item-qty.unlimited .shop-qty-num { font-size: 20px; color: var(--accent); }
 
 .shop-buy-btn { flex-shrink: 0; padding: 3px 8px; font-size: 10px; }
 
