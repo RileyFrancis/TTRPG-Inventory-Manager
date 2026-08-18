@@ -50,6 +50,11 @@ function handleAuthStateChange(user) {
   updateAuthUI();
   onAuthUserChanged(state.auth.user); // cloud-save.js picks it up from here
 
+  // The boot guess about which screen to open, corrected now that Firebase has
+  // actually spoken. A session that has expired since the last visit leaves the
+  // home screen up — it is still this browser's roster, and Back is right there.
+  rememberSignedIn(!!user);
+
   if (!user) return;
 
   // Unconditionally: the login screen has served its purpose the moment there
@@ -62,7 +67,15 @@ function handleAuthStateChange(user) {
     const action = pendingAuthAction;
     pendingAuthAction = null;
     action();
+    return;
   }
+
+  // Nothing was waiting on it, so this is a sign-in for its own sake — or a
+  // session restored at boot. Either way an account means a roster, and the
+  // roster is where a player starts. A sign-in *for* something goes there
+  // instead, above: it would be strange to answer "join a party" with a
+  // character list.
+  openHomeScreen();
 }
 
 function isSignedIn() {

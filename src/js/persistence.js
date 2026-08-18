@@ -78,32 +78,36 @@ document.getElementById('stash-delete-all-btn').addEventListener('click', () => 
   debouncedSync();
 });
 
-// Everything that belongs to the character rather than to this browser. One
-// builder, so the localStorage copy and the cloud copy can never drift apart —
-// cloud-save.js stores the JSON of exactly this.
+// Everything that belongs to the account rather than to this browser: the whole
+// roster of characters, and which of them is in play. One builder, so the
+// localStorage copy and the cloud copy can never drift apart — cloud-save.js
+// stores the JSON of exactly this.
+//
+// The character on screen is the working copy of one slot, so it is flushed back
+// into the roster first; `commitActiveCharacter()` declines when what is on
+// screen is somebody else's sheet or the GM's placeholder.
+const SAVE_VERSION = 2;
+
 function buildSavePayload() {
+  commitActiveCharacter();
   return {
-    character:   state.character,
-    instances:   state.instances,
-    equipped:    state.equipped,
-    equipLayout: state.equipLayout,
-    db: Object.fromEntries(
-      Object.entries(state.db).filter(([id]) => !DEFAULT_ITEMS.find(t => t.id === id))
-    ),
+    version: SAVE_VERSION,
+    activeCharacterId: state.activeCharacterId,
+    characters: state.characters,
   };
 }
 
-// The inverse. Custom items merge over the defaults already in state.db;
-// everything else replaces. Renders are the caller's job — at boot there is
+// The inverse. `normalizeSavePayload` in characters.js reads both shapes — a
+// version-1 save is a single character at the top level — so nothing else has to
+// know there were ever two. Renders are the caller's job: at boot there is
 // nothing on screen yet, while a cloud save arriving mid-session must redraw.
 function applySavePayload(data) {
   if (!data) return;
-  if (data.character)   state.character   = data.character;
-  if (data.db)          Object.assign(state.db, data.db);
-  if (data.instances)   state.instances   = data.instances;
-  if (data.equipped)    state.equipped    = data.equipped;
-  if (data.equipLayout) state.equipLayout = data.equipLayout;
-  syncNextId();
+  const norm = normalizeSavePayload(data);
+  state.characters = norm.characters;
+  state.activeCharacterId = norm.activeCharacterId;
+  ensureCharacter();              // also loads the active slot into live state
+  loadActiveCharacterIntoLive();
 }
 
 function autoSave() {
@@ -131,16 +135,8 @@ function loadState() {
   const raw = localStorage.getItem(SAVE_KEY);
   if (!raw) { alert('No saved data found.'); return; }
   try {
-    const data = JSON.parse(raw);
-    state.character = data.character ?? state.character;
-    Object.assign(state.db, data.db ?? {});
-    state.instances = data.instances ?? {};
-    state.equipped  = data.equipped  ?? {};
-    syncNextId();
-    rebuildGrid();
-    renderItemList();
-    renderEquipPanel();
-    syncCharacterViewUI();
+    applySavePayload(JSON.parse(raw));
+    renderLiveCharacter();
     flashButton(document.getElementById('load-btn'), 'Loaded!');
   } catch {
     alert('Failed to load save data.');

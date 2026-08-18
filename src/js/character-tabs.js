@@ -192,8 +192,11 @@ function syncCharacterViewUI() {
 }
 
 function renderCharacterSheet() {
-  document.getElementById('sheet-char-name').textContent = state.character.name;
-  document.getElementById('sheet-char-sub').textContent  = `STR ${state.character.strength}`;
+  const c = state.character;
+  document.getElementById('sheet-char-name').textContent = c.name;
+  const descr = describePartyCharacter(c); // "Level 4 · Half-Elf · Fighter"
+  document.getElementById('sheet-char-sub').textContent =
+    descr ? `${descr} · STR ${c.strength}` : `STR ${c.strength}`;
 }
 
 // =============================================================================
@@ -213,6 +216,7 @@ function characterShortcutsAllowed(e) {
   if (t && t.matches && t.matches('input, textarea, select')) return false;
   if (t && t.isContentEditable) return false;
   if (document.querySelector('.modal:not(.hidden)')) return false;
+  if (state.screen !== 'app') return false; // the home screen is a page, not the tabs
   return state.mode === 'idle';
 }
 

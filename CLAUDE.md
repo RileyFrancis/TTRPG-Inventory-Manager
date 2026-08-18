@@ -63,6 +63,7 @@ tools/              Standalone dev helpers (not part of the app)
 | `auth.js` | Firebase sign-in, the login modal, the Settings account row |
 | `cloud-save.js` | Mirrors the save file to `users/<uid>/save` while signed in |
 | `character-tabs.js` | Per-character tabs above the inventory + sheet/inventory switch |
+| `characters.js` | The account's roster of characters, and the home screen |
 | `equipment.js` | Equip slots, layout editor, equip/unequip |
 | `shop.js` | The left panel's tabs, GM shop editor, player shopfront, paying |
 | `tooltip.js` | Hover tooltip |
@@ -71,7 +72,10 @@ tools/              Standalone dev helpers (not part of the app)
 ### State model (`src/js/state.js`)
 
 ```
-state.character   { name, strength }
+state.character   { id, name, strength, level, race, classes[] }  (the working copy)
+state.characters  { [charId]: { character, instances, equipped, equipLayout, db } }
+state.activeCharacterId  charId                     (which slot the working copy is)
+state.screen      'app' | 'home'                    (the roster page is in front of the app)
 state.grid        2D array [row][col] → instanceId | null
 state.instances   { [instanceId]: { id, templateId, rotation, row, col, stackCount } }
 state.db          { [templateId]: ItemTemplate }   (default + custom items)
@@ -118,6 +122,31 @@ data.
   negative margins, and `#inventory-panel` is positioned and later in the DOM —
   unpositioned, the handle's `z-index` does nothing and the inventory panel eats
   the clicks on half of it.
+
+### Party membership
+
+The roster under `parties/<code>/players` is the membership list, and the GM is
+the only one who can shorten it — a **Kick** button on each entry in the Party
+panel.
+
+- **Removing the entry is the whole operation.** There is no "you were kicked"
+  flag to write, read and clean up: a player's client sees itself gone from the
+  roster snapshot and leaves. `sawSelfInRoster` is what tells a removal apart
+  from a first snapshot that has not arrived yet, and it is set at join time
+  because we wrote the entry ourselves.
+- The kicked player loses nothing. Their roster entry was always a *copy* of a
+  save that lives in their own browser and their own account.
+- `partySelfRef` exists so `leaveParty()` can **cancel the onDisconnect**.
+  Uncancelled, closing the tab later would write `connected: false` back into a
+  party we have left — resurrecting a player the GM has just removed. For the
+  same reason a kicked client sweeps its own node once it has stopped syncing:
+  a sync already in flight lands as an `update()` on a missing path, which
+  writes it back.
+- The GM's own view is handed back first if they were looking at the player they
+  are removing, so nobody is left editing a sheet that is no longer in the party.
+- Like reveal, this is **pacing, not security**: a kicked player who reads the
+  database directly can still write to `parties/<code>`. If the rules ever gate
+  that path, membership belongs in them.
 
 ### Shops
 
@@ -196,6 +225,49 @@ choose between, so a solo player's panel is the bare equipment panel it always w
 - Deliberately **not** `.tab-btn` / `.tab-pane`: those belong to the sidebar, and
   `switchTab()` toggles every one of them on the page.
 
+### Characters and the home screen
+
+An account is a *player*, not a character: one person runs a fighter on Tuesdays
+and a wizard on Fridays and both are theirs. So the save file holds a **roster**,
+`state.characters`, and exactly one slot at a time is live in
+`state.character` / `state.instances` / `state.equipped` / `state.db`.
+
+- Live state stayed where it always was rather than being read through the
+  roster, because every render path, the grid, the drag machinery and party sync
+  already speak that language. The roster is the *store*; the live fields are the
+  *working copy*. Exactly two functions bridge them and nothing else may:
+  `commitActiveCharacter()` (working copy → slot) and
+  `loadActiveCharacterIntoLive()` (slot → working copy).
+- `commitActiveCharacter()` runs from `buildSavePayload()`, so every save flushes
+  the character on screen back into its slot first and the two cannot drift.
+- It **refuses** whenever the working copy is not your own character —
+  `liveStateIsOwnCharacter()`. While another member's sheet is up, `state` is
+  theirs; a GM has no character at all and their panel is the placeholder.
+  Committing either would overwrite a character with someone else's inventory,
+  and this guard is the only thing standing between the two. A GM's own character
+  is reloaded from its slot by `leaveParty()`.
+- The custom item catalogue is per character, so `loadActiveCharacterIntoLive()`
+  rebuilds `state.db` from `DEFAULT_ITEMS` rather than merging — otherwise a
+  character would inherit the custom items of whoever was on screen before.
+- The roster is **never empty**: `ensureCharacter()` mints a fresh character on a
+  first run, and deleting the last one hands back a new one rather than leaving
+  the app with no character to be.
+- The home screen is a page in front of the app (`state.screen`, a fixed overlay
+  under the modal backdrop), not a panel inside it — picking a character is what
+  happens before there is an inventory to look at. `renderHomeScreen()` returns
+  early unless it is showing, so anything that replaces the world can call it
+  freely.
+- **A signed-in player starts there.** `handleAuthStateChange` opens it on any
+  sign-in that nothing was waiting on — a sign-in *for* something (the party
+  modal) goes there instead. Firebase restores its session asynchronously, so
+  `maybeOpenHomeAtBoot()` guesses from `dnd_inventory_last_signin` (this
+  browser's own flag, written by auth.js) rather than painting the inventory and
+  yanking it away a moment later.
+- One modal serves three jobs — the header's Edit Character, a card's Edit, and
+  New Character. A **null** `charModalTargetId` means *the character on screen*,
+  which is not always one of yours: a GM editing a player's Strength from the
+  header edits the working copy and the party roster, never their own slot.
+
 ### Character tabs
 
 The strip above the inventory (`character-tabs.js`) holds one tab per character —
@@ -263,6 +335,14 @@ DRAGGING
 ### Persistence
 
 `saveState` / `loadState` use `localStorage` key `dnd_inventory_v1`. Only custom items (not in `DEFAULT_ITEMS`) are saved; default items are always re-hydrated from `data/items.csv` on init. Placed instances are saved in full and re-placed via `rebuildGrid` on load.
+
+The payload is **version 2**: the whole roster, `{ version, activeCharacterId,
+characters }`. Version 1 was a single character at the top level and is still what
+an older browser or an older cloud save holds, so `normalizeSavePayload()` in
+`characters.js` reads both and folds a v1 save into a one-character roster —
+the *only* place that knows there were ever two shapes. The key is unchanged
+(`dnd_inventory_v1`): it names the storage slot, not the payload version, and
+renaming it would orphan every existing save.
 
 `items.js` reads `data/items.csv` with a **synchronous** `XMLHttpRequest` so `DEFAULT_ITEMS`
 is populated before `init()` runs. That is why the app needs an HTTP server rather than

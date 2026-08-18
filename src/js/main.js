@@ -37,13 +37,18 @@ function init() {
   loadPanelLayout(); // Side-panel widths / collapsed state — stored per browser
   loadDefaultItems();
   DEFAULT_ITEMS.forEach(t => { state.db[t.id] = t; });
-  autoLoad();       // Restore last session (includes equipLayout if saved)
+  autoLoad();       // Restore last session — the whole roster of characters
+  ensureCharacter();// Never no character: a first run mints one
   loadFolders();    // Browse-list folders — stored per browser, not in the save file
   loadSlotConfig(); // Fallback: migrate old config or apply defaults if layout not yet set
   rebuildGrid(); // Sizes grid from restored character.strength, places saved instances
   renderItemList();
   renderEquipPanel();
   syncCharacterViewUI(); // character tabs — solo, that is the one own-tab
+  // Before Firebase answers: a player who was signed in last visit starts on
+  // their roster, and waiting for the session restore would mean painting the
+  // inventory first only to replace it. auth.js corrects the guess either way.
+  maybeOpenHomeAtBoot();
   initFirebase();
   initAuth();       // restores a previous session, which then starts cloud sync
 }

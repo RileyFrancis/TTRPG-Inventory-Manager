@@ -10,6 +10,17 @@ let firebaseDb = null;
 let partyPlayersRef = null;
 let firebaseInitError = null; // kept so the party buttons can say what went wrong
 
+// Our own node in the party — the player entry, or the GM's. Held because it
+// carries an onDisconnect handler that must be *cancelled* when we leave on
+// purpose: uncancelled, it would write `connected: false` back into a roster we
+// are no longer in, resurrecting a player the GM has just removed.
+let partySelfRef = null;
+
+// Whether we have ever seen ourselves in the roster. A player's entry vanishing
+// afterwards means the GM removed it — the roster is the only signal, and one
+// that cannot be spoofed by a slow first snapshot.
+let sawSelfInRoster = false;
+
 function initFirebase() {
   if (!FIREBASE_CONFIG) return; // firebase-config.js already explained why
   if (typeof firebase === 'undefined') {
@@ -105,6 +116,7 @@ async function createParty() {
     const gmRef = firebaseDb.ref(`parties/${code}/gm`);
     await gmRef.set({ name: 'Game Master', connected: true });
     gmRef.onDisconnect().update({ connected: false });
+    partySelfRef = gmRef;
   } catch (e) {
     alert('Failed to create party: ' + e.message);
     return;
@@ -157,6 +169,8 @@ async function joinParty(code, playerName) {
       _writtenBy: playerId,
     });
     playerRef.onDisconnect().update({ connected: false });
+    partySelfRef = playerRef;
+    sawSelfInRoster = true; // we just wrote it — a later absence is a removal
   } catch (e) {
     alert('Failed to join party: ' + e.message);
     return;
@@ -185,6 +199,14 @@ function subscribeToParty(code) {
     const players = snap.val() ?? {};
     state.party.players = players;
 
+    // Being removed from the roster *is* the message: there is no separate
+    // "you were kicked" flag to write, read and clean up, and a player whose
+    // entry is gone has nothing left to sync to anyway.
+    if (state.party.role === 'player') {
+      if (players[state.party.playerId]) sawSelfInRoster = true;
+      else if (sawSelfInRoster) { handleRemovedFromParty(); return; }
+    }
+
     const viewId = state.party.viewingPlayerId;
     if (viewId && players[viewId]) {
       const pData = players[viewId];
@@ -211,6 +233,15 @@ function leaveParty() {
   if (partyPlayersRef) { partyPlayersRef.off(); partyPlayersRef = null; }
   unsubscribeFromShops();
 
+  // Cancel the onDisconnect before dropping the ref, or closing the tab later
+  // would write `connected: false` back into a party we have left.
+  if (partySelfRef) {
+    try { partySelfRef.onDisconnect().cancel(); } catch { /* already gone */ }
+    partySelfRef = null;
+  }
+  sawSelfInRoster = false;
+
+  const wasGM = state.party.role === 'gm';
   if (state.party.viewingPlayerId !== null) restoreOwnState();
 
   state.party = {
@@ -218,8 +249,52 @@ function leaveParty() {
     playerName: null, viewingPlayerId: null, ownState: null, players: {},
   };
 
+  // A GM's working copy is the placeholder, not a character — their own
+  // character was left untouched in its slot, so it comes back now.
+  if (wasGM) {
+    ensureCharacter();
+    loadActiveCharacterIntoLive();
+    renderLiveCharacter();
+  }
+
   updatePartyUI();
   switchTab('browse');
+}
+
+// Kicked by the GM. Nothing local is lost — the roster entry was a copy — so
+// this is a leave with an explanation.
+function handleRemovedFromParty() {
+  const code = state.party.code;
+  const selfId = state.party.playerId;
+  const ref = firebaseDb && code && selfId
+    ? firebaseDb.ref(`parties/${code}/players/${selfId}`) : null;
+
+  leaveParty();
+
+  // A sync already in flight when the GM removed us would land afterwards and
+  // recreate the entry — `update()` on a missing path writes it back. Sweeping
+  // our own node once we have stopped syncing clears any such straggler.
+  if (ref) ref.remove().catch(() => { /* already gone, or no longer permitted */ });
+
+  alert(`You have been removed from party ${code} by the Game Master.\n\n` +
+        'Your character and everything in your inventory are untouched.');
+}
+
+// GM only. Removing the entry is the whole operation: their client sees itself
+// gone from the roster and leaves. Their own save is theirs and is not touched.
+async function kickPlayer(playerId, displayName) {
+  if (!firebaseDb || !state.party.active || state.party.role !== 'gm') return;
+  if (!confirm(`Remove ${displayName} from the party?\n\n` +
+               'They will be dropped from this session. Their own character and ' +
+               'inventory are not affected, and they can rejoin with the party code.')) return;
+
+  if (state.party.viewingPlayerId === playerId) switchViewToOwn();
+
+  try {
+    await firebaseDb.ref(`parties/${state.party.code}/players/${playerId}`).remove();
+  } catch (e) {
+    alert('Could not remove that player: ' + e.message);
+  }
 }
 
 let syncTimer = null;
@@ -329,8 +404,10 @@ function switchViewToOwn() {
   if (state.party.role === 'player') {
     restoreOwnState();
   } else {
-    // GM — back to no-selection state; show placeholder
-    state.character = { name: 'Game Master', strength: 10 };
+    // GM — back to no-selection state; show placeholder. Deliberately not one
+    // of their own characters: commitActiveCharacter() refuses to write this
+    // working copy anywhere, so their roster is untouched by running a table.
+    state.character = { id: null, name: 'Game Master', strength: 10, level: 1, race: '', classes: [] };
     state.instances = {};
     state.db = {};
     DEFAULT_ITEMS.forEach(t => { state.db[t.id] = t; });
@@ -452,6 +529,20 @@ function updatePartyPanel() {
 
     top.appendChild(dot);
     top.appendChild(nameEl);
+
+    // Only the GM may remove someone, and never themselves.
+    if (state.party.role === 'gm') {
+      const kickBtn = document.createElement('button');
+      kickBtn.className = 'btn-sm danger party-kick-btn';
+      kickBtn.textContent = 'Kick';
+      kickBtn.title = `Remove ${p.name} from the party`;
+      kickBtn.addEventListener('click', e => {
+        e.stopPropagation(); // the entry itself selects the player
+        kickPlayer(id, p.name);
+      });
+      top.appendChild(kickBtn);
+    }
+
     entry.appendChild(top);
 
     if (p.character) {
@@ -462,6 +553,17 @@ function updatePartyPanel() {
       infoEl.className = 'party-player-info';
       infoEl.textContent = `${p.character.name} · ${Math.round(carried * 10) / 10} lb${statusText}`;
       entry.appendChild(infoEl);
+
+      // Level / race / class, when the player's client is new enough to publish
+      // them. An older client sends name + strength only, and this line is
+      // simply left off rather than showing a row of blanks.
+      const descr = describePartyCharacter(p.character);
+      if (descr) {
+        const subEl = document.createElement('span');
+        subEl.className = 'party-player-info';
+        subEl.textContent = descr;
+        entry.appendChild(subEl);
+      }
     }
 
     if (canClick) {
@@ -473,6 +575,18 @@ function updatePartyPanel() {
 
     listEl.appendChild(entry);
   });
+}
+
+// "Level 4 Half-Elf Fighter / Rogue", skipping whatever is missing. Empty when
+// the character carries none of it.
+function describePartyCharacter(c) {
+  if (!c) return '';
+  const classes = Array.isArray(c.classes) ? c.classes.filter(Boolean).join(' / ') : '';
+  const parts = [];
+  if (c.level) parts.push('Level ' + c.level);
+  if (c.race) parts.push(c.race);
+  if (classes) parts.push(classes);
+  return parts.join(' · ');
 }
 
 function updateViewingBanner() {

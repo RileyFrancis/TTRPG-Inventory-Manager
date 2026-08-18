@@ -7,7 +7,16 @@
 // STATE
 // =============================================================================
 const state = {
-  character: { name: 'Unnamed Hero', strength: 10 },
+  // The character on screen — the *working copy* of one slot out of
+  // `state.characters`. Everything below (grid, instances, equipped, db)
+  // belongs to it; characters.js is the only place that swaps them over.
+  character: { id: null, name: 'Unnamed Hero', strength: 10, level: 1, race: '', classes: [] },
+  // The account's roster: { [charId]: { character, instances, equipped, equipLayout, db } }
+  characters: {},
+  activeCharacterId: null,
+  // Which page is up. The home screen is a page in front of the app, not a
+  // panel inside it — UI position, never saved.
+  screen: 'app',      // 'app' | 'home'
   // Grid: 2D array [row][col] = instanceId | null
   grid: [],
   // Map of instanceId -> PlacedInstance

@@ -159,23 +159,19 @@ function applyCloudSave(remote, { force = false } = {}) {
   applySavePayload(payload);
   autoSave(); // keep the local copy in step; deliberately not debouncedSync(),
               // which would push this straight back where it came from
-  rebuildGrid();
-  renderItemList();
-  renderEquipPanel();
-  renderStash();
-  updateWeightDisplay();
-  syncCharacterViewUI();
+  renderLiveCharacter(); // the whole working copy was just replaced
+  renderHomeScreen();    // a no-op unless the roster is what is on screen
   setCloudStatus('synced');
 }
 
 // =============================================================================
 // FIRST SIGN-IN: TWO INVENTORIES
 // =============================================================================
+// A save is a whole roster now, so the summary names the active character and
+// counts the rest. `describeSavePayload` in characters.js reads either version.
 function describeSave(payload, savedAt) {
-  const name = payload?.character?.name || 'Unnamed';
-  const count = Object.keys(payload?.instances ?? {}).length;
   const when = savedAt ? new Date(savedAt).toLocaleString() : 'unknown date';
-  return `${name} — ${count} item${count === 1 ? '' : 's'}\nlast saved ${when}`;
+  return `${describeSavePayload(payload)}\nlast saved ${when}`;
 }
 
 function openCloudConflictModal(remote, localJson) {
