@@ -16,6 +16,7 @@ desktop.ini
 
 # Local Claude Code settings (shared settings live in .claude/settings.json)
 .claude/settings.local.json
+.claude/worktrees
 
 # Python http.server / tooling byproducts
 __pycache__/

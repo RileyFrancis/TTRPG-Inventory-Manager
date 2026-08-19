@@ -191,13 +191,8 @@ function syncCharacterViewUI() {
   syncLeftPanel();
 }
 
-function renderCharacterSheet() {
-  const c = state.character;
-  document.getElementById('sheet-char-name').textContent = c.name;
-  const descr = describePartyCharacter(c); // "Level 4 · Half-Elf · Fighter"
-  document.getElementById('sheet-char-sub').textContent =
-    descr ? `${descr} · STR ${c.strength}` : `STR ${c.strength}`;
-}
+// renderCharacterSheet() lives in character-sheet.js — the sheet is a page of
+// its own now, not the two lines this file used to draw.
 
 // =============================================================================
 // KEYBOARD SHORTCUTS

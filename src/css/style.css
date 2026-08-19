@@ -1173,33 +1173,302 @@ textarea { resize: vertical; }
 
 /* ─── CHARACTER SHEET ────────────────────────────────────── */
 /* One switch drives the swap: the sheet and the inventory never both show. */
+/* ─── CHARACTER SHEET ────────────────────────────────────── */
+/* Page one of the 2024 sheet. Three columns where there is room, folding to
+   one on a narrow panel — the inventory panel is resizable, so the sheet has
+   to survive being squeezed. */
 #character-sheet { display: none; }
 #inventory-panel.sheet-view #character-sheet {
-  display: flex;
+  display: block;
   flex: 1;
-  align-items: center;
-  justify-content: center;
   overflow-y: auto;
 }
 #inventory-panel.sheet-view #grid-scroll,
 #inventory-panel.sheet-view #stash-section,
 #inventory-panel.sheet-view #container-tabs { display: none; }
 
-.sheet-inner { text-align: center; max-width: 420px; padding: 32px 24px; }
-#sheet-char-name {
-  font-family: var(--font-display);
-  font-size: 22px;
-  color: var(--accent);
-  margin-bottom: 4px;
+.sheet-scroll { max-width: 1100px; margin: 0 auto; padding: 20px 22px 40px; }
+
+/* ── Header ── */
+.sheet-head {
+  position: relative;
+  padding-bottom: 14px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--border);
 }
-.sheet-sub {
+.sheet-head::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 1px;
+  background: var(--gold-line);
+  opacity: 0.8;
+}
+
+.sheet-name-input {
+  width: 100%;
+  padding: 2px 0;
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed transparent;
+}
+.sheet-name-input:hover:not(:disabled) { border-bottom-color: var(--border2); }
+.sheet-name-input:focus {
+  outline: none;
+  border-bottom-color: var(--accent);
+}
+
+.sheet-identity {
+  margin-bottom: 12px;
   font-size: 11px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-dim);
-  margin-bottom: 18px;
 }
-.sheet-placeholder { font-size: 13px; line-height: 1.6; color: var(--text-dim); }
+
+.sheet-id-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px 14px;
+}
+
+/* ── Shared field chrome ── */
+.sheet-field { display: flex; flex-direction: column; gap: 3px; margin-bottom: 10px; }
+.sheet-field > span {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.sheet-field input,
+.sheet-field select,
+.sheet-field textarea { width: 100%; }
+.sheet-field.narrow { max-width: 90px; }
+
+.sheet-h {
+  margin: 20px 0 10px;
+  padding-bottom: 5px;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--accent);
+  border-bottom: 1px solid var(--border);
+}
+.sheet-col > .sheet-h:first-child { margin-top: 0; }
+
+.sheet-hint { margin-top: 8px; font-size: 10px; color: var(--text-dim); font-style: italic; }
+
+.sheet-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px 26px;
+  align-items: start;
+}
+
+/* ── Abilities ── */
+.ability-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(78px, 1fr));
+  gap: 8px;
+}
+.ability-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 4px 6px;
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  box-shadow: inset 0 1px 0 var(--emboss-hi);
+}
+.ability-label {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.ability-score {
+  width: 100%;
+  padding: 2px;
+  font-size: 19px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--text);
+  background: transparent;
+  border: none;
+}
+.ability-score:focus { outline: none; color: var(--accent); }
+.ability-mod {
+  min-width: 38px;
+  padding: 1px 0;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-radius: 9px;
+}
+
+/* ── Proficiency rows (saves + skills) ── */
+.prof-list { display: flex; flex-direction: column; gap: 1px; }
+.prof-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 6px;
+  border-radius: 3px;
+}
+.prof-row:hover { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+
+.prof-dot {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  border: 1.5px solid var(--border2);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+.prof-dot:hover:not(:disabled) { border-color: var(--accent); }
+.prof-dot[data-level="1"] { background: var(--accent); border-color: var(--accent); }
+/* Expertise reads as a ring around a filled dot — more than proficient, and
+   distinguishable without relying on colour alone. */
+.prof-dot[data-level="2"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--panel), 0 0 0 3.5px var(--accent);
+}
+.prof-dot:disabled { cursor: default; opacity: 0.5; }
+
+.prof-name { flex: 1; font-size: 12px; }
+.prof-note {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+.prof-value {
+  min-width: 26px;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: right;
+  color: var(--accent);
+}
+
+/* ── Stat tiles ── */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+  gap: 8px;
+}
+.hp-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.stat-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 7px 6px;
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  box-shadow: inset 0 1px 0 var(--emboss-hi);
+}
+.stat-tile > span {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  text-align: center;
+}
+.stat-tile input,
+.stat-tile select {
+  width: 100%;
+  padding: 1px;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--text);
+  background: transparent;
+  border: none;
+}
+.stat-tile input:focus, .stat-tile select:focus { outline: none; color: var(--accent); }
+.stat-tile select { font-size: 12px; }
+/* A worked-out number is not a box you can type in, and should not look like one. */
+.stat-tile.derived {
+  background: color-mix(in srgb, var(--accent) 8%, var(--panel));
+  border-style: dashed;
+}
+.stat-tile.derived strong { font-size: 16px; color: var(--accent); }
+
+/* ── Death saves ── */
+.death-row { display: flex; gap: 16px; margin: 12px 0; flex-wrap: wrap; }
+.death-block { display: flex; flex-direction: column; gap: 5px; }
+.death-label {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.death-pips { display: flex; gap: 5px; }
+.death-pip {
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 1.5px solid var(--border2);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.death-pip:hover:not(:disabled) { border-color: var(--accent); }
+.death-pip.filled { background: var(--enc-ok); border-color: var(--enc-ok); }
+.death-pips.fail .death-pip.filled { background: var(--danger); border-color: var(--danger); }
+.death-pip:disabled { cursor: default; opacity: 0.5; }
+
+/* ── Checkboxes ── */
+.sheet-check {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 8px 0;
+  font-size: 12px;
+  cursor: pointer;
+}
+.sheet-check input { width: 14px; height: 14px; cursor: pointer; }
+.sheet-check.inline { margin: 0; font-size: 11px; }
+
+.armor-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.armor-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* Someone else's sheet: readable, obviously not yours to change. */
+#character-sheet.sheet-readonly input,
+#character-sheet.sheet-readonly select,
+#character-sheet.sheet-readonly textarea { opacity: 0.75; cursor: default; }
 
 #viewing-banner {
   display: flex;

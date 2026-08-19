@@ -64,6 +64,7 @@ tools/              Standalone dev helpers (not part of the app)
 | `cloud-save.js` | Mirrors the save file to `users/<uid>/save` while signed in |
 | `character-tabs.js` | Per-character tabs above the inventory + sheet/inventory switch |
 | `characters.js` | The account's roster of characters, and the home screen |
+| `character-sheet.js` | Page one of the 2024 sheet: abilities, skills, combat stats |
 | `equipment.js` | Equip slots, layout editor, equip/unequip |
 | `shop.js` | The left panel's tabs, GM shop editor, player shopfront, paying |
 | `tooltip.js` | Hover tooltip |
@@ -72,7 +73,10 @@ tools/              Standalone dev helpers (not part of the app)
 ### State model (`src/js/state.js`)
 
 ```
-state.character   { id, name, strength, level, race, classes[] }  (the working copy)
+state.character   { id, name, level, race, classes[], abilities{str…cha}, strength,
+                    background, subclass, xp, size, ac, speed, hp{…}, hitDice{…},
+                    deathSaves{…}, inspiration, saveProf{}, skillProf{},
+                    armorTraining{}, weaponProf, toolProf }   (the working copy)
 state.characters  { [charId]: { character, instances, equipped, equipLayout, db } }
 state.activeCharacterId  charId                     (which slot the working copy is)
 state.screen      'app' | 'home'                    (the roster page is in front of the app)
@@ -267,6 +271,47 @@ and a wizard on Fridays and both are theirs. So the save file holds a **roster**
   New Character. A **null** `charModalTargetId` means *the character on screen*,
   which is not always one of yours: a GM editing a player's Strength from the
   header edits the working copy and the party roster, never their own slot.
+
+### The character sheet
+
+Page one of the 2024 sheet, in `src/js/character-sheet.js`, shown in place of the
+grid when a tab's *Character Sheet* is picked. It reads and writes the same
+`state.character` as everything else and owns no data of its own.
+
+- **What is typed and what is worked out.** Anything the rules derive
+  unambiguously is derived and rendered as *text*, never as a box: ability
+  modifiers, proficiency bonus (from level), every skill and save, passive
+  Perception, initiative. What is left is what the rules cannot settle without
+  knowing more than this app does — AC, speed, HP, hit dice — and those are
+  inputs. A derived box that can be edited will disagree with itself; a typed box
+  the app guesses at will fight homebrew. `.stat-tile.derived` is the visual half
+  of the same promise.
+- **`abilities.str` is the character's Strength, and the grid's.** The inventory
+  has always sized itself from `state.character.strength`, so that field stays —
+  as a *mirror*, written only by `normalizeCharacterMeta()`. One writer, so the
+  two cannot drift, and a save or a party member from before the sheet still
+  lands the right way up (`normalizeAbilities` takes the old `strength` as the
+  fallback for `str`, so nobody silently becomes a 10). Editing Strength on the
+  sheet resizes the grid exactly as the character modal does.
+- The character modal's Strength box therefore writes **into** `abilities`, not
+  beside it — `readCharModalFields(current)` merges. Writing a bare `strength`
+  would be ignored, because `abilities` wins.
+- Skill proficiency is **three-state** (none / proficient / expertise); saves are
+  two. 2024 keeps expertise, and a rogue with a plain tick is simply wrong.
+- The unique boxes are static markup in `index.html`, as everything referenced by
+  JS is. The six abilities, six saves and eighteen skills are **built once** from
+  the `ABILITIES` and `SKILLS` constants that define them — hand-writing eighteen
+  rows would only give them somewhere to disagree with the constant. Built once
+  and never rebuilt: `renderCharacterSheet()` only writes values into what is
+  already there, so **an input never loses focus mid-keystroke**. It skips
+  `document.activeElement` for the same reason — the sheet re-renders on every
+  party roster update, and a sync landing mid-word must not reset the box.
+- One delegated listener per event, not one per box: there are ~80 of them.
+- Read-only when `isReadOnly()` — a player looking at someone else's sheet.
+- **Not yet built:** the attacks table, and all of page two (spells, backstory,
+  appearance, alignment, attunement). Equipment and coins are deliberately absent
+  — the inventory and the coin purse already own them, and a second copy on the
+  sheet would be a second answer.
 
 ### Character tabs
 

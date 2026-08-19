@@ -36,21 +36,43 @@ function newCharacterId() {
 // Every field a card shows, in the shape the rest of the app expects. `id` is
 // carried on the character itself so a slot and its meta can never be orphaned.
 function blankCharacterMeta(name = 'Unnamed Hero') {
-  return { id: newCharacterId(), name, strength: 10, level: 1, race: '', classes: [] };
+  return normalizeCharacterMeta({ id: newCharacterId(), name, strength: 10, level: 1, race: '', classes: [] });
 }
 
 // Old saves — and party data from an older client — carry only name + strength.
+// Every sheet field is filled in from `defaultSheetFields()` here, so nothing
+// downstream has to cope with a character that has half of them.
+//
+// `strength` is a **mirror of `abilities.str`**, and this is the only place that
+// writes it. The inventory grid has always sized itself from `strength`, so the
+// field stays exactly where every existing reader expects it — including party
+// members running an older client — while the sheet edits the six abilities as
+// one symmetric group. One writer means the two cannot drift apart.
 function normalizeCharacterMeta(meta, id) {
   const m = meta ?? {};
+  const abilities = normalizeAbilities(m.abilities, m.strength);
+  const sheet = defaultSheetFields();
+
+  Object.keys(sheet).forEach(key => {
+    if (m[key] === undefined || m[key] === null) return;
+    // The nested groups merge field by field, so a save written before one of
+    // them gained a key keeps the default for that key rather than losing it.
+    sheet[key] = (typeof sheet[key] === 'object' && !Array.isArray(sheet[key]))
+      ? { ...sheet[key], ...m[key] }
+      : m[key];
+  });
+
   return {
     id: id ?? m.id ?? newCharacterId(),
     name: String(m.name ?? 'Unnamed Hero'),
-    strength: Math.max(1, Math.min(30, parseInt(m.strength, 10) || 10)),
     level: Math.max(1, Math.min(20, parseInt(m.level, 10) || 1)),
     race: String(m.race ?? ''),
     classes: Array.isArray(m.classes)
       ? m.classes.map(c => String(c).trim()).filter(Boolean)
       : String(m.classes ?? '').split(/[,/]/).map(c => c.trim()).filter(Boolean),
+    abilities,
+    strength: abilities.str, // mirror — see above
+    ...sheet,
   };
 }
 
@@ -333,7 +355,7 @@ function renderHomeScreen() {
     card.appendChild(levelEl);
 
     [['Class', describeCharacterClasses(c) || '—'],
-     ['Race',  c.race || '—']].forEach(([label, value]) => {
+     ['Species', c.race || '—']].forEach(([label, value]) => {
       const row = document.createElement('div');
       row.className = 'char-card-row';
       const k = document.createElement('span');

@@ -57,13 +57,18 @@ function openCharModal(targetId = null, { isNew = false } = {}) {
   setTimeout(() => document.getElementById('char-name-input').focus(), 0);
 }
 
-function readCharModalFields() {
+// `current` is the character being edited, because Strength is now one of six
+// abilities: it has to be written *into* the existing set rather than beside it,
+// or normalizeCharacterMeta would take the untouched `abilities.str` and the box
+// the user just typed in would appear to do nothing.
+function readCharModalFields(current) {
+  const str = parseInt(document.getElementById('char-str-input').value, 10);
   return {
     name: document.getElementById('char-name-input').value.trim() || 'Unnamed Hero',
-    strength: parseInt(document.getElementById('char-str-input').value, 10),
     level: parseInt(document.getElementById('char-level-input').value, 10),
     race: document.getElementById('char-race-input').value.trim(),
     classes: document.getElementById('char-class-input').value,
+    abilities: { ...(current?.abilities ?? {}), str: Number.isFinite(str) ? str : 10 },
   };
 }
 
@@ -75,7 +80,9 @@ function updateCharModalNote() {
 document.getElementById('char-str-input').addEventListener('input', updateCharModalNote);
 
 document.getElementById('save-char-btn').addEventListener('click', () => {
-  const fields = readCharModalFields();
+  const current = charModalIsNew ? null
+    : (charModalTargetId ? state.characters[charModalTargetId]?.character : state.character);
+  const fields = readCharModalFields(current);
   hideModal('character-modal');
 
   if (charModalIsNew) {
