@@ -24,6 +24,7 @@ src/css/style.css   All styles
 src/js/*.js         Application logic, one file per concern
 data/items.csv      Default item database
 data/item_dtypes.csv  Reference only — the allowed values for each items.csv column
+img/                Image assets (the tiled paper texture)
 tools/              Standalone dev helpers (not part of the app)
 ```
 
@@ -440,6 +441,51 @@ or it will be wrong in one of the two themes.
   or `system`. `system` is re-resolved live from `prefers-color-scheme`.
 - Deliberately **not** part of the `dnd_inventory_v1` save file: the theme belongs to the
   browser, not the character, and must be readable before app state loads.
+- **The paper.** `img/paper-antique-seamless.jpg` (1919 × 1362, seamless) is a torn
+  sheet drawn by `.paper-sheet::before` — one rule, two users: `#grid-paper` (the
+  wrapper around the inventory grid) and `.sheet-scroll` (the character sheet's body).
+  Both are **content**-sized, so the paper hugs what is drawn on it with an even
+  half-inch margin (`inset: -0.5in`, exact — 1 CSS inch is 96px) rather than filling
+  the panel and putting the tear out at the far edges where nothing is happening.
+  `#inventory-panel` is now just the desk. `#grid-scroll` and `#character-sheet` are
+  **transparent**; give either a background and it covers the paper.
+  - `#grid-paper` exists only to carry the sheet: `#inventory-grid` is
+    `overflow: hidden` for its own cells, which would clip the paper away. It is a
+    plain wrapper — the JS only ever looks the grid up by id, so it is safe.
+  - The wrapper's `margin` (62px) must exceed the paper's overhang plus half the
+    displacement scale, or the ancestor's overflow trims the ragged edge back to a
+    straight line. `#character-sheet` carries the same figure as side padding, for
+    when the panel is squeezed narrow enough that `.sheet-scroll`'s auto side margins
+    collapse to nothing.
+  - Only the tile **width** is set; the height is `auto`, which preserves the aspect
+    ratio without anyone doing the arithmetic. Never give it a second length.
+  - It is faded by `--paper-veil`, a wash of `--bg` laid *over* the image — the same
+    thing as opacity, but it stays an ordinary background layer. **Raise** the
+    percentage to turn the texture down. Per theme, and not the same number: the
+    texture is cream paper, so what suits parchment (26%) turns the candlelit theme
+    grey and the grid stops reading against it (79%).
+  - **The torn edge** is the `#paper-fray` SVG filter in `index.html`: feTurbulence
+    makes noise, feDisplacementMap pushes the paper layer's pixels around by it, so
+    the rectangle loses irregular bites at the edges. A *filter*, not a mask, because
+    filters work in real pixels — the fray stays the same size whatever shape the
+    panel is dragged into, where a stretched mask image would smear along the long
+    side. Applied only to the paper layer, **never to an element with content**:
+    displacing the grid or the sheet's text would be a disaster.
+  - Three numbers have to stay in step. `scale` (34) is how deep the tear bites;
+    the layer's `inset` (20px) must clear **half** of it, since the tear pushes
+    outward as well as in, and past that the fray covers the desk instead of
+    revealing it; the filter's own region (±6%) must exceed both or the displaced
+    edge is clipped back into a straight line.
+  - `--desk` is what shows around the tear. A frayed edge is only an edge if
+    something different is behind it — with the desk near the paper's own tone the
+    whole effect vanishes. `--paper-edge` is the burn around the rim, and it is
+    ragged for free: the same displacement tears it along with the edge.
+  - `pointer-events: none` on the layer, and `isolation: isolate` on each
+    `.paper-sheet` so its `z-index: -1` paper sits below that sheet's own content
+    instead of escaping behind the whole app.
+  - `#svg-defs` is positioned absolute, not `display: none` — a hidden subtree cannot
+    be referenced by `filter: url(#…)` everywhere, but an inline 0×0 SVG still opens a
+    line box and pushes the page down by a line's height.
 - Rarity and coin colours differ per theme (neon green vanishes on parchment). JS reads
   them from CSS via `rarityColor()` / `coinColor()` in `helpers.js`, which cache lookups;
   `applyTheme()` clears the cache and re-renders everything that bakes a colour into an

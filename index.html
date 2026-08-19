@@ -20,6 +20,40 @@
   <link rel="stylesheet" href="src/css/style.css">
 </head>
 <body>
+
+<!-- ===== SVG FILTER DEFS =====
+     The torn edge of the paper. feTurbulence makes noise, feDisplacementMap
+     pushes the pixels of whatever it is applied to around by that noise — so
+     applied to a plain rectangle of paper it eats irregular bites out of the
+     edges and leaves the middle alone.
+
+     It is a *filter* rather than a mask on purpose: filters work in real pixels,
+     so the fray stays the same size whatever shape the panel is dragged into,
+     where a stretched mask image would smear along the long side. It is applied
+     only to the paper layer (#inventory-panel::before), never to an element with
+     content in it — displacing the grid or the sheet's text would be a disaster.
+
+     The filter region is deliberately larger than the element so the displaced
+     edge is not clipped flat, and `scale` must stay under twice the paper's
+     inset in style.css — the tear pushes outward as well as in, and past that
+     it covers the desk it is supposed to be revealing.
+
+     Taken out of flow by `#svg-defs` in style.css rather than hidden with
+     `display: none`: a hidden subtree cannot be referenced by `filter: url(#…)`
+     in every browser, but an inline 0×0 SVG still opens a line box and pushes
+     the whole page down by the height of one line. -->
+<svg id="svg-defs" width="0" height="0" aria-hidden="true" focusable="false">
+  <defs>
+    <filter id="paper-fray" x="-6%" y="-6%" width="112%" height="112%"
+            color-interpolation-filters="sRGB" filterUnits="objectBoundingBox">
+      <feTurbulence type="fractalNoise" baseFrequency="0.011" numOctaves="5"
+                    seed="9" result="fray-noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="fray-noise" scale="34"
+                         xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+</svg>
+
 <div id="app">
 
   <!-- ===== HEADER ===== -->
@@ -76,8 +110,13 @@
       </div>
       <div id="container-tabs" class="hidden"></div>
       <div id="grid-scroll">
-        <div id="inventory-grid">
-          <!-- cells injected by JS -->
+        <!-- The wrapper exists to carry the torn paper: #inventory-grid is
+             `overflow: hidden` for its own cells, which would clip the sheet
+             away, so the paper hangs off this instead. -->
+        <div id="grid-paper" class="paper-sheet">
+          <div id="inventory-grid">
+            <!-- cells injected by JS -->
+          </div>
         </div>
       </div>
       <!-- Unplaced items -->
@@ -96,7 +135,7 @@
            abilities, six saves and eighteen skills are built once from the
            constants in character-sheet.js, which is where they are defined. -->
       <div id="character-sheet">
-        <div class="sheet-scroll">
+        <div class="sheet-scroll paper-sheet">
 
           <div class="sheet-head">
             <input type="text" id="sheet-name" class="sheet-name-input" maxlength="40"

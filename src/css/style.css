@@ -48,6 +48,27 @@
   --vignette:   rgba(122, 90, 44, 0.16);
   --gold-line:  linear-gradient(90deg, transparent, var(--accent-soft), transparent);
 
+  /* Paper texture — the sheet the inventory and character sheet are drawn on.
+     The file is 1919 × 1362 and seamless, so it is tiled rather than stretched:
+     only the *width* is set and the height is left `auto`, which is what keeps
+     the aspect ratio exactly right without anyone having to do the arithmetic.
+     One tile per ~640px is about a third of the source — big enough that the
+     repeat does not read as a pattern, small enough to stay detailed.
+     `--paper-veil` is a wash of the page colour laid *over* the texture: at 50%
+     it is the same thing as the texture at 50% opacity, but it stays a plain
+     background layer, so nothing needs a pseudo-element that could swallow a
+     drag. Turn the texture down by raising the percentage. */
+  --paper-tile:   url('../../img/paper-antique-seamless.jpg');
+  --paper-tile-w: 640px;
+  --paper-veil:   color-mix(in srgb, var(--bg) 26%, transparent);
+  /* What shows *around* the torn edge — the desk the sheet is lying on. A frayed
+     edge is only an edge if something different is behind it. */
+  --desk:         #9a8259;
+  /* Old paper is darkest where it has been handled most. This is the burn around
+     the rim; the same displacement that tears the edge makes it ragged too. */
+  --paper-edge:   rgba(86, 58, 22, 0.55);
+  --paper-cast:   rgba(70, 48, 18, 0.38); /* the shadow it casts on the desk */
+
   /* Carry zones */
   --zone-normal-bg:    #e6d8b8;
   --zone-normal-line:  #c9b085;
@@ -119,6 +140,15 @@
   --shadow-deep: 0 10px 34px rgba(0, 0, 0, 0.72);
   --vignette:   rgba(0, 0, 0, 0.5);
   --gold-line:  linear-gradient(90deg, transparent, var(--accent-soft), transparent);
+
+  /* The texture is cream paper, so the veil that suits parchment turns a
+     candlelit room into a grey one — the grid stops reading against it. Same
+     tile, same ratio, far more veil: enough grain to feel like paper, not
+     enough to lift the background. */
+  --paper-veil: color-mix(in srgb, var(--bg) 79%, transparent);
+  --desk:       #0d0b08;
+  --paper-edge: rgba(0, 0, 0, 0.62);
+  --paper-cast: rgba(0, 0, 0, 0.6);
 
   --zone-normal-bg:    #201a13;
   --zone-normal-line:  #3b3022;
@@ -267,6 +297,10 @@ textarea { resize: vertical; }
   font-size: 14px;
   line-height: 1.2;
 }
+
+/* The filter definitions the paper's torn edge uses. Out of flow entirely — see
+   the comment beside it in index.html. */
+#svg-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
 
 /* ─── LAYOUT ─────────────────────────────────────────────── */
 #app {
@@ -437,13 +471,54 @@ textarea { resize: vertical; }
 #app.sidebar-collapsed #character-tabs { padding-right: 42px; }
 
 /* ─── INVENTORY PANEL ────────────────────────────────────── */
+/* The desk. The paper is no longer panel-sized — it wraps the content, so what
+   is left here is the surface both sheets lie on. */
 #inventory-panel {
   display: flex;
   flex-direction: column;
   flex: 1;
   overflow: hidden;
   position: relative;
+  background: var(--desk);
   border-right: 1px solid var(--border);
+}
+
+/* ─── THE TORN SHEET ─────────────────────────────────────── */
+/* One rule, two users: the inventory grid's wrapper and the character sheet's
+   body. Both are *content*-sized, so the paper hugs what is drawn on it with an
+   even margin rather than filling the panel and leaving the tear out at the far
+   edges where nothing is happening.
+
+   `isolation` makes each of these a stacking context, which is what keeps the
+   `z-index: -1` paper below its own content but still on the page. Without it
+   the layer escapes and paints behind the whole app. */
+.paper-sheet {
+  position: relative;
+  isolation: isolate;
+  /* Room outside the paper for the tear to bite into and for the sheet to read
+     as a sheet. Must exceed the paper's own overhang plus half the displacement
+     scale, or the ancestor's overflow trims the ragged edge back to a straight
+     line. */
+  margin: 62px;
+}
+
+.paper-sheet::before {
+  content: '';
+  position: absolute;
+  /* The margin of paper around the content — a half inch, written as one, since
+     CSS inches are exact (1in = 96px). */
+  inset: -0.5in;
+  z-index: -1;
+  pointer-events: none; /* the whole app is drag-driven; this must never take a click */
+  background-image:
+    linear-gradient(var(--paper-veil), var(--paper-veil)),
+    var(--paper-tile);
+  background-size: auto, var(--paper-tile-w) auto;
+  background-repeat: repeat, repeat;
+  box-shadow: inset 0 0 38px 10px var(--paper-edge);
+  /* Order matters: the tear happens first, then the shadow is cast from the
+     torn silhouette rather than from a rectangle. */
+  filter: url(#paper-fray) drop-shadow(0 2px 7px var(--paper-cast));
 }
 
 #grid-scroll {
@@ -454,12 +529,13 @@ textarea { resize: vertical; }
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  background:
-    radial-gradient(ellipse 120% 90% at 50% 0%, transparent 55%, var(--vignette) 100%),
-    var(--bg);
+  /* Transparent: the paper is one sheet behind the whole panel now, and the old
+     vignette here would only darken a rim the paper's own burnt edge already
+     draws — twice over, and in the wrong place. */
+  background: transparent;
 }
 #grid-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
-#grid-scroll::-webkit-scrollbar-track { background: var(--bg); }
+#grid-scroll::-webkit-scrollbar-track { background: transparent; }
 #grid-scroll::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
 
 /* The pack itself — a leather-bound frame around the carry grid */
@@ -1182,12 +1258,20 @@ textarea { resize: vertical; }
   display: block;
   flex: 1;
   overflow-y: auto;
+  /* Guarantees room for the torn edge even when the panel is squeezed narrow
+     enough that `.sheet-scroll`'s auto side margins collapse to nothing. */
+  padding: 0 62px;
+  /* Transparent — it is drawn on the same torn sheet as the inventory, which
+     the panel behind it provides. */
+  background: transparent;
 }
 #inventory-panel.sheet-view #grid-scroll,
 #inventory-panel.sheet-view #stash-section,
 #inventory-panel.sheet-view #container-tabs { display: none; }
 
-.sheet-scroll { max-width: 1100px; margin: 0 auto; padding: 20px 22px 40px; }
+/* `auto` on the sides keeps it centred; the block margin comes from
+   `.paper-sheet`, whose torn edge needs the room. */
+.sheet-scroll { max-width: 1100px; margin: 62px auto; padding: 20px 22px 40px; }
 
 /* ── Header ── */
 .sheet-head {
