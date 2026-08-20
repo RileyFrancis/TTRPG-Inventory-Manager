@@ -53,6 +53,26 @@ function formatCost(cost) {
   return parts.length ? parts.join(' ') : '—';
 }
 
+// ─── ICONS ─────────────────────────────────────────────────────────────────
+// One icon from img/icon, as an element. The picture is a CSS mask over
+// currentColor (see icons.css), so the caller sets no colour — the icon takes
+// whatever the surrounding text is, in either theme.
+//
+// `lead` adds the gap for an icon sitting in front of a button's label. Pass
+// it only where the parent is not already spacing its children.
+function iconEl(name, lead) {
+  const el = document.createElement('span');
+  el.className = 'ico ico-' + name + (lead ? ' lead' : '');
+  return el;
+}
+
+// A button (or any element) whose label is an icon followed by text.
+function setIconLabel(el, name, text) {
+  el.textContent = '';
+  el.appendChild(iconEl(name, true));
+  el.appendChild(document.createTextNode(text));
+}
+
 // ─── COINS ─────────────────────────────────────────────────────────────────
 // The coin templates are found in the database, never hard-coded: a default
 // item's id is its row number in data/items.csv, so any id written into the

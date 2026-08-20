@@ -1,0 +1,53 @@
+/* ============================================================
+   icons.css — the PNG icon set from img/icon, as maskable glyphs
+   ============================================================ */
+
+/* The icons are black silhouettes on transparency, so they are drawn as a
+   *mask* over `currentColor` rather than as an <img>: an <img> would be black
+   in both themes, and black is not a token. As a mask each one inherits the
+   colour of whatever it sits in — the accent on a settings row, --text-dim on
+   a card's menu button, --on-accent on a primary button — and follows a theme
+   switch for free, with no JS and no second file per palette.
+
+   Sized in `em`, so an icon is as big as the text around it and a rule that
+   sets font-size sizes both. Every source file is square, and `contain` keeps
+   it that way.
+
+   Deliberately `.ico`, not `.icon`: `.icon-only` already means "a button with
+   no label" on .btn-sm, and two unrelated things called icon-something in the
+   same markup is a trap for whoever reads it next. */
+.ico {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.125em;
+  flex-shrink: 0;
+  background-color: currentColor;
+  -webkit-mask-position: center;
+          mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+          mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+          mask-size: contain;
+}
+
+/* An icon leading a button's label, where the gap is not already a flex gap. */
+.ico.lead { margin-right: 0.45em; }
+
+/* Paths are relative to this file, not to the document. */
+.ico-d20     { -webkit-mask-image: url('../../img/icon/d20.png');     mask-image: url('../../img/icon/d20.png'); }
+.ico-dots    { -webkit-mask-image: url('../../img/icon/dots.png');    mask-image: url('../../img/icon/dots.png'); }
+.ico-hide    { -webkit-mask-image: url('../../img/icon/hide.png');    mask-image: url('../../img/icon/hide.png'); }
+.ico-home    { -webkit-mask-image: url('../../img/icon/home.png');    mask-image: url('../../img/icon/home.png'); }
+.ico-info    { -webkit-mask-image: url('../../img/icon/info.png');    mask-image: url('../../img/icon/info.png'); }
+.ico-moon    { -webkit-mask-image: url('../../img/icon/moon.png');    mask-image: url('../../img/icon/moon.png'); }
+.ico-plus    { -webkit-mask-image: url('../../img/icon/plus.png');    mask-image: url('../../img/icon/plus.png'); }
+.ico-setting { -webkit-mask-image: url('../../img/icon/setting.png'); mask-image: url('../../img/icon/setting.png'); }
+.ico-show    { -webkit-mask-image: url('../../img/icon/show.png');    mask-image: url('../../img/icon/show.png'); }
+.ico-sun     { -webkit-mask-image: url('../../img/icon/sun.png');     mask-image: url('../../img/icon/sun.png'); }
+
+/* The plus is a hairline cross that reads thin next to bold button text, and
+   the d20's engraved facets need room to separate. Both are nudged rather than
+   the type around them being changed. */
+.ico-plus { width: 0.85em; height: 0.85em; }
+.ico-d20  { width: 1.15em; height: 1.15em; }

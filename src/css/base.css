@@ -100,10 +100,11 @@ textarea { resize: vertical; }
 .btn-sm.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 55%, var(--border2)); }
 .btn-sm.danger:hover { background: color-mix(in srgb, var(--danger) 14%, var(--panel)); color: var(--danger); }
 
-/* Icon-only header buttons (settings gear, etc.) */
+/* Icon-only header buttons (the d20, the home button). The font-size is
+   what sizes the .ico inside them — see icons.css. */
 .btn-sm.icon-only {
   padding: 4px 8px;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.2;
 }
 

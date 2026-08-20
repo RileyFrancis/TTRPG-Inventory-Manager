@@ -86,6 +86,7 @@ that owns the element wins.
 |------|----------|
 | `tokens.css` | Both palettes, `--cell` / `--cols`, and the map of this set |
 | `base.css` | Reset, body, the grain overlay, type, form controls, buttons, `.hidden` |
+| `icons.css` | The `img/icon` PNGs as `.ico` glyphs, masked over `currentColor` |
 | `layout.css` | The app shell: header, weight bar, main split, panel resizing |
 | `inventory.css` | The torn sheet, grid cells, placed items, the drag ghost |
 | `sidebar.css` | The right panel: browse list, folders, details, context menu |
@@ -521,6 +522,24 @@ or it will be wrong in one of the two themes.
   `applyTheme()` clears the cache and re-renders everything that bakes a colour into an
   inline style. **If you add a render path that inlines a palette colour, it must be
   re-run from `rerenderThemedContent()`.**
+
+### Icons
+
+`img/icon/*.png` are black silhouettes on transparency (Flaticon — the
+attributions are in `icons.html`). They are drawn as CSS **masks** over
+`currentColor`, never as `<img>`: an `<img>` would be black in both themes, and
+black is not a token. As a mask each icon takes the colour of whatever it sits
+in — `--accent` on a settings row, `--text-dim` on a card's menu button,
+`--on-accent` on a primary button — and follows a theme switch for free.
+
+- One class per file in `icons.css`, `.ico-<name>`, alongside the `.ico`
+  primitive that does the masking. Sized in `em`, so an icon is as big as the
+  text around it and the rule that sets `font-size` sizes both.
+- Deliberately `.ico`, not `.icon`: `.icon-only` already means "a button with no
+  label" on `.btn-sm`.
+- From JS, `iconEl(name)` / `setIconLabel(el, name, text)` in `helpers.js` — the
+  caller never sets a colour.
+- Add a `-webkit-mask-*` beside every `mask-*`; the prefix is still needed.
 
 ### Versioning
 

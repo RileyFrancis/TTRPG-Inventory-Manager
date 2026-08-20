@@ -9,6 +9,7 @@
 
      tokens      the two palettes + geometry constants (here)
      base        reset, body, type, form controls, buttons
+     icons       the img/icon set, drawn as masks over currentColor
      layout      app shell, header, weight bar, panel resizing
      inventory   the torn sheet, grid cells, placed items, ghost
      sidebar     browse list, folders, details, context menu

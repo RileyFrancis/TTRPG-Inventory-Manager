@@ -254,7 +254,7 @@ function renderShopList(pane) {
     footer.className = 'shop-footer';
     const btn = document.createElement('button');
     btn.className = 'btn-primary';
-    btn.textContent = '+ New Shop';
+    setIconLabel(btn, 'plus', 'New Shop');
     btn.addEventListener('click', () => openShopModal(null));
     footer.appendChild(btn);
     pane.appendChild(footer);
@@ -328,7 +328,7 @@ function renderShopDetail(pane, shop) {
     footer.className = 'shop-footer';
     const add = document.createElement('button');
     add.className = 'btn-primary';
-    add.textContent = '+ Add Items';
+    setIconLabel(add, 'plus', 'Add Items');
     add.addEventListener('click', () => openShopAddModal(shop));
     footer.appendChild(add);
     pane.appendChild(footer);

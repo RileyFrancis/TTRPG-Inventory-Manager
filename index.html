@@ -21,6 +21,7 @@
        other file draws its colours from it. See its header for the map. -->
   <link rel="stylesheet" href="src/css/tokens.css">
   <link rel="stylesheet" href="src/css/base.css">
+  <link rel="stylesheet" href="src/css/icons.css">
   <link rel="stylesheet" href="src/css/layout.css">
   <link rel="stylesheet" href="src/css/inventory.css">
   <link rel="stylesheet" href="src/css/sidebar.css">
@@ -78,7 +79,7 @@
     <!-- Out of #char-summary on purpose: that block is hidden for a GM with
          nobody selected, and the way back to your characters must never be. -->
     <button id="home-btn" class="btn-sm icon-only" title="Your characters"
-            aria-label="Your characters">&#8962;</button>
+            aria-label="Your characters"><span class="ico ico-home"></span></button>
     <div id="char-summary">
       <span id="char-name-display">Unnamed Hero</span>
       <span id="char-str-display">STR 10</span>
@@ -99,7 +100,7 @@
     <div id="party-header-area">
       <button id="party-btn" class="btn-sm">&#9876; Party</button>
       <span id="party-code-badge" class="hidden"></span>
-      <button id="settings-btn" class="btn-sm icon-only" title="Settings" aria-label="Settings">&#9881;</button>
+      <button id="settings-btn" class="btn-sm icon-only" title="Settings" aria-label="Settings"><span class="ico ico-d20"></span></button>
     </div>
   </header>
 
@@ -306,14 +307,14 @@
           </div>
           <div id="folder-row">
             <button id="toggle-folders-btn" class="btn-sm" title="Close every folder">▸ Collapse All</button>
-            <button id="new-folder-btn" class="btn-sm" title="Create a folder to group items">+ New Folder</button>
+            <button id="new-folder-btn" class="btn-sm" title="Create a folder to group items"><span class="ico ico-plus lead"></span>New Folder</button>
           </div>
         </div>
         <div id="item-list">
           <!-- item cards injected by JS -->
         </div>
         <div id="browser-footer">
-          <button id="new-item-btn" class="btn-primary">+ New Item</button>
+          <button id="new-item-btn" class="btn-primary"><span class="ico ico-plus lead"></span>New Item</button>
           <button id="save-btn" class="btn-sm">Save</button>
           <button id="load-btn" class="btn-sm">Load</button>
           <button id="export-csv-btn" class="btn-sm" title="Download items.csv with all current items">⬇ CSV</button>
@@ -351,7 +352,7 @@
           <div id="details-desc"></div>
           <div id="details-actions">
             <button id="details-place-btn" class="btn-primary">Place in Inventory</button>
-            <button id="details-stash-btn" class="btn-sm">+ Stash</button>
+            <button id="details-stash-btn" class="btn-sm"><span class="ico ico-plus lead"></span>Stash</button>
             <button id="details-edit-btn" class="btn-sm">Edit</button>
             <button id="details-delete-btn" class="btn-sm danger">Delete</button>
           </div>
@@ -402,7 +403,7 @@
     <div class="home-header">
       <h1>Your Characters</h1>
       <div class="home-header-actions">
-        <button id="home-new-char-btn" class="btn-primary">+ New Character</button>
+        <button id="home-new-char-btn" class="btn-primary"><span class="ico ico-plus lead"></span>New Character</button>
         <button id="home-close-btn" class="btn-sm">Back to Inventory</button>
       </div>
     </div>
@@ -859,11 +860,11 @@
 <div id="equip-settings-modal" class="modal hidden">
   <div class="modal-box">
     <h2>Configure Slots</h2>
-    <p class="modal-note">Add, remove and rename sections and slots; drag ⠿ to reorder. <span class="es-legend"><span>👁</span> visible &nbsp; <span>⇔</span> side-by-side &nbsp; <span>✦</span> attunement only</span></p>
+    <p class="modal-note">Add, remove and rename sections and slots; drag ⠿ to reorder. <span class="es-legend"><span class="ico ico-show"></span> visible &nbsp; <span>⇔</span> side-by-side &nbsp; <span>✦</span> attunement only</span></p>
     <div id="equip-settings-toolbar">
       <div class="es-toolbar-add">
-        <button id="es-add-header-btn" class="btn-sm">+ Header</button>
-        <button id="es-add-slot-btn" class="btn-sm">+ Slot</button>
+        <button id="es-add-header-btn" class="btn-sm"><span class="ico ico-plus lead"></span>Header</button>
+        <button id="es-add-slot-btn" class="btn-sm"><span class="ico ico-plus lead"></span>Slot</button>
       </div>
       <button id="es-reset-btn" class="btn-icon danger" title="Reset to the default sections and slots">↺</button>
     </div>
@@ -882,7 +883,7 @@
 
     <div class="setting-row" id="settings-nav">
       <button id="how-to-btn" class="settings-nav-btn" type="button">
-        <span class="settings-nav-icon">&#9432;</span>
+        <span class="settings-nav-icon ico ico-info"></span>
         <span class="settings-nav-label">
           <span class="settings-nav-title">How to Use</span>
           <span class="settings-nav-sub">A walkthrough of the app</span>
@@ -903,13 +904,13 @@
       <span class="setting-label">Theme</span>
       <div class="segmented" id="theme-picker" role="group" aria-label="Theme">
         <button class="seg-btn" data-theme-choice="light" type="button">
-          <span class="seg-icon">&#9788;</span><span>Light</span>
+          <span class="seg-icon ico ico-sun"></span><span>Light</span>
         </button>
         <button class="seg-btn" data-theme-choice="dark" type="button">
-          <span class="seg-icon">&#9790;</span><span>Dark</span>
+          <span class="seg-icon ico ico-moon"></span><span>Dark</span>
         </button>
         <button class="seg-btn" data-theme-choice="system" type="button">
-          <span class="seg-icon">&#9881;</span><span>System</span>
+          <span class="seg-icon ico ico-setting"></span><span>System</span>
         </button>
       </div>
       <p class="setting-hint" id="theme-hint"></p>

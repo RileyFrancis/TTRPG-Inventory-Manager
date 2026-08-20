@@ -337,7 +337,7 @@ function renderHomeScreen() {
     menuBtn.className = 'char-card-menu-btn';
     menuBtn.title = 'Edit or delete this character';
     menuBtn.setAttribute('aria-label', 'Character options');
-    menuBtn.textContent = '⋯'; // ⋯
+    menuBtn.appendChild(iconEl('dots'));
     menuBtn.addEventListener('click', e => {
       e.stopPropagation();
       toggleCardMenu(c.id, menuBtn);

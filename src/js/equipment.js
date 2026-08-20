@@ -182,7 +182,7 @@ function renderEquipPanel() {
   footer.id = 'equip-panel-footer';
   const settingsBtn = document.createElement('button');
   settingsBtn.className = 'btn-sm';
-  settingsBtn.textContent = '⚙ Configure Slots';
+  setIconLabel(settingsBtn, 'setting', 'Configure Slots');
   settingsBtn.addEventListener('click', openEquipSettings);
   footer.appendChild(settingsBtn);
   panel.appendChild(footer);
@@ -236,12 +236,19 @@ function openEquipSettings() {
           cb.checked = getter();
           cb.addEventListener('change', () => setter(cb.checked));
           lbl.appendChild(cb);
-          const sym = document.createElement('span');
-          sym.textContent = symbol;
+          // A symbol is either a glyph or, prefixed `icon:`, one of the
+          // img/icon set — the eye has a drawn icon, the other two do not.
+          let sym;
+          if (symbol.startsWith('icon:')) {
+            sym = iconEl(symbol.slice(5));
+          } else {
+            sym = document.createElement('span');
+            sym.textContent = symbol;
+          }
           lbl.appendChild(sym);
           return lbl;
         }
-        row.appendChild(makeToggle('Show in panel', '👁', () => item.visible !== false, v => { draft[idx].visible = v; }));
+        row.appendChild(makeToggle('Show in panel', 'icon:show', () => item.visible !== false, v => { draft[idx].visible = v; }));
         row.appendChild(makeToggle('Side-by-side', '⇔', () => !!item.inRow, v => { draft[idx].inRow = v; }));
         row.appendChild(makeToggle('Attunement only', '✦', () => !!item.attuneOnly, v => { draft[idx].attuneOnly = v; }));
       }

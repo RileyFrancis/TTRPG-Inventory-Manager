@@ -311,10 +311,11 @@ function openMoveToFolderModal(templateId) {
   list.innerHTML = '';
   const current = explicitFolderOf(templateId);
 
-  const addChoice = (label, active, onPick) => {
+  const addChoice = (label, active, onPick, icon) => {
     const btn = document.createElement('button');
     btn.className = 'btn-sm folder-pick-btn' + (active ? ' active' : '');
-    btn.textContent = label;
+    if (icon) setIconLabel(btn, icon, label);
+    else btn.textContent = label;
     btn.addEventListener('click', () => { hideModal('folder-picker-modal'); onPick(); });
     list.appendChild(btn);
   };
@@ -332,12 +333,12 @@ function openMoveToFolderModal(templateId) {
     setItemFolder(templateId, UNFILED_ID);
     renderItemList();
   });
-  addChoice('+ New Folder…', false, () => {
+  addChoice('New Folder…', false, () => {
     openFolderNameModal({ title: 'New Folder', value: '', confirmLabel: 'Create' }, name => {
       setItemFolder(templateId, createFolder(name));
       renderItemList();
     });
-  });
+  }, 'plus');
   list.lastChild.classList.add('new');
 
   showModal('folder-picker-modal');
