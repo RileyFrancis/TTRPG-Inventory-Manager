@@ -134,6 +134,15 @@ state.dragging    { instanceId, anchorRow, anchorCol, origRow, origCol, origRota
 - Cell size = 44 px (`CELL` constant)
 - Zone 0–(str-1): Normal carry; zone str–(2·str-1): Encumbered; zone 2·str–(3·str-1): Heavily Encumbered
 - `state.grid` is the authoritative occupancy map; placed-item `<div>`s are purely visual and are rebuilt by `renderAllItems()`
+- **The grid can shrink under the items on it.** Strength going down takes rows
+  away, and editing a container template's `containerRows` / `containerCols`
+  does the same inside a pack. `rebuildGrid()` therefore fit-tests every
+  instance before re-placing it and calls `unplaceInstance()` on whatever no
+  longer fits, which drops it into that grid's Needs Placement list. Skipping
+  the re-place without clearing `row` / `col` is not a safe shortcut: the item
+  keeps a position off the end of the grid, occupies no cell, and is drawn
+  where `#inventory-grid`'s `overflow: hidden` clips it — invisible and
+  unclickable, while `totalCarriedWeight()` goes on charging for it.
 
 ### Item shapes
 

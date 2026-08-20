@@ -115,6 +115,7 @@ function rebuildGrid() {
     if (!t) return;
     const shape = getRotatedShape(t.shape, inst.rotation);
     if (canPlace(shape, inst.row, inst.col)) placeOnGrid(inst.id, shape, inst.row, inst.col);
+    else unplaceInstance(inst); // the grid shrank out from under it — see grid.js
   });
   renderContainerTabs();
   renderAllItems();
@@ -144,6 +145,13 @@ function rebuildContainerGrids() {
     const grid = state.containerGrids[inst.containerId];
     if (!grid) return;
     const shape = getRotatedShape(t.shape, inst.rotation);
+    // Same trap as the main grid, reached by editing a container template's
+    // rows or columns down: without the fit test the cells outside the new
+    // bounds are dropped on the floor and the item is stranded.
+    if (!fitsInGrid(grid, grid[0]?.length ?? 0, shape, inst.row, inst.col)) {
+      unplaceInstance(inst);
+      return;
+    }
     getShapeCells(shape, inst.row, inst.col).forEach(({ row, col }) => {
       if (grid[row]) grid[row][col] = inst.id;
     });
