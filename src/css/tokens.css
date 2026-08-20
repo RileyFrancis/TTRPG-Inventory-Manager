@@ -1,0 +1,221 @@
+/* ============================================================
+   D&D INVENTORY MANAGER — tokens.css
+
+   THE STYLESHEET SET
+   ------------------
+   The styles are split one file per concern, linked in cascade
+   order from index.html. This file is first, and every other
+   file takes its colours from the tokens defined below.
+
+     tokens      the two palettes + geometry constants (here)
+     base        reset, body, type, form controls, buttons
+     layout      app shell, header, weight bar, panel resizing
+     inventory   the torn sheet, grid cells, placed items, ghost
+     sidebar     browse list, folders, details, context menu
+     modals      modal chrome + the shape editor
+     character   character tabs + page one of the 2024 sheet
+     party       party header, sidebar tab, party modal, kick
+     equipment   equip rack, left-panel tabs, layout editor
+     shop        shop panel + shop modals
+     tooltip     the hover tooltip
+     stash       the stash pane + container tabs
+     coins       cost input + coin purse
+     settings    settings modal, theme picker, info pages
+     auth        sign-in, account row, first-sign-in conflict
+     home        home button, the roster page, character cards
+
+   Adding a file means adding a <link> to index.html in the
+   right position — order changes are cascade changes.
+
+   THEMING
+   -------
+   Two palettes: an aged-parchment light theme and a candlelit
+   dark theme. `:root` holds the light palette (and doubles as
+   the fallback); `:root[data-theme="dark"]` overrides it.
+
+   The theme attribute is always set explicitly on <html> — the
+   inline script in index.html <head> resolves the stored
+   preference (light / dark / system) before first paint, and
+   src/js/theme.js keeps it in sync afterwards. Nothing here
+   depends on prefers-color-scheme directly.
+
+   Add a color as a token in BOTH blocks, never inline.
+   ============================================================ */
+
+:root {
+  --cell: 44px;
+  --cols: 15;
+
+  /* ─── Typography ─── */
+  --font-display: 'Cinzel', 'Trajan Pro', 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
+  --font-body: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+
+  /* ─── Light: aged parchment, sepia ink, tooled leather ─── */
+  --bg:       #ded0ae;
+  --surface:  #efe4c8;
+  --panel:    #f7eed8;
+  --border:   #c4ab7e;
+  --border2:  #a3855a;
+  --text:     #33281a;
+  --text-dim: #71603f;
+  --accent:      #8a5a1c;
+  --accent-soft: #b08542;
+  --on-accent:   #fdf6e4;
+  --danger:      #a3291f;
+
+  /* Parchment grain + leather emboss */
+  --grain-a:    rgba(94, 66, 26, 0.055);
+  --grain-b:    rgba(120, 88, 40, 0.035);
+  --grain-op:   0.9;
+  --emboss-hi:  rgba(255, 250, 235, 0.75);
+  --emboss-lo:  rgba(90, 62, 26, 0.18);
+  --shadow-soft: 0 2px 8px rgba(86, 60, 24, 0.18);
+  --shadow-deep: 0 10px 34px rgba(70, 48, 18, 0.32);
+  --vignette:   rgba(122, 90, 44, 0.16);
+  --gold-line:  linear-gradient(90deg, transparent, var(--accent-soft), transparent);
+
+  /* Paper texture — the sheet the inventory and character sheet are drawn on.
+     The file is 1919 × 1362 and seamless, so it is tiled rather than stretched:
+     only the *width* is set and the height is left `auto`, which is what keeps
+     the aspect ratio exactly right without anyone having to do the arithmetic.
+     One tile per ~640px is about a third of the source — big enough that the
+     repeat does not read as a pattern, small enough to stay detailed.
+     `--paper-veil` is a wash of the page colour laid *over* the texture: at 50%
+     it is the same thing as the texture at 50% opacity, but it stays a plain
+     background layer, so nothing needs a pseudo-element that could swallow a
+     drag. Turn the texture down by raising the percentage. */
+  --paper-tile:   url('../../img/paper-antique-seamless.jpg');
+  --paper-tile-w: 640px;
+  --paper-veil:   color-mix(in srgb, var(--bg) 26%, transparent);
+  /* What shows *around* the torn edge — the desk the sheet is lying on. A frayed
+     edge is only an edge if something different is behind it. */
+  --desk:         #9a8259;
+  /* Old paper is darkest where it has been handled most. This is the burn around
+     the rim; the same displacement that tears the edge makes it ragged too. */
+  --paper-edge:   rgba(86, 58, 22, 0.55);
+  --paper-cast:   rgba(70, 48, 18, 0.38); /* the shadow it casts on the desk */
+
+  /* Carry zones */
+  --zone-normal-bg:    #e6d8b8;
+  --zone-normal-line:  #c9b085;
+  --zone-enc-bg:       #e8d3a0;
+  --zone-enc-line:     #c4a052;
+  --zone-heavy-bg:     #e6c3ae;
+  --zone-heavy-line:   #c08466;
+  --zone-boundary-enc:   #a8761e;
+  --zone-boundary-heavy: #9e3b28;
+
+  /* Encumbrance readout */
+  --enc-ok:    #4a7a2c;
+  --enc-warn:  #b06a10;
+  --enc-heavy: #a3291f;
+  --weight-track: #c9b085;
+
+  /* Rarity — deepened so they hold contrast on parchment */
+  --rarity-common:    #6d6355;
+  --rarity-uncommon:  #2c7d34;
+  --rarity-rare:      #1b62b4;
+  --rarity-very_rare: #6f2fae;
+  --rarity-legendary: #b85f00;
+  --rarity-artifact:  #a02b1c;
+  --rarity-special:   #b83a7d;
+
+  /* Placed items + drag ghost */
+  --item-label-fg:     #2a2015;
+  --item-label-shadow: 0 1px 2px rgba(255, 248, 232, 0.85);
+  --item-inner-border: rgba(60, 40, 12, 0.14);
+  --ghost-outer:       rgba(52, 34, 10, 0.75);
+  --ghost-inner:       rgba(52, 34, 10, 0.10);
+  --ghost-valid:   rgba(58, 140, 40, 0.28);
+  --ghost-invalid: rgba(170, 40, 30, 0.28);
+  --ghost-valid-glow:   rgba(58, 140, 40, 0.55);
+  --ghost-invalid-glow: rgba(170, 40, 30, 0.55);
+
+  --coin-pp: #55688a;
+  --coin-gp: #9a7508;
+  --coin-ep: #3f7e96;
+  --coin-sp: #6f6f6f;
+  --coin-cp: #8a4f1e;
+
+  --online: #2c7d34;
+  --role-player-fg: #1b62b4;
+  --role-player-bg: rgba(27, 98, 180, 0.14);
+  --toggle-on-bg:   rgba(138, 90, 28, 0.18);
+}
+
+:root[data-theme="dark"] {
+  /* ─── Dark: candlelit tavern, oiled leather, gold leaf ─── */
+  --bg:       #14100b;
+  --surface:  #1d1710;
+  --panel:    #262017;
+  --border:   #3d3122;
+  --border2:  #5b4831;
+  --text:     #e9dcc0;
+  --text-dim: #a08d6c;
+  --accent:      #d4a24c;
+  --accent-soft: #b8873a;
+  --on-accent:   #1a1206;
+  --danger:      #d9584f;
+
+  --grain-a:    rgba(255, 226, 170, 0.030);
+  --grain-b:    rgba(0, 0, 0, 0.16);
+  --grain-op:   0.8;
+  --emboss-hi:  rgba(255, 228, 178, 0.10);
+  --emboss-lo:  rgba(0, 0, 0, 0.45);
+  --shadow-soft: 0 2px 10px rgba(0, 0, 0, 0.5);
+  --shadow-deep: 0 10px 34px rgba(0, 0, 0, 0.72);
+  --vignette:   rgba(0, 0, 0, 0.5);
+  --gold-line:  linear-gradient(90deg, transparent, var(--accent-soft), transparent);
+
+  /* The texture is cream paper, so the veil that suits parchment turns a
+     candlelit room into a grey one — the grid stops reading against it. Same
+     tile, same ratio, far more veil: enough grain to feel like paper, not
+     enough to lift the background. */
+  --paper-veil: color-mix(in srgb, var(--bg) 79%, transparent);
+  --desk:       #0d0b08;
+  --paper-edge: rgba(0, 0, 0, 0.62);
+  --paper-cast: rgba(0, 0, 0, 0.6);
+
+  --zone-normal-bg:    #201a13;
+  --zone-normal-line:  #3b3022;
+  --zone-enc-bg:       #241a0c;
+  --zone-enc-line:     #4a3512;
+  --zone-heavy-bg:     #26120d;
+  --zone-heavy-line:   #4d2018;
+  --zone-boundary-enc:   #a8761e;
+  --zone-boundary-heavy: #a8402e;
+
+  --enc-ok:    #7ac74f;
+  --enc-warn:  #e0a020;
+  --enc-heavy: #e05545;
+  --weight-track: #33291d;
+
+  --rarity-common:    #b3a894;
+  --rarity-uncommon:  #56d95f;
+  --rarity-rare:      #4a9de8;
+  --rarity-very_rare: #a86ff0;
+  --rarity-legendary: #ff9a2e;
+  --rarity-artifact:  #ef5a48;
+  --rarity-special:   #ff9fd0;
+
+  --item-label-fg:     rgba(255, 248, 232, 0.94);
+  --item-label-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  --item-inner-border: rgba(255, 240, 210, 0.10);
+  --ghost-outer:       rgba(255, 244, 220, 0.72);
+  --ghost-inner:       rgba(255, 244, 220, 0.08);
+  --ghost-valid:   rgba(60, 220, 60, 0.24);
+  --ghost-invalid: rgba(220, 60, 45, 0.28);
+  --ghost-valid-glow:   rgba(60, 220, 60, 0.5);
+  --ghost-invalid-glow: rgba(220, 60, 45, 0.5);
+
+  --coin-pp: #b0c4de;
+  --coin-gp: #ffd700;
+  --coin-ep: #7ec8e3;
+  --coin-sp: #c0c0c0;
+  --coin-cp: #cc8543;
+
+  --online: #56d95f;
+  --role-player-fg: #6bb0f5;
+  --role-player-bg: rgba(80, 150, 235, 0.16);
+  --toggle-on-bg:   rgba(212, 162, 76, 0.18);
+}

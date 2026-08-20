@@ -17,7 +17,24 @@
       document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
     })();
   </script>
-  <link rel="stylesheet" href="src/css/style.css">
+  <!-- Stylesheets, in cascade order. tokens.css must stay first: every
+       other file draws its colours from it. See its header for the map. -->
+  <link rel="stylesheet" href="src/css/tokens.css">
+  <link rel="stylesheet" href="src/css/base.css">
+  <link rel="stylesheet" href="src/css/layout.css">
+  <link rel="stylesheet" href="src/css/inventory.css">
+  <link rel="stylesheet" href="src/css/sidebar.css">
+  <link rel="stylesheet" href="src/css/modals.css">
+  <link rel="stylesheet" href="src/css/character.css">
+  <link rel="stylesheet" href="src/css/party.css">
+  <link rel="stylesheet" href="src/css/equipment.css">
+  <link rel="stylesheet" href="src/css/shop.css">
+  <link rel="stylesheet" href="src/css/tooltip.css">
+  <link rel="stylesheet" href="src/css/stash.css">
+  <link rel="stylesheet" href="src/css/coins.css">
+  <link rel="stylesheet" href="src/css/settings.css">
+  <link rel="stylesheet" href="src/css/auth.css">
+  <link rel="stylesheet" href="src/css/home.css">
 </head>
 <body>
 
@@ -35,10 +52,10 @@
 
      The filter region is deliberately larger than the element so the displaced
      edge is not clipped flat, and `scale` must stay under twice the paper's
-     inset in style.css — the tear pushes outward as well as in, and past that
+     inset in inventory.css — the tear pushes outward as well as in, and past that
      it covers the desk it is supposed to be revealing.
 
-     Taken out of flow by `#svg-defs` in style.css rather than hidden with
+     Taken out of flow by `#svg-defs` in base.css rather than hidden with
      `display: none`: a hidden subtree cannot be referenced by `filter: url(#…)`
      in every browser, but an inline 0×0 SVG still opens a line box and pushes
      the whole page down by the height of one line. -->

@@ -1,0 +1,345 @@
+/* ============================================================
+   equipment.css — the equipment rack, the left-panel tabs, the layout editor
+   ============================================================ */
+
+/* ─── EQUIP PANEL ────────────────────────────────────────── */
+#equip-panel {
+  width: var(--equip-w);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  box-shadow: inset -1px 0 0 var(--emboss-lo);
+}
+
+#equip-slots-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+#equip-panel-footer {
+  padding: 6px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+#equip-panel-footer .btn-sm {
+  width: 100%;
+  font-size: 11px;
+  color: var(--text-dim);
+  text-align: left;
+}
+
+/* ─── LEFT PANEL TABS ────────────────────────────────────── */
+/* The left panel holds the equipment rack and, for a GM, their own tools. The
+   strip only appears when there are two panes to choose between, so a solo
+   player's panel is the bare equipment panel it has always been.
+   Deliberately not .tab-btn / .tab-pane: those are the sidebar's, and switchTab()
+   toggles every one of them on the page. */
+#left-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--surface), color-mix(in srgb, var(--surface) 80%, var(--emboss-lo)));
+  flex-shrink: 0;
+}
+
+.ltab-btn {
+  flex: 1;
+  padding: 10px 8px 8px;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.ltab-btn.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+  text-shadow: 0 1px 0 var(--emboss-hi);
+}
+.ltab-btn:hover:not(.active) { color: var(--text); }
+
+.left-pane { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+.left-pane.active { display: flex; }
+
+
+/* ─── EQUIP SETTINGS EDITOR ──────────────────────────────── */
+.es-legend {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  font-size: 10px;
+  color: var(--text-dim);
+  opacity: 0.8;
+}
+.es-legend span { font-size: 11px; }
+
+/* Pinned above the scrolling list: add on the left, reset on the right, both
+   reachable however far down the list you are. */
+#equip-settings-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.es-toolbar-add { display: flex; gap: 6px; }
+
+#equip-settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 4px 0;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.es-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 4px;
+  border-radius: 4px;
+  background: var(--bg);
+}
+
+.es-row.es-header-row {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border-left: 2px solid var(--accent);
+}
+
+/* The row currently under the cursor mid-drag. */
+.es-row.es-dragging {
+  background: color-mix(in srgb, var(--accent) 16%, var(--bg));
+  box-shadow: 0 0 0 1px var(--accent), 0 3px 8px var(--emboss-lo);
+}
+
+/* Drag handle. `touch-action: none` keeps a touch drag from scrolling the
+   list out from under the row instead of moving it. */
+.es-grip {
+  flex-shrink: 0;
+  width: 16px;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--text-dim);
+  opacity: 0.45;
+  cursor: grab;
+  touch-action: none;
+  transition: opacity 0.1s, color 0.1s;
+}
+.es-row:hover .es-grip { opacity: 1; }
+.es-grip:hover { color: var(--accent); }
+.es-row.es-dragging .es-grip { opacity: 1; color: var(--accent); cursor: grabbing; }
+
+.es-label-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text);
+  font-size: 12px;
+  padding: 2px 6px;
+  height: 24px;
+}
+.es-label-input:focus { border-color: var(--accent); outline: none; }
+
+.es-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  border-radius: 3px;
+  font-size: 13px;
+  flex-shrink: 0;
+  position: relative;
+  opacity: 0.35;
+  transition: opacity 0.1s, background 0.1s;
+}
+.es-toggle input[type=checkbox] { position: absolute; opacity: 0; width: 0; height: 0; }
+.es-toggle:has(input:checked) { opacity: 1; background: var(--toggle-on-bg); }
+.es-toggle span { pointer-events: none; }
+
+.btn-icon {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  flex-shrink: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.btn-icon:hover:not(:disabled) { border-color: var(--accent); color: var(--text); }
+.btn-icon:disabled { opacity: 0.3; cursor: default; }
+.btn-icon.danger { color: var(--danger); border-color: transparent; }
+.btn-icon.danger:hover { background: color-mix(in srgb, var(--danger) 15%, transparent); }
+
+
+.eq-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 10px;
+}
+
+/* Section headers read as chapter rules: label, then a gold hairline */
+.eq-section-header,
+.coin-purse-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+  padding: 2px 2px 4px;
+}
+.eq-section-header::after,
+.coin-purse-header::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--gold-line);
+  opacity: 0.55;
+}
+
+.eq-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 4px 22px 4px 6px; /* right padding leaves room for × button */
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 93%, var(--emboss-hi)), var(--panel));
+  box-shadow: inset 0 1px 0 var(--emboss-hi);
+  cursor: pointer;
+  min-height: 34px;
+  transition: border-color 0.12s;
+  overflow: hidden;
+}
+
+.eq-card:hover { border-color: var(--accent); }
+.eq-card.drag-hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 20%, var(--panel));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.eq-card.filled {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  background: color-mix(in srgb, var(--accent) 8%, var(--panel));
+}
+
+.eq-card-label {
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  line-height: 1;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.eq-card-item {
+  font-size: 11px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.eq-card.filled .eq-card-item { color: var(--accent); }
+
+.eq-card-unequip {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--text-dim);
+  background: none;
+  border: none;
+  padding: 0 2px;
+  cursor: pointer;
+}
+
+.eq-card-unequip:hover { color: var(--text); }
+
+/* Weapons: three cards side by side */
+.eq-weapons-row {
+  display: flex;
+  gap: 2px;
+}
+
+.eq-weapons-row .eq-card {
+  flex: 1;
+  min-width: 0;
+  padding-right: 4px; /* no room for × in narrow cards; unequip via slot picker */
+}
+
+/* ─── EQUIP MODAL — SLOT PICKER ──────────────────────────── */
+#equip-slot-picker, #folder-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 4px 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.equip-slot-pick-btn, .folder-pick-btn {
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+.equip-slot-pick-btn.active, .folder-pick-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.equip-slot-pick-btn.danger {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.folder-pick-btn.new { color: var(--accent); font-style: italic; }
+
+/* ─── EQUIP BADGE ────────────────────────────────────────── */
+.equip-badge {
+  position: absolute;
+  /* see .stack-badge — pinned to the bottom-right filled cell, not the bbox */
+  bottom: calc(var(--badge-bottom, 0px) + 2px);
+  right: calc(var(--badge-right, 0px) + 2px);
+  font-size: 9px;
+  line-height: 14px;
+  background: var(--accent);
+  color: var(--on-accent);
+  border-radius: 3px;
+  padding: 0 2px;
+  pointer-events: none;
+  z-index: 2;
+}
+

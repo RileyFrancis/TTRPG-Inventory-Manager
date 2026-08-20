@@ -20,7 +20,7 @@ No framework, no bundler, no dependencies. Static files served as-is:
 ```
 index.html          Static shell — every DOM element referenced by JS, with stable IDs
 VERSION             The app version, one line — bump by hand when deploying
-src/css/style.css   All styles
+src/css/*.css       All styles, one file per concern
 src/js/*.js         Application logic, one file per concern
 data/items.csv      Default item database
 data/item_dtypes.csv  Reference only — the allowed values for each items.csv column
@@ -30,7 +30,13 @@ tools/              Standalone dev helpers (not part of the app)
 
 - **`index.html`** — The script block at the bottom lists every JS file **in load order**.
   Adding a new file means adding a `<script>` tag there, in the right position.
-- **`src/css/style.css`** — CSS custom properties drive the theme (`--cell`, `--cols`, rarity colors). Item rarity coloring is purely CSS via the `rarity-<name>` class + `--rc` variable inheritance.
+- **`src/css/`** — One file per concern, like `src/js/`. `index.html`'s `<head>` lists
+  every one **in cascade order**; adding a file means adding a `<link>` there, in the
+  right position, and order changes are cascade changes. `tokens.css` must stay first —
+  it defines every colour and geometry custom property the other files read, and carries
+  the map of the whole set in its header. CSS custom properties drive the theme
+  (`--cell`, `--cols`, rarity colors). Item rarity coloring is purely CSS via the
+  `rarity-<name>` class + `--rc` variable inheritance.
 - **`src/js/`** — Plain classic scripts sharing globals; **not** ES modules. There are no
   `import`/`export` statements — a `function` or `const` declared at the top level of one
   file is visible to all later files. Each file carries its own `'use strict';` (strict mode
@@ -70,6 +76,30 @@ tools/              Standalone dev helpers (not part of the app)
 | `shop.js` | The left panel's tabs, GM shop editor, player shopfront, paying |
 | `tooltip.js` | Hover tooltip |
 | `main.js` | `init()` and the single call to it |
+
+### CSS file map
+
+Loaded in this order. A rule's file is its subject; where two could claim it, the one
+that owns the element wins.
+
+| File | Contents |
+|------|----------|
+| `tokens.css` | Both palettes, `--cell` / `--cols`, and the map of this set |
+| `base.css` | Reset, body, the grain overlay, type, form controls, buttons, `.hidden` |
+| `layout.css` | The app shell: header, weight bar, main split, panel resizing |
+| `inventory.css` | The torn sheet, grid cells, placed items, the drag ghost |
+| `sidebar.css` | The right panel: browse list, folders, details, context menu |
+| `modals.css` | Modal chrome, and the shape editor inside the item editor |
+| `character.css` | The character tabs, and page one of the 2024 character sheet |
+| `party.css` | Party header badge, the sidebar Party tab, party modal, kick |
+| `equipment.css` | The equip rack, the left-panel tabs, the layout editor |
+| `shop.css` | The GM shop editor, the player shopfront, and their modals |
+| `tooltip.css` | The hover tooltip |
+| `stash.css` | The stash (items needing placement) and the container tabs |
+| `coins.css` | The multi-denomination cost input and the coin purse |
+| `settings.css` | The settings modal, the theme picker, and the info pages |
+| `auth.css` | The sign-in modal, the Settings account row, cloud conflict |
+| `home.css` | The home button, the roster page, and the character cards |
 
 ### State model (`src/js/state.js`)
 
@@ -430,7 +460,7 @@ sheets keeps their own folders.
 
 ### Theming
 
-Two palettes, both defined as CSS custom properties at the top of `style.css`:
+Two palettes, both defined as CSS custom properties in `tokens.css`:
 `:root` holds the light (aged parchment) tokens, `:root[data-theme="dark"]` the dark
 (candlelit) ones. **Every colour is a token — never write a literal colour in a rule**,
 or it will be wrong in one of the two themes.

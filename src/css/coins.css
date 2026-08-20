@@ -1,0 +1,106 @@
+/* ============================================================
+   coins.css — the multi-denomination cost input and the coin purse
+   ============================================================ */
+
+/* ─── MULTI-DENOMINATION COST INPUT ──────────────────────── */
+.cost-inputs {
+  display: flex;
+  gap: 5px;
+}
+
+.cost-denom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.cost-denom span {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+}
+
+.cost-denom input {
+  width: 100%;
+  text-align: center;
+  padding: 4px 2px;
+  min-width: 0;
+}
+
+/* ─── COIN PURSE ─────────────────────────────────────────── */
+#coin-purse {
+  border-top: 1px solid var(--border);
+  padding: 6px;
+  flex-shrink: 0;
+}
+
+
+.coin-purse-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 3px;
+}
+
+.coin-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 2px;
+  gap: 2px;
+  transition: border-color 0.15s;
+}
+
+.coin-item.empty { opacity: 0.4; }
+
+.coin-item.clickable {
+  cursor: pointer;
+  position: relative;
+}
+.coin-item.clickable:hover {
+  border-color: var(--accent);
+  opacity: 1;
+}
+
+.coin-label {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  line-height: 1;
+}
+
+.coin-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1;
+}
+
+.coin-actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+.coin-item.clickable:hover .coin-actions { opacity: 1; }
+
+.coin-action-btn {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-dim);
+  background: var(--border);
+  border-radius: 2px;
+  padding: 0 3px;
+  line-height: 1.4;
+  transition: color 0.1s, background 0.1s;
+}
+.coin-action-btn:hover:not(:disabled) { color: var(--text); background: var(--border2); }
+.coin-action-btn:disabled { opacity: 0.3; cursor: default; }
+

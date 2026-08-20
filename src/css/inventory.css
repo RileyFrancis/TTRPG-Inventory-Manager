@@ -1,0 +1,224 @@
+/* ============================================================
+   inventory.css — the torn sheet, grid cells, placed items, the drag ghost
+   ============================================================ */
+
+/* ─── INVENTORY PANEL ────────────────────────────────────── */
+/* The desk. The paper is no longer panel-sized — it wraps the content, so what
+   is left here is the surface both sheets lie on. */
+#inventory-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  background: var(--desk);
+  border-right: 1px solid var(--border);
+}
+
+/* ─── THE TORN SHEET ─────────────────────────────────────── */
+/* One rule, two users: the inventory grid's wrapper and the character sheet's
+   body. Both are *content*-sized, so the paper hugs what is drawn on it with an
+   even margin rather than filling the panel and leaving the tear out at the far
+   edges where nothing is happening.
+
+   `isolation` makes each of these a stacking context, which is what keeps the
+   `z-index: -1` paper below its own content but still on the page. Without it
+   the layer escapes and paints behind the whole app. */
+.paper-sheet {
+  position: relative;
+  isolation: isolate;
+  /* Room outside the paper for the tear to bite into and for the sheet to read
+     as a sheet. Must exceed the paper's own overhang plus half the displacement
+     scale, or the ancestor's overflow trims the ragged edge back to a straight
+     line. */
+  margin: 62px;
+}
+
+.paper-sheet::before {
+  content: '';
+  position: absolute;
+  /* The margin of paper around the content — a half inch, written as one, since
+     CSS inches are exact (1in = 96px). */
+  inset: -0.5in;
+  z-index: -1;
+  pointer-events: none; /* the whole app is drag-driven; this must never take a click */
+  background-image:
+    linear-gradient(var(--paper-veil), var(--paper-veil)),
+    var(--paper-tile);
+  background-size: auto, var(--paper-tile-w) auto;
+  background-repeat: repeat, repeat;
+  box-shadow: inset 0 0 38px 10px var(--paper-edge);
+  /* Order matters: the tear happens first, then the shadow is cast from the
+     torn silhouette rather than from a rectangle. */
+  filter: url(#paper-fray) drop-shadow(0 2px 7px var(--paper-cast));
+}
+
+#grid-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: auto;
+  padding: 14px 8px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  /* Transparent: the paper is one sheet behind the whole panel now, and the old
+     vignette here would only darken a rim the paper's own burnt edge already
+     draws — twice over, and in the wrong place. */
+  background: transparent;
+}
+#grid-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+#grid-scroll::-webkit-scrollbar-track { background: transparent; }
+#grid-scroll::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* The pack itself — a leather-bound frame around the carry grid */
+#inventory-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--cols), var(--cell));
+  width: calc(var(--cols) * var(--cell));
+  flex-shrink: 0;
+  user-select: none;
+  overflow: hidden;
+  border: 2px solid var(--border2);
+  border-radius: 3px;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent),
+    var(--shadow-deep);
+}
+
+/* ─── GRID CELLS ─────────────────────────────────────────── */
+.grid-cell {
+  width: var(--cell);
+  height: var(--cell);
+  border: 1px solid;
+  border-color: var(--zone-normal-line);
+  background: var(--zone-normal-bg);
+  position: relative;
+  transition: background 0.1s;
+}
+.grid-cell.zone-enc   { border-color: var(--zone-enc-line);   background: var(--zone-enc-bg); }
+.grid-cell.zone-heavy { border-color: var(--zone-heavy-line); background: var(--zone-heavy-bg); }
+
+.grid-cell.highlight-valid   { background: var(--ghost-valid) !important; }
+.grid-cell.highlight-invalid { background: var(--ghost-invalid) !important; }
+
+/* Zone boundary lines — extra top border on first row of enc/heavy zones */
+.grid-cell.zone-boundary-enc   { border-top: 2px solid color-mix(in srgb, var(--zone-boundary-enc) 65%, transparent); }
+.grid-cell.zone-boundary-heavy { border-top: 2px solid color-mix(in srgb, var(--zone-boundary-heavy) 65%, transparent); }
+
+/* ─── PLACED ITEMS ───────────────────────────────────────── */
+.placed-item {
+  position: absolute;
+  display: grid;
+  z-index: 10;
+  transition: filter 0.1s;
+  pointer-events: none; /* bounding box is invisible to events */
+}
+.placed-item.dragging-source { opacity: 0.2; }
+
+.placed-item.selected .item-cell.filled {
+  filter: brightness(1.4);
+}
+
+.item-cell {
+  width: var(--cell);
+  height: var(--cell);
+}
+.item-cell.filled {
+  border: 1.5px solid;
+  position: relative;
+  overflow: hidden;
+  transition: filter 0.1s;
+  pointer-events: auto; /* only filled cells capture events */
+  cursor: grab;
+}
+.item-cell.filled:active { cursor: grabbing; }
+.placed-item.dragging-source .item-cell.filled { pointer-events: none; }
+.placed-item:hover .item-cell.filled { filter: brightness(1.25); }
+.item-cell.empty {
+  background: transparent !important;
+  border: none !important;
+  pointer-events: none;
+}
+
+/* Item label — centered overlay across the whole item */
+.item-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  text-align: center;
+  padding: 2px;
+  pointer-events: none;
+  line-height: 1.1;
+  text-shadow: var(--item-label-shadow);
+  color: var(--item-label-fg);
+  overflow: hidden;
+  word-break: break-word;
+  z-index: 1;
+}
+
+/* Item image */
+.item-image-bg {
+  position: absolute;
+  inset: 2px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* Stack count badge */
+.stack-badge {
+  position: absolute;
+  /* --badge-bottom / --badge-right land the badge on the bottom-right filled cell
+     of the item's shape; renderPlacedItem sets them, 0 = bounding-box corner */
+  bottom: calc(var(--badge-bottom, 0px) + 2px);
+  right: calc(var(--badge-right, 0px) + 3px);
+  font-size: 9px;
+  font-weight: 900;
+  color: var(--item-label-fg);
+  text-shadow: var(--item-label-shadow);
+  pointer-events: none;
+  line-height: 1;
+}
+
+/* Rarity colors */
+.rarity-common    { --rc: var(--rarity-common);    }
+.rarity-uncommon  { --rc: var(--rarity-uncommon);  }
+.rarity-rare      { --rc: var(--rarity-rare);      }
+.rarity-very_rare { --rc: var(--rarity-very_rare); }
+.rarity-legendary { --rc: var(--rarity-legendary); }
+.rarity-artifact  { --rc: var(--rarity-artifact);  }
+.rarity-special   { --rc: var(--rarity-special);   }
+
+.item-cell.filled {
+  background: color-mix(in srgb, var(--rc) 26%, transparent);
+  border-color: var(--rc);
+  box-shadow: inset 0 0 6px color-mix(in srgb, var(--rc) 32%, transparent);
+}
+/* Items need more fill on the dark ground to read as solid objects */
+:root[data-theme="dark"] .item-cell.filled {
+  background: color-mix(in srgb, var(--rc) 35%, transparent);
+  box-shadow: inset 0 0 6px color-mix(in srgb, var(--rc) 40%, transparent);
+}
+
+/* ─── DRAG GHOST ─────────────────────────────────────────── */
+#drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 1000;
+  display: grid;
+  opacity: 0.85;
+}
+#drag-ghost.valid .item-cell.filled {
+  box-shadow: inset 0 0 12px var(--ghost-valid-glow), 0 0 8px var(--ghost-valid);
+}
+#drag-ghost.invalid .item-cell.filled {
+  box-shadow: inset 0 0 12px var(--ghost-invalid-glow), 0 0 8px var(--ghost-invalid);
+}
+

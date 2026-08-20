@@ -101,7 +101,8 @@ functions/
   firebase-env.js       Cloudflare Pages Function: serves the same keys on the
                         deployed site, from the host's env vars — see Deploying
 src/
-  css/style.css         All styles; CSS custom properties drive the theme
+  css/                  All styles, one file per concern; `tokens.css` holds the
+                        palettes every other file reads (see its header for the map)
   js/                   Application logic, one file per concern (see below)
 data/
   items.csv             Default item database (loaded at startup)
@@ -177,7 +178,7 @@ Click **⚙** in the header to open Settings and choose **Light**, **Dark**, or 
 - The choice is remembered per browser (`localStorage`), separately from your inventory
   save, and is applied before the page paints so there is no flash of the wrong theme.
 
-Both palettes are CSS custom properties at the top of `src/css/style.css` — edit the
+Both palettes are CSS custom properties in `src/css/tokens.css` — edit the
 `:root` block for light, `:root[data-theme="dark"]` for dark. Rarity and coin colours are
 tuned per theme, since the bright greens that read well on black disappear on parchment.
 

@@ -1,0 +1,118 @@
+/* ============================================================
+   base.css — reset, body, typography, form controls, buttons, utilities
+   ============================================================ */
+
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 13px;
+  overflow: hidden;
+}
+
+/* Parchment grain — a fixed overlay so every surface shares one paper
+   texture. Sits below modals (z 500+) and the drag ghost (z 1000). */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  opacity: var(--grain-op);
+  background-image:
+    repeating-linear-gradient(0deg,   var(--grain-a) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(90deg,  var(--grain-b) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(115deg, var(--grain-a) 0 1px, transparent 1px 11px);
+}
+
+/* Display face for anything that should feel lettered rather than typed */
+h1, h2, h3,
+#char-name-display,
+.modal-box h2,
+.tab-btn,
+.ltab-btn,
+.btn-primary,
+.eq-section-header,
+#stash-header,
+.coin-purse-header,
+.party-label,
+#party-code-text {
+  font-family: var(--font-display);
+}
+
+button { cursor: pointer; border: none; background: none; color: inherit; font: inherit; }
+input, select, textarea {
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  border-radius: 3px;
+  padding: 4px 8px;
+  font: inherit;
+  outline: none;
+  box-shadow: inset 0 1px 2px var(--emboss-lo);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent);
+  box-shadow: inset 0 1px 2px var(--emboss-lo), 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+select option { background: var(--panel); color: var(--text); }
+textarea { resize: vertical; }
+
+/* ─── BUTTONS ────────────────────────────────────────────── */
+/* Gold leaf: warm gradient, hairline bevel, pressed state sinks. */
+.btn-primary {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--accent) 88%, #fff) 0%,
+    var(--accent) 45%,
+    var(--accent-soft) 100%);
+  color: var(--on-accent);
+  border: 1px solid var(--accent-soft);
+  border-radius: 3px;
+  padding: 6px 14px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  box-shadow: inset 0 1px 0 var(--emboss-hi), 0 1px 3px var(--emboss-lo);
+  transition: filter 0.15s, box-shadow 0.15s, transform 0.05s;
+}
+.btn-primary:hover { filter: brightness(1.09) saturate(1.05); }
+.btn-primary:active {
+  transform: translateY(1px);
+  box-shadow: inset 0 1px 4px var(--emboss-lo);
+}
+
+.btn-sm {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 92%, var(--emboss-hi)), var(--panel));
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  padding: 4px 10px;
+  box-shadow: inset 0 1px 0 var(--emboss-hi);
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.btn-sm:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.btn-sm:active { box-shadow: inset 0 1px 3px var(--emboss-lo); }
+.btn-sm:disabled { opacity: 0.3; cursor: default; }
+
+.btn-sm.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 55%, var(--border2)); }
+.btn-sm.danger:hover { background: color-mix(in srgb, var(--danger) 14%, var(--panel)); color: var(--danger); }
+
+/* Icon-only header buttons (settings gear, etc.) */
+.btn-sm.icon-only {
+  padding: 4px 8px;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+/* The filter definitions the paper's torn edge uses. Out of flow entirely — see
+   the comment beside it in index.html. */
+#svg-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+/* ─── UTILITIES ──────────────────────────────────────────── */
+.hidden { display: none !important; }
+
+/* Scrollbar resets */
+* { scrollbar-width: thin; scrollbar-color: var(--border2) transparent; }

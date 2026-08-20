@@ -1,0 +1,68 @@
+/* ============================================================
+   tooltip.css — the hover tooltip
+   ============================================================ */
+
+/* ─── ITEM TOOLTIP ───────────────────────────────────────── */
+#item-tooltip {
+  position: fixed;
+  z-index: 9999;
+  width: 240px;
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 10px 12px;
+  pointer-events: none;
+  box-shadow: var(--shadow-deep), inset 0 0 0 1px var(--emboss-hi);
+}
+
+.tip-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+
+.tip-name {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.tip-rarity {
+  font-size: 10px;
+  font-style: italic;
+  flex-shrink: 0;
+}
+
+.tip-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-bottom: 3px;
+}
+
+.tip-row span:last-child { color: var(--text); }
+
+.tip-desc {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 7px;
+  line-height: 1.45;
+}
+
+.tip-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 7px;
+}
+
+.tip-attune {
+  font-size: 10px;
+  font-style: italic;
+  color: var(--accent);
+  margin-bottom: 5px;
+}
+

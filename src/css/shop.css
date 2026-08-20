@@ -1,0 +1,279 @@
+/* ============================================================
+   shop.css — the GM shop editor, the player shopfront, and their modals
+   ============================================================ */
+
+/* ─── SHOP PANEL ─────────────────────────────────────────── */
+.shop-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.shop-head-title {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.shop-back {
+  flex: 1;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  transition: color 0.15s;
+}
+.shop-back:hover { color: var(--accent); }
+
+.shop-head-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  font-size: 11px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+  transition: color 0.15s, background 0.15s;
+}
+.shop-head-btn:hover        { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.shop-head-btn.danger:hover { color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent); }
+
+.shop-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 6px;
+}
+
+.shop-footer {
+  padding: 6px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.shop-footer .btn-primary { width: 100%; }
+
+.shop-empty {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-dim);
+  padding: 6px 4px;
+}
+
+/* One shop in the list */
+.shop-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  padding: 7px 8px;
+  margin-bottom: 4px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border2);
+  border-radius: 4px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.shop-row:hover { border-color: var(--accent); }
+/* Open for business — the one thing a GM scanning the list needs to see. */
+.shop-row.revealed { border-left-color: var(--accent); }
+
+.shop-row-name { font-size: 12px; font-weight: 600; color: var(--text); }
+.shop-row-sub  { font-size: 10px; color: var(--text-dim); }
+
+/* An item card dragged out of Browse is over a shop — same cue the folder
+   headers use, so a drop reads the same wherever it lands. */
+.shop-row.drop-target {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 20%, var(--panel));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+/* On a shop's own page the whole pane is the target, so it lights up as one. */
+#left-pane-shop.drop-target {
+  box-shadow: inset 0 0 0 2px var(--accent);
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+
+.shop-title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 2px;
+}
+.shop-desc { font-size: 11px; line-height: 1.5; color: var(--text-dim); margin-bottom: 8px; }
+
+.shop-section-hdr {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin: 12px 0 5px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid var(--border);
+}
+.shop-body > .shop-section-hdr:first-child { margin-top: 0; }
+
+.shop-seg .seg-btn { padding: 6px 3px; font-size: 10px; }
+
+/* Shop-wide markup: −10 / percent / +10, sized for the narrow panel */
+.shop-price-row { display: flex; align-items: stretch; gap: 4px; }
+
+.shop-price-step {
+  width: 34px;
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-dim);
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  transition: color 0.15s, border-color 0.15s;
+}
+.shop-price-step:hover { color: var(--accent); border-color: var(--accent); }
+
+.shop-price-input { flex: 1; min-width: 0; text-align: center; font-weight: 700; }
+
+.shop-price-note { font-size: 10px; line-height: 1.45; color: var(--text-dim); margin-top: 5px; }
+.shop-price-note.marked { color: var(--accent); }
+.shop-player-check { font-size: 11px; margin: 6px 0 0 2px; }
+.shop-player-check input[type=checkbox] { width: 13px; height: 13px; }
+
+/* One line of stock */
+.shop-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px;
+  margin-bottom: 3px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  transition: border-color 0.15s;
+}
+.shop-item.clickable { cursor: pointer; }
+.shop-item.clickable:hover { border-color: var(--accent); }
+/* Fade the goods, never the count — a sold-out row still has to say so legibly. */
+.shop-item.sold-out .shop-item-swatch,
+.shop-item.sold-out .shop-item-info { opacity: 0.45; }
+
+.shop-item-swatch {
+  width: 4px;
+  align-self: stretch;
+  min-height: 20px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.shop-item-info { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
+.shop-item-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.shop-item-sub { font-size: 10px; color: var(--text-dim); }
+
+/* The count, read as a number: the one thing you scan a shelf for. */
+.shop-item-qty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 24px;
+  line-height: 1;
+}
+
+.shop-qty-num {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  text-shadow: 0 1px 0 var(--emboss-lo);
+}
+
+.shop-qty-label {
+  margin-top: 2px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.shop-item-qty.out .shop-qty-num,
+.shop-item-qty.out .shop-qty-label { color: var(--danger); }
+.shop-item-qty.unlimited .shop-qty-num { font-size: 20px; color: var(--accent); }
+
+.shop-buy-btn { flex-shrink: 0; padding: 3px 8px; font-size: 10px; }
+
+/* ─── SHOP MODALS ────────────────────────────────────────── */
+#shop-add-search { width: 100%; margin-bottom: 8px; }
+
+#shop-add-list {
+  max-height: 46vh;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px;
+}
+
+.shop-add-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 5px 6px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  transition: background 0.12s, border-color 0.12s;
+}
+.shop-add-row:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.shop-add-row.selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+}
+
+.shop-add-name { flex: 1; font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shop-add-cost { font-size: 11px; color: var(--text-dim); flex-shrink: 0; }
+
+#shop-entry-reset-price { margin-top: 6px; align-self: flex-start; font-size: 10px; }
+
+#shop-buy-summary {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+}
+
+.shop-coin-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  padding: 2px 0;
+}
+.shop-coin-line.dim { color: var(--text-dim); }
+
+.shop-coin-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.shop-coin-vals { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.shop-coin { font-weight: 600; }
+

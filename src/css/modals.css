@@ -1,0 +1,151 @@
+/* ============================================================
+   modals.css — modal chrome, and the shape editor inside the item editor
+   ============================================================ */
+
+/* ─── MODALS ─────────────────────────────────────────────── */
+#modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse at center, rgba(20, 12, 4, 0.45), rgba(12, 8, 3, 0.72));
+  z-index: 500;
+  backdrop-filter: blur(2px);
+}
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+/* A loose sheet of parchment, ruled in gold and pinned to the table */
+.modal-box {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  padding: 18px 24px 20px;
+  width: 400px;
+  max-width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  pointer-events: all;
+  box-shadow:
+    var(--shadow-deep),
+    inset 0 0 0 1px var(--emboss-hi),
+    inset 0 0 0 5px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.modal-box::-webkit-scrollbar { width: 5px; }
+.modal-box::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+.modal-box.wide { width: 580px; }
+.modal-box.narrow { width: 320px; }
+
+.modal-box h2 {
+  position: relative; /* anchors the fleuron to the heading, not the box */
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  margin-bottom: 18px;
+  padding-bottom: 11px;
+  color: var(--accent);
+  text-align: center;
+  text-shadow: 0 1px 0 var(--emboss-hi);
+  border-bottom: 1px solid var(--border);
+}
+/* Fleuron sitting on the rule beneath the title */
+.modal-box h2::after {
+  content: '❖';
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translate(-50%, 50%);
+  font-size: 9px;
+  line-height: 1;
+  color: var(--accent-soft);
+  background: var(--surface);
+  padding: 0 8px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+.field span, .field-label { font-size: 11px; color: var(--text-dim); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+.field input, .field select, .field textarea { width: 100%; }
+
+.form-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.form-two-col .field { margin-bottom: 0; }
+
+.field-group { margin-bottom: 12px; }
+.checkbox-label { display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 8px; }
+.checkbox-label input[type=checkbox] { width: 16px; height: 16px; }
+
+.modal-note { font-size: 11px; color: var(--text-dim); margin-bottom: 10px; line-height: 1.5; }
+
+.modal-footer {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  justify-content: flex-end;
+}
+
+/* Pushed to the far side of the footer, opposite the Close button. Centres
+   itself rather than the whole footer — the row stays `stretch`, which is what
+   keeps a btn-sm the same height as the btn-primary beside it. */
+.modal-version {
+  margin-right: auto;
+  align-self: center;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  opacity: 0.75;
+}
+
+/* ─── SHAPE EDITOR ───────────────────────────────────────── */
+#shape-editor-section { margin-bottom: 12px; }
+#shape-editor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+#shape-weight-display { font-size: 12px; color: var(--text-dim); }
+
+#shape-controls {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+#shape-controls button {
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 11px;
+}
+#shape-controls button:hover { border-color: var(--accent); }
+
+#shape-editor-grid {
+  display: grid;
+  gap: 2px;
+  width: fit-content;
+}
+.shape-cell {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  background: var(--bg);
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s;
+}
+.shape-cell.on {
+  background: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 80%, white);
+}
+.shape-cell:hover:not(.on) { background: var(--panel); border-color: var(--accent); }
+
