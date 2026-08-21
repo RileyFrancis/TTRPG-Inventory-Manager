@@ -37,6 +37,9 @@ const state = {
   folders: [],         // ordered [{ id, name }]
   folderAssign: {},    // { [templateId]: folderId }
   folderCollapsed: {}, // { [folderId]: true }
+  // Which order the Browse list is in. Persisted per browser by item-sort.js,
+  // beside the folders and for the same reason — it describes the catalogue.
+  itemSort: 'rarity',  // an id from ITEM_SORTS
   // Equipped items: { [slotId]: instanceId | null }
   equipped: {},
   // Equipment panel layout — ordered array of header/slot items (persisted separately)

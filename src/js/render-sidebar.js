@@ -19,11 +19,9 @@ function renderItemList() {
     return true;
   });
 
-  // Sort: rarity order desc, then name
-  items.sort((a, b) => {
-    const rd = RARITY_ORDER.indexOf(b.rarity) - RARITY_ORDER.indexOf(a.rarity);
-    return rd !== 0 ? rd : a.name.localeCompare(b.name);
-  });
+  // The chosen order (item-sort.js). Items keep it inside their folders:
+  // grouping only buckets an already-sorted list.
+  sortItems(items);
 
   listEl.innerHTML = '';
   listEl.classList.toggle('foldered', state.folders.length > 0);
@@ -41,7 +39,13 @@ function renderItemList() {
       // would read as "no results".
       const expanded = !!search || !isFolderCollapsed(group.id);
       listEl.appendChild(buildFolderHeader(group, expanded, !!search));
-      if (expanded) group.items.forEach(t => listEl.appendChild(buildItemCard(t)));
+      // Cards carry their folder so a drag can be dropped anywhere in the
+      // group, not only on its header (see getFolderDropAtPoint).
+      if (expanded) group.items.forEach(t => {
+        const card = buildItemCard(t);
+        card.dataset.folderId = group.id;
+        listEl.appendChild(card);
+      });
     });
   }
 
@@ -171,7 +175,7 @@ function buildItemCard(t) {
       // No equip-slot highlighting for new items (not yet placed)
       document.querySelectorAll('.eq-card.drag-hover').forEach(c => c.classList.remove('drag-hover'));
 
-      // A shop or a folder header under the cursor wins over the grid: those
+      // A shop or another folder under the cursor wins over the grid: those
       // drags stock or file the item rather than placing one.
       clearShopDropTargets();
       clearFolderDropTargets();
@@ -182,9 +186,9 @@ function buildItemCard(t) {
         clearHighlights();
         return;
       }
-      const folderEl = getFolderHeaderAtPoint(me.clientX, me.clientY);
-      if (folderEl) {
-        folderEl.classList.add('drop-target');
+      const folderId = folderDropTargetFor(tid, me.clientX, me.clientY);
+      if (folderId) {
+        setFolderDropTarget(folderId);
         setGhostVisibility(false);
         clearHighlights();
         return;
@@ -214,7 +218,7 @@ function buildItemCard(t) {
       }
       // End of drag: restore ghost visibility and clean up
       const shopDrop = getShopDropTargetAtPoint(ue.clientX, ue.clientY);
-      const folderEl = getFolderHeaderAtPoint(ue.clientX, ue.clientY);
+      const folderId = folderDropTargetFor(tid, ue.clientX, ue.clientY);
       setGhostVisibility(true);
       hideGhost();
       clearHighlights();
@@ -228,10 +232,10 @@ function buildItemCard(t) {
         return;
       }
 
-      // Dropped on a folder header → reclassify, nothing enters the grid.
+      // Dropped in another folder → reclassify, nothing enters the grid.
       // Dropping on Unfiled is a deliberate "no folder", not a reset to auto.
-      if (folderEl) {
-        setItemFolder(tid, folderEl.dataset.folderId);
+      if (folderId) {
+        setItemFolder(tid, folderId);
         renderItemList();
         return;
       }

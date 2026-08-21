@@ -51,6 +51,7 @@ tools/              Standalone dev helpers (not part of the app)
 | `constants.js` | `CELL`, `GRID_COLS`, `RARITY_META`, `RARITY_ORDER`, `EQUIP_SLOTS` |
 | `state.js` | The `state` object and convenience accessors |
 | `folders.js` | Browse-list folders: model, per-browser persistence, folder modals |
+| `item-sort.js` | The Browse list's sort order: the modes, their persistence, the sort menu |
 | `shapes.js` | `rotateShapeCW`, `getRotatedShape`, shape cell/bbox math |
 | `grid.js` | Fit tests, place/remove, `rebuildGrid`, id generation |
 | `render-grid.js` | `renderGrid`, `renderAllItems` |
@@ -89,7 +90,7 @@ that owns the element wins.
 | `icons.css` | The `img/icon` PNGs as `.ico` glyphs, masked over `currentColor` |
 | `layout.css` | The app shell: header, weight bar, main split, panel resizing |
 | `inventory.css` | The torn sheet, grid cells, placed items, the drag ghost |
-| `sidebar.css` | The right panel: browse list, folders, details, context menu |
+| `sidebar.css` | The right panel: browse list, folders, details, context and sort menus |
 | `modals.css` | Modal chrome, and the shape editor inside the item editor |
 | `character.css` | The character tabs, and page one of the 2024 character sheet |
 | `party.css` | Party header badge, the sidebar Party tab, party modal, kick |
@@ -118,6 +119,7 @@ state.db          { [templateId]: ItemTemplate }   (default + custom items)
 state.folders     [{ id, name }]                    (Browse-list folders, ordered)
 state.folderAssign    { [templateId]: folderId }    (overrides only; '__unfiled' = no folder)
 state.folderCollapsed { [folderId]: true }
+state.itemSort    'rarity' | 'name' | 'weight'      (Browse-list sort order)
 state.shops       { [shopId]: Shop }                (the party's shops, from Firebase)
 state.leftTab     'equip' | 'shop'                  (which left-panel pane shows)
 state.shopOpenId  shopId | null                     (null = the list of shops)
@@ -460,13 +462,43 @@ sheets keeps their own folders.
   reads as *Automatic*, and `setItemFolder(id, null)` hands it back to auto.
 - With no folders at all (the user deleted every one), `renderItemList` renders
   the flat list exactly as before.
-- Folder headers double as drop targets: `buildItemCard`'s drag checks
-  `getFolderHeaderAtPoint` (bounding-rect hit test, same approach as the equip
-  cards) *before* the grid, so a drop on a header files the item instead of placing it.
+- **A whole folder is a drop target, not just its header.** `buildItemCard`'s
+  drag checks `folderDropTargetFor` *before* the grid, so a card dropped
+  anywhere among a folder's items files itself there instead of being placed.
+  The list is a flat run of headers and cards, so a folder is the *band* from
+  its header down to the next one: `getFolderDropAtPoint` walks the children in
+  order rather than hit-testing each element, which is what makes the gaps
+  between cards part of the band too. The empty space past the last card belongs
+  to no folder — filing into whichever came last would be a guess.
+  - The band highlights whole, header and cards together; the header alone would
+    leave the cursor over unlit cards with no sign of where the item is going.
+  - **A drop back into the item's own folder is not a target.** Order inside a
+    folder is the sort's business, so there is nothing to reorder by hand and the
+    drag simply reads as cancelled rather than as a move that changed nothing.
 - A non-empty search expands every folder — a collapsed folder hiding the only
   match would read as "no results" — and the headers stop toggling while it does,
   as does the Collapse/Expand All button (`updateFolderToolbar`, disabled and
   labelled from the *stored* state, which is what clearing the search restores).
+
+### Browse-list sorting
+
+The order the Browse list is in, in `src/js/item-sort.js`. Like the folders it
+describes the *catalogue*, not the character, so it has its own localStorage key
+(`dnd_inventory_sort`) and is neither saved nor synced.
+
+- **Every mode is a chain of keys, not one key.** Sorting purely by weight would
+  scatter each weight's rarities at random; naming the tie-breakers keeps the
+  list readable in every mode. The default is rarity → name → weight, which is
+  the order the list has always used with weight now settling the last ties.
+- Directions are fixed per key and not user-flippable: rarity reads best-first
+  (that is what sorting loot by rarity means), name and weight ascending. A
+  direction toggle would double the modes to say very little.
+- `ITEM_SORTS` is the whole model — the menu is built from it, so adding a mode
+  is one line. `sortItems()` is the only caller `renderItemList` needs.
+- Sorting happens **before** `groupItemsByFolder`, which only buckets an
+  already-sorted list, so items keep the chosen order inside their folders.
+- The weight a mode sorts on is the figure the card *prints* (`itemSortWeight`,
+  a stackable item's per-unit weight), so the order matches what the reader sees.
 
 ### Theming
 

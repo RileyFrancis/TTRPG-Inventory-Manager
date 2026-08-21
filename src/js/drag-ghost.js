@@ -96,23 +96,56 @@ function getEquipCardAtPoint(x, y) {
   return null;
 }
 
-// Folder headers in the browse list double as drop targets for item cards.
-// Same bounding-rect approach as the equip cards above; the extra check against
-// the list's own rect keeps headers scrolled out of view from catching drops.
-function getFolderHeaderAtPoint(x, y) {
+// A whole folder in the browse list is a drop target for item cards, not just
+// its header: dropping an item anywhere among a folder's cards files it there.
+// The list is a flat run of headers and cards, so a folder is the *band* from
+// its header down to the next header — which is why this walks the children in
+// order rather than hit-testing each element on its own. The gaps between cards
+// belong to the band too, so a drop never falls through a 4px crack.
+//
+// Order inside a folder is the sort's business (item-sort.js), so where in the
+// band the item lands is deliberately not read: there is no reordering by hand.
+function getFolderDropAtPoint(x, y) {
   const listEl = document.getElementById('item-list');
+  if (!listEl.classList.contains('foldered')) return null;
   const lr = listEl.getBoundingClientRect();
   if (x < lr.left || x > lr.right || y < lr.top || y > lr.bottom) return null;
-  for (const header of listEl.querySelectorAll('.folder-header')) {
-    const r = header.getBoundingClientRect();
-    if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return header;
+
+  let folderId = null;
+  for (const el of listEl.children) {
+    if (el.classList.contains('folder-header')) folderId = el.dataset.folderId;
+    if (y <= el.getBoundingClientRect().bottom) return folderId;
   }
+  // Past the last card: empty space at the foot of the list, which belongs to
+  // no folder — filing into whichever folder happens to be last would be a
+  // guess, and a wrong one every time the list is scrolled to the end.
   return null;
 }
 
+// The folder a drag of `templateId` would file it into, or null for none. A
+// drop back into the item's own folder is *not* a target: there is nothing to
+// reorder there, so it reads as a cancelled drag rather than a no-op move.
+function folderDropTargetFor(templateId, x, y) {
+  const id = getFolderDropAtPoint(x, y);
+  if (!id) return null;
+  return id === (folderOf(templateId) ?? UNFILED_ID) ? null : id;
+}
+
+// The whole band lights up, header and cards together — the header alone would
+// leave the cursor sitting on unhighlighted cards with no sign of where the
+// item is about to go.
+function setFolderDropTarget(folderId) {
+  clearFolderDropTargets();
+  if (!folderId) return;
+  document.querySelectorAll(
+    `#item-list .folder-header[data-folder-id="${folderId}"], ` +
+    `#item-list .item-card[data-folder-id="${folderId}"]`
+  ).forEach(el => el.classList.add('drop-target'));
+}
+
 function clearFolderDropTargets() {
-  document.querySelectorAll('.folder-header.drop-target')
-    .forEach(h => h.classList.remove('drop-target'));
+  document.querySelectorAll('#item-list .drop-target')
+    .forEach(el => el.classList.remove('drop-target'));
 }
 
 // Highlight / unhighlight cells

@@ -1,5 +1,5 @@
 /* ============================================================
-   sidebar.css — the right panel: browse list, folders, details, context menu
+   sidebar.css — the right panel: browse list, folders, details, context and sort menus
    ============================================================ */
 
 /* ─── SIDEBAR ────────────────────────────────────────────── */
@@ -54,7 +54,12 @@
 #item-search { width: 100%; }
 #filter-row { display: flex; gap: 6px; }
 #filter-row select { flex: 1; }
-#folder-row { display: flex; justify-content: flex-end; gap: 6px; }
+/* Three controls in a panel the user can drag narrow: they wrap onto a second
+   row rather than each folding its own label into a two-line block. */
+#folder-row { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+#folder-row button { white-space: nowrap; }
+/* The sort control sits at the far left of that row, the folder controls right */
+#sort-btn { margin-right: auto; }
 
 /* Item list */
 #item-list {
@@ -131,10 +136,16 @@
 .folder-header:first-child { margin-top: 0; }
 .folder-header:hover { border-color: var(--accent); }
 .folder-header.search-locked { cursor: default; }
+/* A drag lights the whole folder — header and every card under it — because
+   the whole band is the drop target, not just the header. */
 .folder-header.drop-target {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 20%, var(--panel));
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.item-card.drop-target {
+  border-color: color-mix(in srgb, var(--accent) 60%, var(--border));
+  background: color-mix(in srgb, var(--accent) 10%, var(--panel));
 }
 
 .folder-caret { font-size: 9px; width: 9px; color: var(--text-dim); }
@@ -316,4 +327,40 @@
   color: var(--accent);
 }
 #ctx-remove { color: var(--danger); }
+
+/* ─── SORT MENU ──────────────────────────────────────────── */
+/* Same popup as the context menu, anchored under the Sort button */
+#sort-menu {
+  position: fixed;
+  z-index: 2000;
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  box-shadow: var(--shadow-deep), inset 0 0 0 1px var(--emboss-hi);
+  display: flex;
+  flex-direction: column;
+  min-width: 130px;
+  overflow: hidden;
+  padding: 3px;
+}
+#sort-menu button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  text-align: left;
+  border-radius: 2px;
+  transition: background 0.1s, color 0.1s;
+}
+#sort-menu button:hover {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+/* Fixed width so the labels line up whether or not the tick is showing */
+.sort-check {
+  width: 10px;
+  flex-shrink: 0;
+  color: var(--accent);
+  font-size: 10px;
+}
 

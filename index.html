@@ -306,6 +306,7 @@
             </select>
           </div>
           <div id="folder-row">
+            <button id="sort-btn" class="btn-sm" title="Sorted by rarity — click to change">⇅ Rarity</button>
             <button id="toggle-folders-btn" class="btn-sm" title="Close every folder">▸ Collapse All</button>
             <button id="new-folder-btn" class="btn-sm" title="Create a folder to group items"><span class="ico ico-plus lead"></span>New Folder</button>
           </div>
@@ -420,6 +421,10 @@
 
 <!-- ===== DRAG GHOST ===== -->
 <div id="drag-ghost" class="hidden"></div>
+
+<!-- ===== SORT MENU ===== -->
+<!-- Options are built from ITEM_SORTS by item-sort.js -->
+<div id="sort-menu" class="hidden"></div>
 
 <!-- ===== CONTEXT MENU ===== -->
 <div id="context-menu" class="hidden">
@@ -985,6 +990,7 @@
 <script src="src/js/constants.js"></script>
 <script src="src/js/state.js"></script>
 <script src="src/js/folders.js"></script>
+<script src="src/js/item-sort.js"></script>
 <script src="src/js/shapes.js"></script>
 <script src="src/js/grid.js"></script>
 

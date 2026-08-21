@@ -40,6 +40,7 @@ function init() {
   autoLoad();       // Restore last session — the whole roster of characters
   ensureCharacter();// Never no character: a first run mints one
   loadFolders();    // Browse-list folders — stored per browser, not in the save file
+  loadItemSort();   // Browse-list sort order — likewise this browser's own
   loadSlotConfig(); // Fallback: migrate old config or apply defaults if layout not yet set
   rebuildGrid(); // Sizes grid from restored character.strength, places saved instances
   renderItemList();
