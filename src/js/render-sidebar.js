@@ -173,6 +173,9 @@ function buildItemCard(t) {
       if (!dragging) {
         dragging = true;
         document.body.style.userSelect = 'none';
+        // The card is now in flight: fade the one left behind, so a drag over
+        // the list reads as moving *this* item rather than hovering the folder.
+        card.classList.add('dragging');
         cancelPlacing(); // exit any existing placing mode cleanly
         // Hold the cursor near a panel's edge and the panel scrolls, so a folder
         // or a grid row below the fold is still reachable without letting go.
@@ -198,9 +201,10 @@ function buildItemCard(t) {
         clearHighlights();
         return;
       }
-      const folderId = folderDropTargetFor(tid, me.clientX, me.clientY);
-      if (folderId) {
-        setFolderDropTarget(folderId);
+      // Lights the folder band, names it at the cursor, and tells us whether
+      // the grid gets a look in at all — over a folder it never does, not even
+      // the item's own, where the drop is a no-op that still isn't a placement.
+      if (showFolderDropFeedback(tid, me.clientX, me.clientY).hovering) {
         setGhostVisibility(false);
         clearHighlights();
         return;
@@ -237,6 +241,7 @@ function buildItemCard(t) {
       clearHighlights();
       clearShopDropTargets();
       clearFolderDropTargets();
+      card.classList.remove('dragging');
       document.querySelectorAll('.eq-card.drag-hover').forEach(c => c.classList.remove('drag-hover'));
 
       // Dropped on a shop → onto the shelf it goes, nothing enters the grid.

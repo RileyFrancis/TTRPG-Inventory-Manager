@@ -133,19 +133,74 @@ function folderDropTargetFor(templateId, x, y) {
 
 // The whole band lights up, header and cards together — the header alone would
 // leave the cursor sitting on unhighlighted cards with no sign of where the
-// item is about to go.
-function setFolderDropTarget(folderId) {
-  clearFolderDropTargets();
+// item is about to go. `cls` picks which of the two bands this is:
+// `drop-target` for a folder the item would move into, `drop-current` for the
+// one it is already in.
+function setFolderBandClass(folderId, cls) {
   if (!folderId) return;
   document.querySelectorAll(
     `#item-list .folder-header[data-folder-id="${folderId}"], ` +
     `#item-list .item-card[data-folder-id="${folderId}"]`
-  ).forEach(el => el.classList.add('drop-target'));
+  ).forEach(el => el.classList.add(cls));
 }
 
 function clearFolderDropTargets() {
-  document.querySelectorAll('#item-list .drop-target')
-    .forEach(el => el.classList.remove('drop-target'));
+  document.querySelectorAll('#item-list .drop-target, #item-list .drop-current')
+    .forEach(el => el.classList.remove('drop-target', 'drop-current'));
+  hideFolderDropHint();
+}
+
+// ─── THE FOLDER DROP HINT ────────────────────────────────────────────────────
+// A chip at the cursor naming the folder the drop would file into. The band is
+// the *area* feedback; this is the *answer*, and it is needed because a folder
+// is often taller than the list is: hovering cards halfway down a long folder
+// lights a header that has scrolled out of sight, leaving the drag unnamed.
+const folderDropHintEl = document.getElementById('folder-drop-hint');
+const FOLDER_HINT_OFFSET = 16; // clear of the cursor, so it never sits under it
+
+function showFolderDropHint(text, blocked, x, y) {
+  folderDropHintEl.textContent = text;
+  folderDropHintEl.classList.remove('hidden');
+  folderDropHintEl.classList.toggle('blocked', !!blocked);
+  // Flip to the other side of the cursor rather than run off the edge; measured
+  // after the text is in, since the chip is as wide as the folder's name.
+  const w = folderDropHintEl.offsetWidth, h = folderDropHintEl.offsetHeight;
+  const left = x + FOLDER_HINT_OFFSET + w > window.innerWidth
+    ? x - FOLDER_HINT_OFFSET - w : x + FOLDER_HINT_OFFSET;
+  const top = y + FOLDER_HINT_OFFSET + h > window.innerHeight
+    ? y - FOLDER_HINT_OFFSET - h : y + FOLDER_HINT_OFFSET;
+  folderDropHintEl.style.left = left + 'px';
+  folderDropHintEl.style.top  = top + 'px';
+}
+
+function hideFolderDropHint() {
+  folderDropHintEl.className = 'hidden';
+}
+
+// The whole of a browse drag's folder feedback in one call, so the band, the
+// chip and the answer can never disagree: lights the band under the cursor,
+// names it at the cursor, and hands back what a drop there would actually do.
+// Returns { folderId, hovering } — `folderId` is the folder the item would move
+// into (null for none), `hovering` is true over *any* folder band, including
+// the item's own, where the drag does nothing but must not fall through to the
+// grid's placement preview either.
+function showFolderDropFeedback(templateId, x, y) {
+  clearFolderDropTargets();
+  const hoverId = getFolderDropAtPoint(x, y);
+  if (!hoverId) return { folderId: null, hovering: false };
+
+  const folderId = folderDropTargetFor(templateId, x, y);
+  if (folderId) {
+    setFolderBandClass(folderId, 'drop-target');
+    showFolderDropHint('Move to ' + folderNameOf(folderId), false, x, y);
+  } else {
+    // The item's own folder. Nothing happens on a drop here — order inside a
+    // folder is the sort's business — so say so rather than leaving a dead
+    // patch of list that reads as a broken drag.
+    setFolderBandClass(hoverId, 'drop-current');
+    showFolderDropHint('Already in ' + folderNameOf(hoverId), true, x, y);
+  }
+  return { folderId, hovering: true };
 }
 
 // Highlight / unhighlight cells

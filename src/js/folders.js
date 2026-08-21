@@ -105,6 +105,15 @@ function getFolder(id) {
   return state.folders.find(f => f.id === id) ?? null;
 }
 
+// Unfiled is a virtual group — it is never stored, so it has no entry to read a
+// name off. One place knows what it is called, for the list header and the
+// drag hint alike.
+const UNFILED_NAME = 'Unfiled';
+function folderNameOf(id) {
+  if (id === UNFILED_ID) return UNFILED_NAME;
+  return getFolder(id)?.name ?? UNFILED_NAME;
+}
+
 function createFolder(name) {
   const clean = (name || '').trim();
   if (!clean) return null;
@@ -236,7 +245,7 @@ function groupItemsByFolder(items) {
     (id ? buckets.get(id) : unfiled).push(t);
   });
   const groups = state.folders.map(f => ({ id: f.id, name: f.name, items: buckets.get(f.id) }));
-  groups.push({ id: UNFILED_ID, name: 'Unfiled', items: unfiled });
+  groups.push({ id: UNFILED_ID, name: UNFILED_NAME, items: unfiled });
   return groups;
 }
 
@@ -258,7 +267,7 @@ function populateFolderSelect(sel, currentId) {
   };
   addOption('', 'Automatic (by type)');
   state.folders.forEach(f => addOption(f.id, f.name));
-  addOption(UNFILED_ID, 'Unfiled');
+  addOption(UNFILED_ID, UNFILED_NAME);
   sel.value = currentId ?? '';
 }
 
@@ -329,7 +338,7 @@ function openMoveToFolderModal(templateId) {
     setItemFolder(templateId, f.id);
     renderItemList();
   }));
-  addChoice('Unfiled', current === UNFILED_ID, () => {
+  addChoice(UNFILED_NAME, current === UNFILED_ID, () => {
     setItemFolder(templateId, UNFILED_ID);
     renderItemList();
   });

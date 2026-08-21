@@ -508,11 +508,29 @@ sheets keeps their own folders.
   order rather than hit-testing each element, which is what makes the gaps
   between cards part of the band too. The empty space past the last card belongs
   to no folder — filing into whichever came last would be a guess.
+  - `showFolderDropFeedback()` in `drag-ghost.js` is the whole of the drag's
+    feedback in one call — band, chip and the answer the drop will act on come
+    out of one place, so they cannot disagree. It hands back `hovering`, which
+    is true over *any* folder band including the item's own: the grid never gets
+    a look in while the cursor is over the list.
   - The band highlights whole, header and cards together; the header alone would
     leave the cursor over unlit cards with no sign of where the item is going.
+  - **The band is the area, the chip is the answer.** `#folder-drop-hint` rides
+    the cursor naming the folder ("Move to Weapons") because a folder is often
+    taller than the list: hovering cards halfway down Weapons lights a header
+    that has scrolled out of sight, leaving the drag unnamed. It flips to the
+    other side of the cursor at the viewport edge, measured after its text is in
+    — the chip is as wide as the folder's name.
+  - The card left behind is faded (`.item-card.dragging`), so a drag over the
+    list reads as moving *that* item rather than as hovering the folder. The
+    ghost is hidden over the list, so without it nothing marks what is in flight.
   - **A drop back into the item's own folder is not a target.** Order inside a
     folder is the sort's business, so there is nothing to reorder by hand and the
     drag simply reads as cancelled rather than as a move that changed nothing.
+    That folder still answers, though — outlined and dashed (`.drop-current`)
+    under a quiet "Already in Currency" — because an unlit band under the cursor
+    is indistinguishable from a broken drag. Refusing silently is the one thing
+    it must not do.
 - A non-empty search expands every folder — a collapsed folder hiding the only
   match would read as "no results" — and the headers stop toggling while it does,
   as does the Collapse/Expand All button (`updateFolderToolbar`, disabled and

@@ -148,6 +148,53 @@
   background: color-mix(in srgb, var(--accent) 10%, var(--panel));
 }
 
+/* The folder the dragged item is already in. A drop here does nothing — order
+   inside a folder is the sort's business — so the band is outlined rather than
+   lit: present enough to say "this one is yours already", quiet enough that it
+   is never mistaken for the accepting highlight above. */
+.folder-header.drop-current,
+.item-card.drop-current {
+  border-color: color-mix(in srgb, var(--text-dim) 55%, var(--border));
+  border-style: dashed;
+  opacity: 0.72;
+}
+
+/* The card left behind while its copy is in flight. */
+.item-card.dragging {
+  opacity: 0.4;
+  border-style: dashed;
+}
+
+/* ─── FOLDER DROP HINT ───────────────────────────────────── */
+/* Rides the cursor through a browse-list drag, naming the folder the drop
+   would file into. Above the ghost (1000), since the two never overlap but
+   the chip is the one carrying the words. */
+#folder-drop-hint {
+  position: fixed;
+  z-index: 1100;
+  pointer-events: none;
+  max-width: 240px;
+  padding: 5px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--on-accent);
+  background: var(--accent);
+  border-radius: 3px;
+  box-shadow: var(--shadow-deep);
+}
+/* Over the item's own folder: the drop is a no-op, and the chip says so in the
+   list's own quiet tones rather than the accent that means "this will happen". */
+#folder-drop-hint.blocked {
+  color: var(--text-dim);
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  font-weight: 600;
+}
+
 .folder-caret { font-size: 9px; width: 9px; color: var(--text-dim); }
 .folder-name {
   flex: 1;
