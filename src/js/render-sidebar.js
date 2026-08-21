@@ -23,6 +23,12 @@ function renderItemList() {
   // grouping only buckets an already-sorted list.
   sortItems(items);
 
+  // The list is rebuilt from scratch, which puts it back at the top. Filing an
+  // item — the one render that happens *during* a gesture, after auto-scroll has
+  // carried the reader down to a folder — must not throw them back up there. The
+  // browser clamps the value on its own when the new list is shorter.
+  const scrollTop = listEl.scrollTop;
+
   listEl.innerHTML = '';
   listEl.classList.toggle('foldered', state.folders.length > 0);
 
@@ -48,6 +54,8 @@ function renderItemList() {
       });
     });
   }
+
+  listEl.scrollTop = scrollTop;
 
   updateFolderToolbar(!!search);
 
@@ -166,7 +174,11 @@ function buildItemCard(t) {
         dragging = true;
         document.body.style.userSelect = 'none';
         cancelPlacing(); // exit any existing placing mode cleanly
+        // Hold the cursor near a panel's edge and the panel scrolls, so a folder
+        // or a grid row below the fold is still reachable without letting go.
+        startDragAutoScroll(me.clientX, me.clientY, dragRefresh);
       }
+      updateDragAutoScroll(me.clientX, me.clientY);
       const tmpl = state.db[tid];
       if (!tmpl) return;
       const shape = getRotatedShape(tmpl.shape, 0);
@@ -211,6 +223,7 @@ function buildItemCard(t) {
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onUp);
       document.body.style.userSelect = '';
+      stopDragAutoScroll();
       if (!dragging) {
         // Treat as click → enter placing mode as before
         startPlacing(tid);
@@ -254,6 +267,10 @@ function buildItemCard(t) {
       }
       // If dropped outside/invalid, silently cancel — no placing mode
     };
+
+    // Re-runs the hover logic above on a cursor that has not moved, for the
+    // frames where auto-scroll moved the content under it instead.
+    function dragRefresh(x, y) { onMove({ clientX: x, clientY: y }); }
 
     document.addEventListener('pointermove', onMove);
     document.addEventListener('pointerup', onUp);

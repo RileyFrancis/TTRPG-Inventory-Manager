@@ -97,6 +97,9 @@ function activateItemDrag(intent, e) {
   showGhost(shape, template.rarity, initX, initY);
 
   document.body.style.userSelect = 'none';
+  // Hold the cursor near a panel's edge and the panel scrolls, so a grid row or
+  // an equip slot below the fold is still reachable without letting go.
+  startDragAutoScroll(e.clientX, e.clientY, dragMoveAt);
   document.addEventListener('pointermove', onDragMove);
   document.addEventListener('pointerup', onDragEnd);
 }
@@ -126,13 +129,19 @@ function onStashPointerDown(e, instanceId) {
 
   showGhost(shape, template.rarity, e.clientX, e.clientY);
   document.body.style.userSelect = 'none';
+  startDragAutoScroll(e.clientX, e.clientY, dragMoveAt);
   document.addEventListener('pointermove', onDragMove);
   document.addEventListener('pointerup', onDragEnd);
   e.preventDefault();
 }
 
+// Re-runs onDragMove for a cursor that has not moved, on the frames where
+// auto-scroll moved the content under it instead.
+function dragMoveAt(x, y) { onDragMove({ clientX: x, clientY: y }); }
+
 function onDragMove(e) {
   if (state.mode !== 'dragging') return;
+  updateDragAutoScroll(e.clientX, e.clientY);
   const drag = state.dragging;
   const inst = state.instances[drag.instanceId];
   const template = state.db[inst.templateId];
@@ -169,6 +178,7 @@ function onDragEnd(e) {
   document.removeEventListener('pointermove', onDragMove);
   document.removeEventListener('pointerup', onDragEnd);
   document.body.style.userSelect = '';
+  stopDragAutoScroll();
 
   const drag = state.dragging;
   const inst = state.instances[drag.instanceId];
@@ -315,6 +325,7 @@ document.addEventListener('keydown', e => {
       inst.col = drag.origCol;
       document.removeEventListener('pointermove', onDragMove);
       document.removeEventListener('pointerup', onDragEnd);
+      stopDragAutoScroll();
       state.mode = 'idle';
       state.dragging = null;
       hideGhost();

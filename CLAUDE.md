@@ -58,6 +58,7 @@ tools/              Standalone dev helpers (not part of the app)
 | `render-sidebar.js` | `renderItemList`, details panel |
 | `render-stats.js` | Header weight / encumbrance readout |
 | `drag-ghost.js` | Ghost element (`initGhostEl`, `moveGhost`, `highlightCells`) |
+| `drag-scroll.js` | Edge auto-scroll: a held drag near a panel's edge pulls it along |
 | `interaction-placing.js` | PLACING mode |
 | `interaction-drag.js` | DRAGGING mode + R-key rotation |
 | `interaction-context.js` | Item clicks, context menu |
@@ -419,6 +420,43 @@ DRAGGING
 ```
 
 `cursorToGridPos` returns `null` when the cursor is outside `#grid-scroll`, gating all grid snapping.
+
+### Edge auto-scroll
+
+A drag holds the pointer button down, so the wheel is the only way to reach a
+folder or a grid row that is scrolled out of view — and letting go to scroll ends
+the drag. `src/js/drag-scroll.js` therefore pulls a container along while the
+cursor rests near its edge, for both held drags (a browse card, a placed item)
+but **not** placing mode: that follows a free cursor with no button down, and a
+cursor left resting near an edge would scroll forever.
+
+- Three calls per drag and no more: `startDragAutoScroll` at the point the drag
+  becomes real, `updateDragAutoScroll` on each pointermove, `stopDragAutoScroll`
+  on release *and* on the Escape cancel. The rAF loop runs for the whole drag
+  rather than starting and stopping at the edge bands — the velocity is simply
+  zero away from an edge, which leaves nothing to leak.
+- **A frame that scrolls re-runs the drag's own pointermove logic** (the
+  `refresh` callback — `dragMoveAt` / `dragRefresh`, both just the move handler
+  with a synthetic `{clientX, clientY}`). The cursor has not moved but the
+  content under it has, so the highlighted folder or grid cell would otherwise
+  be a whole scroll out of date by the drop. It fires only on frames that
+  actually moved, so the ends of a container cost nothing.
+- `DRAG_SCROLLERS` is an explicit list — the same bounding-rect approach the
+  equip cards and folder headers use, and for the same reason: the ghost is under
+  the cursor and `elementFromPoint` would keep finding it.
+- **The band reaches past a container's top and bottom, but never past its left
+  and right.** Above and below a scroller is its own panel's header or footer, so
+  overshooting the bottom edge should keep pulling rather than stall an inch
+  short. The panels sit side by side, so a horizontal band would let a drag in
+  one panel scroll its neighbour.
+- Note the asymmetry this creates: past the edge the pull continues but the drop
+  hit-tests (`getFolderDropAtPoint`, `cursorToGridPos`) return null, since the
+  cursor is outside. That is right — overshooting is how you *reach* a target,
+  not how you drop on one.
+- `renderItemList` restores `#item-list`'s `scrollTop`, because filing an item is
+  the one render that happens mid-gesture: rebuilding the list would otherwise
+  throw the reader back to the top of a list auto-scroll had just carried them
+  down.
 
 ### Persistence
 
