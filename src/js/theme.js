@@ -112,6 +112,8 @@ function openSettingsModal() {
 }
 
 document.getElementById('settings-btn').addEventListener('click', openSettingsModal);
+// The home screen covers the header, so its banner carries its own copy of the button.
+document.getElementById('home-settings-btn').addEventListener('click', openSettingsModal);
 
 // The info pages replace the settings modal rather than stacking on top of it —
 // a click on the backdrop closes every open modal, so two at once would both go.

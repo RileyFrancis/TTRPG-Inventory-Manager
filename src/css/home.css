@@ -23,13 +23,45 @@
     var(--bg);
   overflow-y: auto;
   display: flex;
-  justify-content: center;
+  flex-direction: column;  /* the banner across the top, the roster under it */
+  align-items: center;
 }
+
+/* ─── HOME BANNER ────────────────────────────────────────── */
+/* The home screen covers the app header, settings button and all, so the app's
+   name and the way into Settings are repeated here. Sticky, so a long roster
+   scrolls under it rather than away from it. */
+.home-banner {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  flex-shrink: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 12px 28px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border2);
+  box-shadow: var(--shadow-soft);
+}
+
+.home-banner-title {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  text-shadow: 0 1px 0 var(--emboss-hi);
+}
+
+#home-settings-btn { font-size: 15px; line-height: 1; }
 
 .home-inner {
   width: 100%;
   max-width: 980px;
-  padding: 40px 28px 60px;
+  padding: 32px 28px 60px;
 }
 
 .home-header {
