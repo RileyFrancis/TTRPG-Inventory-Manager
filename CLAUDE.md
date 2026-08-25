@@ -342,8 +342,24 @@ grid when a tab's *Character Sheet* is picked. It reads and writes the same
   would be ignored, because `abilities` wins.
 - Skill proficiency is **three-state** (none / proficient / expertise); saves are
   two. 2024 keeps expertise, and a rogue with a plain tick is simply wrong.
+- **One group per ability, not three lists.** Everything on that half of the
+  sheet is one number read three ways, so `abilityGroup()` boxes them together:
+  the modifier large with the score beside it in a smaller box, the **bolded**
+  saving throw directly under and ruled off from what follows, then the skills
+  that read off that ability (`skillsOfAbility`, which groups on the same
+  `ability` field `skillModOf` derives from — the layout cannot drift from the
+  arithmetic). It retires the per-row `DEX` tag: the group *is* the tag, said
+  once rather than eighteen times. Constitution has no skills and its group is
+  simply short.
+- `.ability-groups` is **two columns and never three**. The percentage in
+  `minmax(max(196px, 46%), 1fr)` is the ceiling — a track can be no narrower
+  than 46% of the row, so a third will not fit — while the 196px floor still
+  drops it to one column on a squeezed sheet. Past 50% only one column would
+  ever fit; at a third, three would. `.sheet-body` is flex-wrap rather than the
+  auto-fit grid it was, because the ability section carries two columns of its
+  own and wants roughly twice the room of the combat column beside it.
 - The unique boxes are static markup in `index.html`, as everything referenced by
-  JS is. The six abilities, six saves and eighteen skills are **built once** from
+  JS is. The six ability groups are **built once** from
   the `ABILITIES` and `SKILLS` constants that define them — hand-writing eighteen
   rows would only give them somewhere to disagree with the constant. Built once
   and never rebuilt: `renderCharacterSheet()` only writes values into what is

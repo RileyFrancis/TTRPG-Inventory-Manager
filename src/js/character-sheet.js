@@ -35,7 +35,9 @@ const ABILITIES = [
 ];
 
 // The eighteen skills, alphabetical as they are printed, each tied to the
-// ability its modifier comes from.
+// ability its modifier comes from. That tie is now what *lays the sheet out* as
+// well as what derives the number: `skillsOfAbility` groups on it, so the
+// grouping cannot drift from the arithmetic.
 const SKILLS = [
   { id: 'acrobatics',     label: 'Acrobatics',      ability: 'dex' },
   { id: 'animalHandling', label: 'Animal Handling', ability: 'wis' },
@@ -98,6 +100,11 @@ function normalizeAbilities(raw, strengthFallback) {
 
 function clampScore(n) { return Math.max(1, Math.min(30, n)); }
 
+// In printed order, so a group lists its skills the way the sheet always has.
+function skillsOfAbility(abilityId) {
+  return SKILLS.filter(s => s.ability === abilityId);
+}
+
 // =============================================================================
 // DERIVATION
 // =============================================================================
@@ -134,9 +141,16 @@ function formatMod(n) { return (n >= 0 ? '+' : '-') + Math.abs(n); }
 // BUILDING THE REPEATED PARTS
 // =============================================================================
 // The unique boxes are static markup in index.html, as everything referenced by
-// JS is. These three groups are not unique — they are the ABILITIES and SKILLS
-// tables above, rendered once. Hand-writing eighteen skill rows would only give
-// them a second place to disagree with the constant that defines them.
+// JS is. The six ability groups are not unique — they are the ABILITIES and
+// SKILLS tables above, rendered once. Hand-writing eighteen skill rows would
+// only give them a second place to disagree with the constant that defines them.
+//
+// **One group per ability, not three lists.** Everything on this half of the
+// sheet is one number read three ways — the modifier, the save that adds
+// proficiency to it, and the skills that do the same — so they are shown
+// together and a change to the score visibly moves the rows underneath it. It
+// also retires the "DEX" tag each skill row used to carry: the group it sits in
+// is the tag, and says it once instead of eighteen times.
 //
 // Built once at boot, never rebuilt: `renderCharacterSheet()` only writes values
 // into what is already here, so an input never loses focus mid-keystroke.
@@ -147,53 +161,68 @@ function buildCharacterSheet() {
   sheetBuilt = true;
 
   const abilBox = document.getElementById('sheet-abilities');
-  ABILITIES.forEach(a => {
-    const block = document.createElement('div');
-    block.className = 'ability-block';
+  ABILITIES.forEach(a => abilBox.appendChild(abilityGroup(a)));
+}
 
-    const label = document.createElement('div');
-    label.className = 'ability-label';
-    label.textContent = a.label;
+// A score, its save, and the skills that read off it.
+function abilityGroup(a) {
+  const group = document.createElement('section');
+  group.className = 'ability-group';
 
-    const score = document.createElement('input');
-    score.type = 'number';
-    score.className = 'ability-score';
-    score.min = 1; score.max = 30;
-    score.dataset.sheet = `abilities.${a.id}`;
-    score.dataset.kind = 'int';
-    score.setAttribute('aria-label', a.label + ' score');
+  const name = document.createElement('h4');
+  name.className = 'ability-name';
+  name.textContent = a.label;
 
-    const mod = document.createElement('div');
-    mod.className = 'ability-mod';
-    mod.id = `sheet-mod-${a.id}`;
+  // The modifier is the figure actually rolled with, so it is the big one; the
+  // score sits beside it as the smaller number it is worked out from.
+  const mod = document.createElement('div');
+  mod.className = 'ability-mod';
+  mod.id = `sheet-mod-${a.id}`;
 
-    block.append(label, score, mod);
-    abilBox.appendChild(block);
+  const score = document.createElement('input');
+  score.type = 'number';
+  score.className = 'ability-score';
+  score.min = 1; score.max = 30;
+  score.dataset.sheet = `abilities.${a.id}`;
+  score.dataset.kind = 'int';
+  score.setAttribute('aria-label', a.label + ' score');
+
+  const scoreBox = document.createElement('label');
+  scoreBox.className = 'ability-score-box';
+  const scoreCap = document.createElement('span');
+  scoreCap.textContent = 'Score';
+  scoreBox.append(scoreCap, score);
+
+  const head = document.createElement('div');
+  head.className = 'ability-head';
+  head.append(mod, scoreBox);
+
+  const rows = document.createElement('div');
+  rows.className = 'prof-list';
+
+  // The save leads the group and is bolded: it belongs to the ability itself,
+  // where the skills below are each their own thing.
+  const save = profRow({
+    dot: { path: `saveProf.${a.id}`, kind: 'bool' },
+    label: 'Saving Throw',
+    valueId: `sheet-save-${a.id}`,
   });
+  save.classList.add('save-row');
+  rows.appendChild(save);
 
-  const savesBox = document.getElementById('sheet-saves');
-  ABILITIES.forEach(a => {
-    savesBox.appendChild(profRow({
-      dot: { path: `saveProf.${a.id}`, kind: 'bool' },
-      label: a.label,
-      valueId: `sheet-save-${a.id}`,
-    }));
-  });
+  skillsOfAbility(a.id).forEach(s => rows.appendChild(profRow({
+    dot: { path: `skillProf.${s.id}`, kind: 'prof' },
+    label: s.label,
+    valueId: `sheet-skill-${s.id}`,
+  })));
 
-  const skillsBox = document.getElementById('sheet-skills');
-  SKILLS.forEach(s => {
-    skillsBox.appendChild(profRow({
-      dot: { path: `skillProf.${s.id}`, kind: 'prof' },
-      label: s.label,
-      note: s.ability.toUpperCase(),
-      valueId: `sheet-skill-${s.id}`,
-    }));
-  });
+  group.append(name, head, rows);
+  return group;
 }
 
 // One row of "proficiency dot · name · derived modifier". The dot is a button
 // rather than a checkbox because the skill version cycles through three states.
-function profRow({ dot, label, note, valueId }) {
+function profRow({ dot, label, valueId }) {
   const row = document.createElement('div');
   row.className = 'prof-row';
 
@@ -211,14 +240,7 @@ function profRow({ dot, label, note, valueId }) {
   value.className = 'prof-value';
   value.id = valueId;
 
-  row.append(btn, name);
-  if (note) {
-    const n = document.createElement('span');
-    n.className = 'prof-note';
-    n.textContent = note;
-    row.appendChild(n);
-  }
-  row.appendChild(value);
+  row.append(btn, name, value);
   return row;
 }
 

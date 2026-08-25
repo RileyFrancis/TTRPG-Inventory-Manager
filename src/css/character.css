@@ -173,58 +173,110 @@
 
 .sheet-hint { margin-top: 8px; font-size: 10px; color: var(--text-dim); font-style: italic; }
 
+/* Flex rather than an auto-fit grid, because the two sections are not
+   interchangeable columns: the abilities carry two columns of their own and so
+   want roughly twice the room, and they wrap under each other when the sheet is
+   too narrow to hold both. The project has no media queries — the panel resizes
+   independently of the viewport, so widths are settled intrinsically. */
 .sheet-body {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 10px 26px;
+  align-items: flex-start;
+}
+.sheet-col { flex: 1 1 240px; min-width: 0; }
+.sheet-col-abilities { flex: 2 1 420px; }
+
+/* ── Ability groups ── */
+/* One number read three ways — the modifier, the save, the skills — so they are
+   boxed together.
+
+   Two columns, and never a third: the percentage in that `max()` is what caps
+   it. A track can be no narrower than 46% of the row, so two is all that will
+   ever fit, while the 196px floor still drops the grid to a single column when
+   the sheet is squeezed narrower than two real columns — the auto-fit idiom the
+   rest of the app uses, with a ceiling on it. Raising 46% past 50% would allow
+   only one column ever; dropping it to a third would let three in.
+
+   `align-items: start` lets a short group (Constitution has no skills at all)
+   end where it ends instead of stretching to match its neighbour. */
+.ability-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(max(196px, 46%), 1fr));
+  gap: 10px;
   align-items: start;
 }
-
-/* ── Abilities ── */
-.ability-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(78px, 1fr));
-  gap: 8px;
-}
-.ability-block {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  padding: 8px 4px 6px;
+.ability-group {
+  padding: 8px 9px 7px;
   background: var(--panel);
   border: 1px solid var(--border2);
   border-radius: 4px;
   box-shadow: inset 0 1px 0 var(--emboss-hi);
 }
-.ability-label {
-  font-size: 8px;
+.ability-name {
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* The modifier is what gets rolled with, so it is the big figure; the score is
+   the smaller box beside it that it is worked out from. */
+.ability-head {
+  display: flex;
+  align-items: stretch;
+  gap: 7px;
+  margin-bottom: 7px;
+}
+.ability-mod {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  font-size: 25px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-radius: 4px;
+}
+.ability-score-box {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  width: 46px;
+  padding: 2px 0 3px;
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+}
+.ability-score-box > span {
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--text-dim);
 }
 .ability-score {
   width: 100%;
-  padding: 2px;
-  font-size: 19px;
+  padding: 0;
+  font-size: 15px;
   font-weight: 700;
+  line-height: 1.1;
   text-align: center;
   color: var(--text);
   background: transparent;
   border: none;
 }
 .ability-score:focus { outline: none; color: var(--accent); }
-.ability-mod {
-  min-width: 38px;
-  padding: 1px 0;
-  font-size: 12px;
-  font-weight: 700;
-  text-align: center;
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  border-radius: 9px;
-}
 
 /* ── Proficiency rows (saves + skills) ── */
 .prof-list { display: flex; flex-direction: column; gap: 1px; }
@@ -259,13 +311,14 @@
 }
 .prof-dot:disabled { cursor: default; opacity: 0.5; }
 
+/* The save belongs to the ability itself, where each skill below is its own
+   thing — bolded, and ruled off from them. */
+.save-row { border-bottom: 1px solid var(--border); margin-bottom: 2px; padding-bottom: 4px; }
+.save-row .prof-name,
+.save-row .prof-value { font-weight: 700; }
+.save-row .prof-name { letter-spacing: 0.02em; }
+
 .prof-name { flex: 1; font-size: 12px; }
-.prof-note {
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  color: var(--text-dim);
-}
 .prof-value {
   min-width: 26px;
   font-size: 12px;

@@ -150,8 +150,9 @@
 
       <!-- Shown in place of the grid when a tab's "Character Sheet" is picked -->
       <!-- Page one of the 2024 sheet. The unique boxes are here; the six
-           abilities, six saves and eighteen skills are built once from the
-           constants in character-sheet.js, which is where they are defined. -->
+           ability groups — each one a score, its save and the skills that read
+           off it — are built once from the constants in character-sheet.js,
+           which is where they are defined. -->
       <div id="character-sheet">
         <div class="sheet-scroll paper-sheet">
 
@@ -179,16 +180,9 @@
 
           <div class="sheet-body">
 
-            <section class="sheet-col">
-              <h3 class="sheet-h">Abilities</h3>
-              <div id="sheet-abilities" class="ability-grid"><!-- built from ABILITIES --></div>
-              <h3 class="sheet-h">Saving Throws</h3>
-              <div id="sheet-saves" class="prof-list"><!-- built from ABILITIES --></div>
-            </section>
-
-            <section class="sheet-col">
-              <h3 class="sheet-h">Skills</h3>
-              <div id="sheet-skills" class="prof-list"><!-- built from SKILLS --></div>
+            <section class="sheet-col sheet-col-abilities">
+              <h3 class="sheet-h">Abilities &amp; Skills</h3>
+              <div id="sheet-abilities" class="ability-groups"><!-- built from ABILITIES + SKILLS --></div>
               <p class="sheet-hint">Click a dot to cycle proficient → expertise.</p>
             </section>
 
