@@ -498,6 +498,13 @@ sheets keeps their own folders.
   resolved folder with `folderOf()` and the override with `explicitFolderOf()` —
   the item editor and the picker modal show the override, so an auto-filed item
   reads as *Automatic*, and `setItemFolder(id, null)` hands it back to auto.
+- **Restore Defaults** (`restoreDefaultFolders`) empties `folderAssign` whole —
+  it holds nothing but hand-filed overrides, so clearing it *is* "nobody filed
+  anything by hand". It re-creates any missing default folder first, because
+  otherwise `defaultFolderIdFor` has no answer and every item the button just
+  freed lands in Unfiled. Folders the user made are left standing: the button
+  restores where items *are*, and deleting someone's folders is a different
+  operation nobody asked for. A re-created folder is appended, like seeding.
 - With no folders at all (the user deleted every one), `renderItemList` renders
   the flat list exactly as before.
 - **A whole folder is a drop target, not just its header.** `buildItemCard`'s
@@ -546,9 +553,17 @@ describes the *catalogue*, not the character, so it has its own localStorage key
   scatter each weight's rarities at random; naming the tie-breakers keeps the
   list readable in every mode. The default is rarity → name → weight, which is
   the order the list has always used with weight now settling the last ties.
-- Directions are fixed per key and not user-flippable: rarity reads best-first
-  (that is what sorting loot by rarity means), name and weight ascending. A
-  direction toggle would double the modes to say very little.
+- Each key has one fixed direction — rarity best-first (that is what sorting
+  loot by rarity means), name and weight ascending — and the toolbar's arrow
+  toggle (`state.itemSortReverse`) negates the **whole chain**, so the list is
+  exactly the one the reader had, upside down. Flipping only the leading key
+  would leave the tie-breakers running the other way and shuffle items that
+  never moved. The reverse rides in the same localStorage key; a stored bare id
+  is the pre-direction shape and still reads. `dir` on each mode names its two
+  directions in that mode's own words ("Worst first", "Z to A") — the button
+  says what the reader will get, not "reversed".
+- The reverse turns each folder's contents over; the **folders keep their own
+  order**, which is the user's arrangement rather than the sort's.
 - `ITEM_SORTS` is the whole model — the menu is built from it, so adding a mode
   is one line. `sortItems()` is the only caller `renderItemList` needs.
 - Sorting happens **before** `groupItemsByFolder`, which only buckets an

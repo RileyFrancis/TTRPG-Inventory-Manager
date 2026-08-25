@@ -75,12 +75,19 @@ function loadFolders() {
 function seedDefaultFolders() {
   if (foldersSeeded) return;
   foldersSeeded = true;
+  addMissingDefaultFolders();
+  saveFolders();
+}
+
+// Adds back any default folder that is neither there by id nor matched by name.
+// Split out of the seeding so Restore Defaults can reuse it: it does not touch
+// `foldersSeeded`, which records only that the first run has happened.
+function addMissingDefaultFolders() {
   const taken = new Set(state.folders.map(f => f.name.toLowerCase()));
   DEFAULT_FOLDERS.forEach(def => {
     if (getFolder(def.id) || taken.has(def.name.toLowerCase())) return;
     state.folders.push({ id: def.id, name: def.name });
   });
-  saveFolders();
 }
 
 function saveFolders() {
@@ -210,6 +217,21 @@ function setAllFoldersCollapsed(collapsed) {
   saveFolders();
 }
 
+// Hands every item back to the folder its type files it into. That means
+// dropping the whole of `folderAssign` — it holds nothing *but* hand-filed
+// overrides, so clearing it is exactly "nobody filed anything by hand".
+//
+// Missing default folders are re-created first, because without them
+// `defaultFolderIdFor` has no answer and the items the button just freed would
+// land in Unfiled — a restore that files everything nowhere is not a restore.
+// Folders the user made are left standing: the button restores where items
+// *are*, and deleting someone's folders is a different, unasked-for operation.
+function restoreDefaultFolders() {
+  addMissingDefaultFolders();
+  state.folderAssign = {};
+  saveFolders();
+}
+
 // Judged on the real folders alone: Unfiled is usually empty and unrendered, so
 // letting it decide would strand the button on "Expand All" with nothing open.
 function allFoldersCollapsed() {
@@ -224,7 +246,11 @@ function updateFolderToolbar(searchLocked) {
   const collapsed = allFoldersCollapsed();
   btn.classList.toggle('hidden', state.folders.length === 0);
   btn.disabled = searchLocked;
-  btn.textContent = collapsed ? '▾ Expand All' : '▸ Collapse All';
+  // The caret shows the *action*, not the state — the same arrow the label used
+  // to sit beside, now carrying the meaning on its own. The folder headers'
+  // carets read the other way round (▾ = this folder is open), which is why the
+  // title matters here.
+  btn.textContent = collapsed ? '▾' : '▸';
   btn.title = searchLocked
     ? 'A search keeps every folder open'
     : (collapsed ? 'Open every folder' : 'Close every folder');
@@ -232,6 +258,21 @@ function updateFolderToolbar(searchLocked) {
 
 document.getElementById('toggle-folders-btn').addEventListener('click', () => {
   setAllFoldersCollapsed(!allFoldersCollapsed());
+  renderItemList();
+});
+
+// Destructive in the one way that matters — every hand-filed item moves — so it
+// says exactly what will happen and what will not before it happens.
+document.getElementById('restore-folders-btn').addEventListener('click', () => {
+  const filed = Object.keys(state.folderAssign).length;
+  const moving = filed > 0
+    ? `${filed} item${filed > 1 ? 's' : ''} you filed by hand will move back to the folder its type belongs in.\n\n`
+    : '';
+  if (!confirm(
+    'Restore every item to its default folder?\n\n' + moving +
+    'Any missing default folder is re-created. Folders you made yourself are kept, but items will leave them.'
+  )) return;
+  restoreDefaultFolders();
   renderItemList();
 });
 

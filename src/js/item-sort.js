@@ -16,9 +16,12 @@
 // The default — rarity, then name, then weight — is the order the list has
 // always used, now with weight settling the last ties.
 //
-// Directions are fixed per key and not user-flippable: rarity reads best-first
-// (that is what "sort by rarity" means for loot), name and weight read
-// ascending. A direction toggle would double the modes to say very little.
+// Each key has one fixed direction — rarity best-first (that is what "sort by
+// rarity" means for loot), name and weight ascending — and the reverse toggle
+// negates the *whole chain* rather than just the leading key, so the list a
+// reader sees is exactly the one they had, upside down. Flipping only the
+// primary key would leave the tie-breakers running the other way and shuffle
+// items that never moved.
 
 const ITEM_SORT_KEY = 'dnd_inventory_sort';
 
@@ -36,39 +39,63 @@ const ITEM_SORT_KEYS = {
 };
 
 // The first entry is the default, and the menu is built from this list — adding
-// a mode means adding a line here and nothing else.
+// a mode means adding a line here and nothing else. `dir` names the two
+// directions in that mode's own words: "reversed" is meaningless on a button,
+// where "Worst first" says what the reader will actually get.
 const ITEM_SORTS = [
-  { id: 'rarity', label: 'Rarity', keys: ['rarity', 'name', 'weight'] },
-  { id: 'name',   label: 'Name',   keys: ['name', 'rarity', 'weight'] },
-  { id: 'weight', label: 'Weight', keys: ['weight', 'rarity', 'name'] },
+  { id: 'rarity', label: 'Rarity', keys: ['rarity', 'name', 'weight'], dir: ['Best first', 'Worst first'] },
+  { id: 'name',   label: 'Name',   keys: ['name', 'rarity', 'weight'], dir: ['A to Z', 'Z to A'] },
+  { id: 'weight', label: 'Weight', keys: ['weight', 'rarity', 'name'], dir: ['Lightest first', 'Heaviest first'] },
 ];
 
 function getItemSort() {
   return ITEM_SORTS.find(s => s.id === state.itemSort) ?? ITEM_SORTS[0];
 }
 
+// The key held a bare mode id before there was a direction to remember, so a
+// value that is not JSON is read as that id and the direction defaults.
 function loadItemSort() {
   try {
     const raw = localStorage.getItem(ITEM_SORT_KEY);
-    if (raw && ITEM_SORTS.some(s => s.id === raw)) state.itemSort = raw;
-  } catch (e) { /* storage disabled — the default stands */ }
+    if (raw) {
+      const data = raw.startsWith('{') ? JSON.parse(raw) : { id: raw };
+      if (ITEM_SORTS.some(s => s.id === data.id)) state.itemSort = data.id;
+      state.itemSortReverse = !!data.reverse;
+    }
+  } catch (e) { /* storage disabled or corrupt — the defaults stand */ }
   updateSortButton();
+}
+
+function saveItemSort() {
+  try {
+    localStorage.setItem(ITEM_SORT_KEY, JSON.stringify({
+      id: state.itemSort,
+      reverse: state.itemSortReverse,
+    }));
+  } catch (e) { /* non-fatal */ }
 }
 
 function setItemSort(id) {
   if (!ITEM_SORTS.some(s => s.id === id)) return;
   state.itemSort = id;
-  try { localStorage.setItem(ITEM_SORT_KEY, id); } catch (e) { /* non-fatal */ }
+  saveItemSort();
+  updateSortButton();
+}
+
+function setItemSortReverse(reverse) {
+  state.itemSortReverse = !!reverse;
+  saveItemSort();
   updateSortButton();
 }
 
 // Sorts in place and returns the same array, the way Array#sort does.
 function sortItems(items) {
   const chain = getItemSort().keys.map(k => ITEM_SORT_KEYS[k]);
+  const sign = state.itemSortReverse ? -1 : 1;
   return items.sort((a, b) => {
     for (const cmp of chain) {
       const d = cmp(a, b);
-      if (d !== 0) return d;
+      if (d !== 0) return d * sign;
     }
     return 0;
   });
@@ -79,12 +106,18 @@ function sortItems(items) {
 // =============================================================================
 // The options are built from ITEM_SORTS rather than written into index.html:
 // three hand-written buttons would only give the constant somewhere to disagree.
-const sortMenuEl = document.getElementById('sort-menu');
-const sortBtnEl  = document.getElementById('sort-btn');
+const sortMenuEl   = document.getElementById('sort-menu');
+const sortBtnEl    = document.getElementById('sort-btn');
+const sortDirBtnEl = document.getElementById('sort-dir-btn');
 
+// The arrow points the way the chain runs: down for the mode's own order, up
+// for the reverse of it.
 function updateSortButton() {
-  sortBtnEl.textContent = '⇅ ' + getItemSort().label;
-  sortBtnEl.title = `Sorted by ${getItemSort().label.toLowerCase()} — click to change`;
+  const sort = getItemSort();
+  sortBtnEl.textContent = '⇅ ' + sort.label;
+  sortBtnEl.title = `Sorted by ${sort.label.toLowerCase()} — click to change`;
+  sortDirBtnEl.textContent = state.itemSortReverse ? '↑' : '↓';
+  sortDirBtnEl.title = `${sort.dir[state.itemSortReverse ? 1 : 0]} — click to reverse`;
 }
 
 function buildSortMenu() {
@@ -119,6 +152,11 @@ function showSortMenu() {
 function hideSortMenu() {
   sortMenuEl.classList.add('hidden');
 }
+
+sortDirBtnEl.addEventListener('click', () => {
+  setItemSortReverse(!state.itemSortReverse);
+  renderItemList();
+});
 
 sortBtnEl.addEventListener('click', e => {
   e.stopPropagation(); // the document listener below would close it again

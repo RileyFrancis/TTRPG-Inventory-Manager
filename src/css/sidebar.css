@@ -58,8 +58,10 @@
    row rather than each folding its own label into a two-line block. */
 #folder-row { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 #folder-row button { white-space: nowrap; }
-/* The sort control sits at the far left of that row, the folder controls right */
-#sort-btn { margin-right: auto; }
+/* The sort controls sit at the far left of that row, the folder controls right.
+   The gap is on the last *left* button, so the split survives the row wrapping
+   and follows the pair rather than being pinned to one id. */
+#sort-dir-btn { margin-right: auto; }
 
 /* Item list */
 #item-list {
