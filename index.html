@@ -155,18 +155,47 @@
            off it — are built once from the constants in character-sheet.js,
            which is where they are defined.
 
-           Each section is a *widget*, and where the widgets sit is a tree of
-           row/column splits the reader rearranges by dragging a section title
-           (src/js/sheet-layout.js). The sections below are written once, in
-           #sheet-widget-store, and *moved* into that tree — so a rearrange
-           costs no element its id, its value or its listeners. -->
+           Every section *except the identity block* is a widget, and where the
+           widgets sit is a tree of row/column splits the reader rearranges by
+           dragging a section title (src/js/sheet-layout.js). Those sections are
+           written once, in #sheet-widget-store, and *moved* into that tree — so
+           a rearrange costs no element its id, its value or its listeners. -->
       <div id="character-sheet">
         <div class="sheet-scroll paper-sheet">
 
-          <div id="sheet-toolbar">
-            <span class="sheet-toolbar-hint">Drag a section by its title to rearrange it.</span>
-            <button id="sheet-reset-layout-btn" class="btn-sm">Reset Layout</button>
-          </div>
+          <!-- Pinned, and that is simply what living *outside* #sheet-layout
+               means. Whose sheet this is heads the page, so the identity block
+               is not in the layout tree at all — it cannot be dragged away, and
+               nothing can be dropped above it. No flag anywhere says so:
+               SHEET_WIDGET_IDS is read from the store below, and every drag and
+               hit test is scoped to the tree, so being out here is the whole
+               mechanism. -->
+          <section class="sheet-widget pinned" data-widget="identity">
+            <h3 class="sheet-h widget-title">Identity</h3>
+            <div class="widget-body">
+              <div class="sheet-head">
+                <input type="text" id="sheet-name" class="sheet-name-input" maxlength="40"
+                       data-sheet="name" data-kind="text" placeholder="Character name"
+                       aria-label="Character name">
+                <div id="sheet-identity" class="sheet-identity"></div>
+                <div class="sheet-id-grid">
+                  <label class="sheet-field"><span>Class</span>
+                    <input type="text" data-sheet="classes" data-kind="classlist"
+                           maxlength="60" placeholder="Fighter, Rogue"></label>
+                  <label class="sheet-field narrow"><span>Level</span>
+                    <input type="number" data-sheet="level" data-kind="int" min="1" max="20"></label>
+                  <label class="sheet-field"><span>Subclass</span>
+                    <input type="text" data-sheet="subclass" data-kind="text" maxlength="40"></label>
+                  <label class="sheet-field"><span>Species</span>
+                    <input type="text" data-sheet="race" data-kind="text" maxlength="30"></label>
+                  <label class="sheet-field"><span>Background</span>
+                    <input type="text" data-sheet="background" data-kind="text" maxlength="40"></label>
+                  <label class="sheet-field narrow"><span>XP</span>
+                    <input type="number" data-sheet="xp" data-kind="int" min="0"></label>
+                </div>
+              </div>
+            </div>
+          </section>
 
           <!-- The layout tree in sheet-layout.js builds its split containers in
                here and *moves* the widgets below into them. Nothing is rebuilt
@@ -179,38 +208,10 @@
                of the app's is. -->
           <div id="sheet-widget-store" hidden>
 
-            <section class="sheet-widget" data-widget="identity">
-              <h3 class="sheet-h widget-title">Identity</h3>
-              <div class="widget-body">
-                <div class="sheet-head">
-                  <input type="text" id="sheet-name" class="sheet-name-input" maxlength="40"
-                         data-sheet="name" data-kind="text" placeholder="Character name"
-                         aria-label="Character name">
-                  <div id="sheet-identity" class="sheet-identity"></div>
-                  <div class="sheet-id-grid">
-                    <label class="sheet-field"><span>Class</span>
-                      <input type="text" data-sheet="classes" data-kind="classlist"
-                             maxlength="60" placeholder="Fighter, Rogue"></label>
-                    <label class="sheet-field narrow"><span>Level</span>
-                      <input type="number" data-sheet="level" data-kind="int" min="1" max="20"></label>
-                    <label class="sheet-field"><span>Subclass</span>
-                      <input type="text" data-sheet="subclass" data-kind="text" maxlength="40"></label>
-                    <label class="sheet-field"><span>Species</span>
-                      <input type="text" data-sheet="race" data-kind="text" maxlength="30"></label>
-                    <label class="sheet-field"><span>Background</span>
-                      <input type="text" data-sheet="background" data-kind="text" maxlength="40"></label>
-                    <label class="sheet-field narrow"><span>XP</span>
-                      <input type="number" data-sheet="xp" data-kind="int" min="0"></label>
-                  </div>
-                </div>
-              </div>
-            </section>
-
             <section class="sheet-widget" data-widget="abilities">
               <h3 class="sheet-h widget-title">Abilities &amp; Skills</h3>
               <div class="widget-body">
                 <div id="sheet-abilities" class="ability-groups"><!-- built from ABILITIES + SKILLS --></div>
-                <p class="sheet-hint">Click a dot to cycle proficient &rarr; expertise.</p>
               </div>
             </section>
 

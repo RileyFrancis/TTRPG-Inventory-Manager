@@ -26,19 +26,15 @@
 /* The drop feedback is absolutely positioned against the paper. */
 #character-sheet .sheet-scroll { position: relative; }
 
-/* ── Toolbar ── */
-#sheet-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 14px;
-}
-.sheet-toolbar-hint {
-  margin-right: auto;
-  font-size: 10px;
-  font-style: italic;
-  color: var(--text-dim);
-}
+/* ── The pinned header ── */
+/* The identity block sits outside #sheet-layout, which is the whole of what
+   makes it unmovable (see sheet-layout.js). All that is left here is to stop it
+   *offering* what it cannot do: no grab cursor, no hover outline, and no
+   dashed drop-target outline while a drag is in the air. */
+.sheet-widget.pinned { margin-bottom: 18px; }
+.sheet-widget.pinned > .widget-title { cursor: default; }
+.sheet-widget.pinned:has(> .widget-title:hover) { outline: none; }
+#character-sheet.sheet-arranging .sheet-widget.pinned { outline: none; }
 
 /* ── Splits ── */
 #sheet-layout { min-width: 0; }

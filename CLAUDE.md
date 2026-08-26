@@ -397,16 +397,30 @@ slot it split was Combat's, and Combat's slot is half a row. Same gesture, two
 answers, and neither is configured anywhere.
 
 ```
-col[ Identity, row[ Abilities, col[ Combat, HP ] ] ]
+col[ Proficiencies, row[ Abilities, col[ Combat, HP ] ] ]
 
-+--------------------------------------+
-|  Identity              (full width)  |
++======================================+
+|  Identity                   (pinned) |
++======================================+
+|  Proficiencies         (full width)  |
 +------------------+-------------------+
 |  Abilities       |  Combat           |
 |  & Skills        +-------------------+
 |                  |  Hit Points       |
 +------------------+-------------------+
 ```
+
+**The identity block is pinned above all of it, and is not in the tree.** Whose
+sheet this is heads the page; it cannot be dragged away and nothing can be
+dropped above it. There is no `pinned` flag in the model to honour and no
+special case in the drag — it simply lives **outside `#sheet-layout`** in
+`index.html`, `SHEET_WIDGET_IDS` is read from the store inside, and every hit
+test is scoped to the tree. A section that is not in the tree cannot be moved by
+a thing that only moves the tree. `sanitizeSheetLayout()` therefore drops an
+`identity` node left in a layout stored before this, exactly as it drops any
+other id it does not recognise, and the sheet heals itself on load. The `pinned`
+class does nothing but stop it *offering* what it cannot do: no grab cursor, no
+hover outline, no drop-target outline mid-drag.
 
 - A node is `{ t:'w', id, size }` or `{ t:'s', dir:'row'|'col', size, kids[] }`.
   `size` is the node's share of its parent and lives **on the node**, so it
@@ -472,6 +486,12 @@ moving a section writes nothing to the character.
   ("Back where it started") — refusing silently is the one thing it must not do.
 - `#character-sheet` is in `DRAG_SCROLLERS`, so a long sheet scrolls under a held
   drag exactly as the browse list does.
+- `resetSheetLayout()` **has no caller.** The Reset Layout button it sat behind
+  has been taken off the sheet — it is layout furniture, not part of a character
+  sheet — and it is waiting to be wired up somewhere better (Settings is the
+  obvious home, beside the theme picker, which is furniture of the same kind).
+  Kept because an arrangement is otherwise only recoverable by clearing the
+  browser's storage.
 
 ### Character tabs
 

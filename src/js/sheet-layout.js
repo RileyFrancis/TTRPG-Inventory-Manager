@@ -3,10 +3,10 @@
 // =============================================================================
 'use strict';
 
-// Every section of the sheet is a *widget*, and where the widgets sit is a
-// **tree of splits** rather than a list. That is the whole idea, and it is what
-// answers the question a flat list cannot: when does a section run the full
-// width, and when is it stopped by a neighbour?
+// Every section of the sheet below the identity block is a *widget*, and where
+// the widgets sit is a **tree of splits** rather than a list. That is the whole
+// idea, and it is what answers the question a flat list cannot: when does a
+// section run the full width, and when is it stopped by a neighbour?
 //
 //   A widget has no width of its own. It fills its slot, and the *drop* chooses
 //   which slot — so a section's extent is decided by the depth it was dropped
@@ -18,16 +18,28 @@
 // slot it split was Combat's, and Combat's slot is half a row. Same gesture,
 // two answers, and neither of them is configured anywhere.
 //
-//   col[ Identity,
+//   col[ Proficiencies,
 //        row[ Abilities, col[ Combat, HP ] ] ]
 //
-//   +--------------------------------------+
-//   |  Identity              (full width)  |
+//   +======================================+
+//   |  Identity                   (pinned) |
+//   +======================================+
+//   |  Proficiencies         (full width)  |
 //   +------------------+-------------------+
 //   |  Abilities       |  Combat           |
 //   |  & Skills        +-------------------+
 //   |                  |  Hit Points       |
 //   +------------------+-------------------+
+//
+// **The identity block is pinned above all of it, and is not in the tree.**
+// Whose sheet this is heads the page; it cannot be dragged away and nothing can
+// be dropped above it. There is no `pinned` flag in the model to honour, and no
+// special case in the drag: it simply lives outside `#sheet-layout` in
+// index.html, `SHEET_WIDGET_IDS` is read from the store inside, and every hit
+// test is scoped to the tree. A section that is not in the tree cannot be moved
+// by a thing that only moves the tree — so `sanitizeSheetLayout` drops an
+// `identity` node left in a layout stored before this, exactly as it drops any
+// other id it does not recognise, and the sheet heals itself on load.
 //
 // **Horizontal splits share space; vertical ones stack at their natural
 // height.** The asymmetry is deliberate, and it is the document underneath
@@ -86,23 +98,17 @@ const SHEET_WIDGET_IDS = Array.from(
 
 function sheetWidgetNode(id, size) { return { t: 'w', id, size: size ?? 1 }; }
 
-// The sheet as it has always looked: the identity block as a band across the
-// top, then Abilities & Skills beside a column of the shorter boxes, at the
-// same 2:1 the hand-written `flex: 2 1 420px` used to give it.
+// The sheet as it has always looked below the identity block: Abilities &
+// Skills beside a column of the shorter boxes, at the same 2:1 the hand-written
+// `flex: 2 1 420px` used to give it.
 function defaultSheetLayout() {
   return {
-    t: 's', dir: 'col', size: 1,
+    t: 's', dir: 'row', size: 1,
     kids: [
-      sheetWidgetNode('identity'),
+      sheetWidgetNode('abilities', 2),
       {
-        t: 's', dir: 'row', size: 1,
-        kids: [
-          sheetWidgetNode('abilities', 2),
-          {
-            t: 's', dir: 'col', size: 1,
-            kids: ['combat', 'hp', 'death', 'prof'].map(id => sheetWidgetNode(id)),
-          },
-        ],
+        t: 's', dir: 'col', size: 1,
+        kids: ['combat', 'hp', 'death', 'prof'].map(id => sheetWidgetNode(id)),
       },
     ],
   };
@@ -230,6 +236,10 @@ function saveSheetLayout() {
   try { localStorage.setItem(SHEET_LAYOUT_KEY, JSON.stringify(sheetLayout)); } catch (e) { /* full or blocked */ }
 }
 
+// Nothing on the sheet calls this yet — the button it used to sit behind has
+// been taken off the page, and it is waiting to be wired up somewhere better
+// (Settings is the obvious home). Kept because the arrangement is otherwise
+// only recoverable by clearing the browser's storage.
 function resetSheetLayout() {
   sheetLayout = normalizeSheetLayout(defaultSheetLayout());
   saveSheetLayout();
@@ -718,5 +728,3 @@ function watchSheetWidth() {
   });
   sheetWidthObserver.observe(document.getElementById('sheet-layout'));
 }
-
-document.getElementById('sheet-reset-layout-btn').addEventListener('click', resetSheetLayout);

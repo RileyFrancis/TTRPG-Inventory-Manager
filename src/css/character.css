@@ -165,8 +165,6 @@
   border-bottom: 1px solid var(--border);
 }
 
-.sheet-hint { margin-top: 8px; font-size: 10px; color: var(--text-dim); font-style: italic; }
-
 /* Where the sections sit is no longer settled here. Every section is a widget
    the reader can drag somewhere else, and the row/column tree that holds them
    lives in sheet-layout.css and src/js/sheet-layout.js. The 2:1 the abilities
