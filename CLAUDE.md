@@ -24,6 +24,7 @@ src/css/*.css       All styles, one file per concern
 src/js/*.js         Application logic, one file per concern
 data/items.csv      Default item database
 data/item_dtypes.csv  Reference only — the allowed values for each items.csv column
+data/classes.json   The classes the app knows, and the features each grants
 img/                Image assets (the tiled paper texture)
 tools/              Standalone dev helpers (not part of the app)
 ```
@@ -76,6 +77,7 @@ tools/              Standalone dev helpers (not part of the app)
 | `characters.js` | The account's roster of characters, and the home screen |
 | `character-sheet.js` | Page one of the 2024 sheet: abilities, skills, combat stats |
 | `sheet-layout.js` | The sheet's sections as widgets: the split tree, drag-to-tile, seams |
+| `class-features.js` | The class registry, and the sheet's Class Features section |
 | `equipment.js` | Equip slots, layout editor, equip/unequip |
 | `shop.js` | The left panel's tabs, GM shop editor, player shopfront, paying |
 | `tooltip.js` | Hover tooltip |
@@ -97,6 +99,7 @@ that owns the element wins.
 | `modals.css` | Modal chrome, and the shape editor inside the item editor |
 | `character.css` | The character tabs, and page one of the 2024 character sheet |
 | `sheet-layout.css` | The sheet's split containers, resize seams, and drop feedback |
+| `class-features.css` | The Class Features cards and their corner level badges |
 | `party.css` | Party header badge, the sidebar Party tab, party modal, kick |
 | `equipment.css` | The equip rack, the left-panel tabs, the layout editor |
 | `shop.css` | The GM shop editor, the player shopfront, and their modals |
@@ -374,6 +377,8 @@ grid when a tab's *Character Sheet* is picked. It reads and writes the same
   party roster update, and a sync landing mid-word must not reset the box.
 - One delegated listener per event, not one per box: there are ~80 of them.
 - Read-only when `isReadOnly()` — a player looking at someone else's sheet.
+- **Class features** are their own section, built from a class registry — see
+  *Class features* below.
 - **Not yet built:** the attacks table, and all of page two (spells, backstory,
   appearance, alignment, attunement). Equipment and coins are deliberately absent
   — the inventory and the coin purse already own them, and a second copy on the
@@ -495,6 +500,100 @@ moving a section writes nothing to the character.
   Kept because an arrangement is otherwise only recoverable by clearing the
   browser's storage.
 
+### Class features
+
+The sheet's Class Features section reads `state.character.classes` (names, as
+typed) and `level`, and shows what those classes hand out. Two halves live in
+`src/js/class-features.js`: the **registry** — where a class definition comes
+from — and the section that draws it.
+
+**The class data is not in the JS.** It is `data/classes.json`, read at load
+with a blocking `XMLHttpRequest` exactly as `data/items.csv` is, and for the
+same reason: it is content, not code, and adding a class should not be a code
+change. That file is also already the shape a user-authored class will take —
+data only, no behaviour — so the editor that eventually writes one has nothing
+new to learn.
+
+```
+{ id, name, features: [{ id, name, level, description, unlocks? }] }
+```
+
+**The registry is the seam custom classes come through.** Nothing outside
+`class-features.js` may reach into `DEFAULT_CLASSES`: everything goes through
+`allClasses()` and `findClassByName()`. When custom classes land they become one
+more source inside `allClasses()` and every caller gets them for free — the same
+shape `state.db` has, where `DEFAULT_ITEMS` are re-hydrated each boot and only
+the customs are saved. `sanitizeClassList()` is what lets the file be edited by
+hand without taking the sheet down: a malformed class or feature is dropped, and
+an unreadable file leaves the registry empty rather than throwing.
+
+- A feature's `id` is stable and never derived from position. (An item's id
+  *is* its CSV row number, and that has bitten this project before — see the
+  coin purse.) Order within a level is the order written.
+- **Classes are matched by name, not id**, because `classes` is a free-text
+  field the player types. A name that matches nothing is not an error — it is a
+  class the app has not been taught yet, and the section says so by name rather
+  than going blank. Ids are accepted too, so a stored id survives a rename.
+- **Levels are the character's total, not per class.** The app tracks one
+  `level`, so a multiclassed character sees every listed class's features up to
+  that level. Wrong by the rules, right for what this app knows;
+  `characterClassLevel()` is the single place that has to learn better when
+  per-class levels exist.
+- `classFeaturesFor()` returns the **complete** list sorted by level → class →
+  written order, each row carrying an `owned` flag. The level gate decides
+  `owned`; the *section* decides what to draw. Keeping those apart is what makes
+  the show/hide toggle a filter over one list rather than two code paths.
+- The class name is tagged onto a card only when there is more than one class
+  (`showClass`) — one class does not need saying on every card.
+- Descriptions are terse summaries of the mechanic, written for this app. Do not
+  paste rulebook text in.
+
+**Unlocks — sheet parts that arrive with a feature.** A feature may name parts
+of the sheet it brings with it (`"unlocks": ["subclass"]`). The sheet marks
+those parts `data-unlocked-by="subclass"`, and they stay hidden until an *owned*
+feature names them. Today the only one is the Subclass field, which means
+nothing on a level-1 character.
+
+- The key is a plain string shared between the JSON and the markup, never a
+  selector or an element id, so the data never has to know how the sheet is
+  built. A part can move between sections, or be drawn by something else
+  entirely, and `data/classes.json` is unaffected.
+- **A class the app does not know disables the whole mechanism**
+  (`featureUnlocksAreAuthoritative`). If someone plays a Bard this app has no
+  idea what a Bard gets or when, so hiding their Subclass field would be an
+  invention — and one that reads as the app having eaten a box they were using.
+  Unlocks only speak when *every* class listed is one we can reason about.
+- `applyFeatureUnlocks()` runs from `renderClassFeatures()`, so it follows a
+  level or class edit without its own trigger. It toggles `.hidden` and never
+  touches the value: hiding a box must not clear what is in it.
+
+**The section.** `renderClassFeatures()` is called from
+`renderCharacterSheet()`, since it is driven by `classes` and `level` and those
+are edited there — it needs no trigger of its own.
+
+- **One card per row, always the section's full width.** A run of cards read top
+  to bottom is a list of what you have in level order, which is what the section
+  is for; columns turn it into a grid to be searched, and squeeze each
+  description into a narrow strip of four-word lines.
+- The **level badge rides the card's top-left corner**, roughly a third of it
+  hanging outside. It is what the list is scanned by, so it breaks the edge to
+  be read before the card it belongs to. That costs two things: the card needs a
+  margin to hang into (`.feature-list`'s padding) and **no ancestor may clip
+  it** — which is why nothing in `class-features.css` uses `overflow: hidden`.
+  The ring in the badge's `box-shadow` is the card's own background, and is what
+  makes it read as punched through the corner rather than dropped on top.
+- Locked features are drawn as a plan rather than a possession — dashed edge,
+  no fill, hollow badge — so they are legible but never mistakable for something
+  usable.
+- The show/hide toggle **hides itself when nothing is locked**: a button that
+  cannot change what you see is noise. Its state is session-only and
+  deliberately not persisted — which half of a list you are looking at is a
+  glance, not a setting, and the useful default is what you actually have.
+- The toggle sits *inside* `.widget-title`, which is also the section's drag
+  handle. `sheet-layout.js` therefore ignores a pointerdown that lands on a
+  `button`/`a`/field — without that the button would still work, but the
+  smallest wobble would pick the section up instead.
+
 ### Character tabs
 
 The strip above the inventory (`character-tabs.js`) holds one tab per character —
@@ -607,6 +706,10 @@ an older browser or an older cloud save holds, so `normalizeSavePayload()` in
 the *only* place that knows there were ever two shapes. The key is unchanged
 (`dnd_inventory_v1`): it names the storage slot, not the payload version, and
 renaming it would orphan every existing save.
+
+`class-features.js` reads `data/classes.json` the same blocking way, and is
+skipped over silently if it is missing — the sheet is usable with no classes
+known, it simply says it has not heard of whatever was typed.
 
 `items.js` reads `data/items.csv` with a **synchronous** `XMLHttpRequest` so `DEFAULT_ITEMS`
 is populated before `init()` runs. That is why the app needs an HTTP server rather than

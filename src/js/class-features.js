@@ -1,0 +1,306 @@
+// =============================================================================
+// CLASS FEATURES — what a character's class gives them, and the sheet's section
+// =============================================================================
+'use strict';
+
+// The sheet reads `state.character.classes` (names, as typed) and `level`, and
+// shows what those classes hand out. Three things live here: the **registry**
+// (where a class definition comes from), the **section** that draws it, and the
+// **unlocks** a feature can carry — parts of the sheet that stay hidden until
+// the feature that grants them is owned.
+//
+// **The class data itself is not in this file.** It is `data/classes.json`,
+// read the same way `data/items.csv` is, for the same reason: it is content,
+// not code, and a release that adds a class should not be a code change. That
+// file is also exactly the shape a user-authored class will take — data only,
+// no behaviour — so the editor that eventually writes one has nothing new to
+// learn.
+//
+// **The registry is the seam custom classes come through.** Nothing outside
+// this file may reach into `DEFAULT_CLASSES`: everything goes through
+// `allClasses()` and `findClassByName()`. When custom classes land they become
+// one more source inside `allClasses()` and every caller gets them for free —
+// the same shape `state.db` has, where `DEFAULT_ITEMS` are re-hydrated each boot
+// and only the customs are saved.
+//
+// **Classes are matched by name, not by id**, because `classes` is a free-text
+// field the player types ("Fighter, Rogue"). A name that matches nothing is not
+// an error — it is a class this app has not been taught yet, and the section
+// says so rather than going blank.
+//
+// **Levels are the character's total, not per-class.** The app tracks one
+// `level`, so a multiclassed character is shown every listed class's features
+// up to that level. That is wrong by the rules and right for what this app
+// knows; when per-class levels exist, `characterClassLevel()` is the one place
+// that has to learn about them.
+
+// =============================================================================
+// LOADING THE CLASSES
+// =============================================================================
+// Synchronous, like `loadDefaultItems()`: it is content the app is expected to
+// have, and a blocking read keeps every caller from having to cope with a
+// half-loaded registry. It is also why the app needs an HTTP server rather than
+// `file://`, and why the path is relative to the *document* rather than to this
+// script.
+let DEFAULT_CLASSES = [];
+
+function loadDefaultClasses() {
+  try {
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', 'data/classes.json', false); // synchronous
+    xhr.send();
+    if (xhr.status !== 200) throw new Error(`HTTP ${xhr.status}`);
+    // A host that answers unknown paths with its index page would otherwise
+    // "find" a class list made of HTML — the same guard firebase-config.js uses.
+    const body = xhr.responseText.trim();
+    if (body.startsWith('<')) throw new Error('not JSON');
+    DEFAULT_CLASSES = sanitizeClassList(JSON.parse(body).classes);
+  } catch (e) {
+    // Not fatal. The sheet is perfectly usable with no classes known — the
+    // section simply says it has never heard of whatever was typed.
+    DEFAULT_CLASSES = [];
+  }
+}
+
+// Whatever came out of the file, reduced to the shape the rest of this file
+// promises. A class with no usable features is dropped rather than left to
+// render as an empty heading.
+function sanitizeClassList(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw.map(c => {
+    const id = String(c?.id ?? '').trim();
+    const name = String(c?.name ?? '').trim();
+    if (!id || !name) return null;
+    const features = (Array.isArray(c.features) ? c.features : [])
+      .map(f => sanitizeFeature(f))
+      .filter(Boolean);
+    return features.length ? { id, name, features } : null;
+  }).filter(Boolean);
+}
+
+function sanitizeFeature(f) {
+  const id = String(f?.id ?? '').trim();
+  const name = String(f?.name ?? '').trim();
+  const level = parseInt(f?.level, 10);
+  if (!id || !name || !Number.isFinite(level)) return null;
+  return {
+    id, name,
+    level: Math.max(1, Math.min(20, level)),
+    description: String(f?.description ?? ''),
+    unlocks: normalizeUnlocks(f?.unlocks),
+  };
+}
+
+// One key or several, always read back as an array — so the JSON can say either
+// and nothing downstream has to check which.
+function normalizeUnlocks(raw) {
+  if (!raw) return [];
+  const list = Array.isArray(raw) ? raw : [raw];
+  return list.map(k => String(k).trim()).filter(Boolean);
+}
+
+loadDefaultClasses();
+
+// =============================================================================
+// THE REGISTRY
+// =============================================================================
+// Every class the app knows. The single seam custom classes will come through:
+// add the player's own definitions here and the section, the lookup and the
+// unlocks all follow.
+function allClasses() {
+  return DEFAULT_CLASSES.slice();
+}
+
+// Names are typed by hand, so match loosely — trimmed and case-insensitive.
+// Ids are matched too, so a stored id keeps working if the display name is
+// ever edited.
+function findClassByName(name) {
+  const key = String(name ?? '').trim().toLowerCase();
+  if (!key) return null;
+  return allClasses().find(c => c.name.toLowerCase() === key || c.id === key) ?? null;
+}
+
+// The level a character counts as, for a given class. One place, so per-class
+// levels have somewhere to land later — see the file header.
+function characterClassLevel(character, _classDef) {
+  return Math.max(1, Math.min(20, parseInt(character?.level, 10) || 1));
+}
+
+// Everything the character's classes offer, in the order the section shows it:
+// by level, then by class, then as written. `owned` is what the level gate
+// decides — the list is always complete, and the *section* chooses what to draw.
+function classFeaturesFor(character) {
+  const names = character?.classes ?? [];
+  const multi = names.length > 1;
+  const rows = [];
+
+  names.forEach(name => {
+    const def = findClassByName(name);
+    if (!def) return;
+    const level = characterClassLevel(character, def);
+    def.features.forEach((f, i) => rows.push({
+      ...f,
+      className: def.name,
+      showClass: multi,     // one class needs no label on every card
+      order: i,
+      owned: f.level <= level,
+    }));
+  });
+
+  rows.sort((a, b) =>
+    a.level - b.level ||
+    a.className.localeCompare(b.className) ||
+    a.order - b.order);
+  return rows;
+}
+
+// The names typed that this app has never heard of. Not an error — the section
+// says so, and it is the honest answer until custom classes exist.
+function unknownClassNames(character) {
+  return (character?.classes ?? []).filter(n => !findClassByName(n));
+}
+
+// =============================================================================
+// UNLOCKS — sheet parts that arrive with a feature
+// =============================================================================
+// A feature may name parts of the sheet it brings with it (`"unlocks":
+// ["subclass"]`). The sheet marks those parts `data-unlocked-by="subclass"`,
+// and they stay hidden until some *owned* feature names them. Today that is the
+// Subclass field, which is meaningless on a level-1 character.
+//
+// The key is a plain string shared between the JSON and the markup, rather than
+// a selector or an element id, so the data never has to know how the sheet is
+// built — a part can move, or be drawn by something else entirely, and the
+// class file is unaffected.
+function unlockedSheetKeys(character) {
+  const keys = new Set();
+  classFeaturesFor(character).forEach(row => {
+    if (row.owned) row.unlocks.forEach(k => keys.add(k));
+  });
+  return keys;
+}
+
+// **A class the app does not know disables the whole mechanism.** If someone
+// plays a Bard, this file has no idea what a Bard gets or when, so hiding their
+// Subclass field would be an invention — and one that looks like the app has
+// eaten a box they were using. Unlocks only speak when every class listed is
+// one we can actually reason about.
+function featureUnlocksAreAuthoritative(character) {
+  const names = character?.classes ?? [];
+  return names.length > 0 && names.every(n => !!findClassByName(n));
+}
+
+function applyFeatureUnlocks() {
+  const authoritative = featureUnlocksAreAuthoritative(state.character);
+  const keys = authoritative ? unlockedSheetKeys(state.character) : null;
+  document.querySelectorAll('#character-sheet [data-unlocked-by]').forEach(el => {
+    const key = el.dataset.unlockedBy;
+    el.classList.toggle('hidden', !!keys && !keys.has(key));
+  });
+}
+
+// =============================================================================
+// THE SECTION
+// =============================================================================
+// Session-only, and deliberately not persisted: which half of a list you are
+// looking at is a glance, not a setting, and the useful default — what you
+// actually have — is the one you want on opening the sheet.
+let showLockedFeatures = false;
+
+function renderClassFeatures() {
+  const box = document.getElementById('sheet-features');
+  const btn = document.getElementById('feature-toggle-locked');
+  if (!box) return;
+
+  applyFeatureUnlocks();
+
+  const rows = classFeaturesFor(state.character);
+  const locked = rows.filter(r => !r.owned).length;
+
+  // Nothing to toggle when nothing is out of reach — a button that cannot
+  // change what you see is noise.
+  if (btn) {
+    btn.classList.toggle('hidden', locked === 0);
+    setIconLabel(btn, showLockedFeatures ? 'hide' : 'show',
+      showLockedFeatures ? 'Hide locked' : `Show all (${locked})`);
+    btn.title = showLockedFeatures
+      ? 'Show only the features you have'
+      : 'Also show features from levels you have not reached';
+  }
+
+  box.textContent = '';
+
+  if (!rows.length) {
+    box.appendChild(featureEmptyState(state.character));
+    return;
+  }
+
+  rows.forEach(row => {
+    if (!row.owned && !showLockedFeatures) return;
+    box.appendChild(featureCard(row));
+  });
+
+  // Every feature is locked and the reader has chosen not to see them.
+  if (!box.children.length) box.appendChild(featureNote('Nothing unlocked at this level yet.'));
+
+  const unknown = unknownClassNames(state.character);
+  if (unknown.length) {
+    box.appendChild(featureNote(
+      `No features known for ${unknown.map(n => `“${n}”`).join(', ')}.`));
+  }
+}
+
+// The level rides the card's top-left corner rather than sitting inside it —
+// the badge is what you scan the list by, so it breaks the edge to be read
+// before the card it belongs to. `.feature-list` carries the padding that keeps
+// the overhang from being clipped.
+function featureCard(row) {
+  const card = document.createElement('article');
+  card.className = 'feature-card' + (row.owned ? '' : ' locked');
+
+  const level = document.createElement('span');
+  level.className = 'feature-level';
+  level.textContent = row.level;
+  level.title = `Unlocked at level ${row.level}`;
+
+  const name = document.createElement('h4');
+  name.className = 'feature-name';
+  name.textContent = row.name;
+
+  if (row.showClass) {
+    const tag = document.createElement('span');
+    tag.className = 'feature-class';
+    tag.textContent = row.className;
+    name.appendChild(tag);
+  }
+
+  const desc = document.createElement('p');
+  desc.className = 'feature-desc';
+  desc.textContent = row.description;
+
+  const text = document.createElement('div');
+  text.className = 'feature-text';
+  text.append(name, desc);
+
+  card.append(level, text);
+  return card;
+}
+
+function featureEmptyState(character) {
+  const names = character?.classes ?? [];
+  return featureNote(names.length
+    ? `No features known for ${names.map(n => `“${n}”`).join(', ')}.`
+    : 'Set a class in the Identity section to see its features.');
+}
+
+function featureNote(text) {
+  const p = document.createElement('p');
+  p.className = 'feature-note';
+  p.textContent = text;
+  return p;
+}
+
+document.getElementById('feature-toggle-locked').addEventListener('click', () => {
+  showLockedFeatures = !showLockedFeatures;
+  renderClassFeatures();
+});

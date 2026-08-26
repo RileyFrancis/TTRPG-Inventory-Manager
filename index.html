@@ -39,6 +39,7 @@
   <link rel="stylesheet" href="src/css/modals.css">
   <link rel="stylesheet" href="src/css/character.css">
   <link rel="stylesheet" href="src/css/sheet-layout.css">
+  <link rel="stylesheet" href="src/css/class-features.css">
   <link rel="stylesheet" href="src/css/party.css">
   <link rel="stylesheet" href="src/css/equipment.css">
   <link rel="stylesheet" href="src/css/shop.css">
@@ -196,7 +197,10 @@
                            maxlength="60" placeholder="Fighter, Rogue"></label>
                   <label class="sheet-field narrow"><span>Level</span>
                     <input type="number" data-sheet="level" data-kind="int" min="1" max="20"></label>
-                  <label class="sheet-field"><span>Subclass</span>
+                  <!-- Hidden until a class feature that names "subclass" is
+                       owned — see `unlocks` in data/classes.json. A level-1
+                       character has no subclass to write in. -->
+                  <label class="sheet-field" data-unlocked-by="subclass"><span>Subclass</span>
                     <input type="text" data-sheet="subclass" data-kind="text" maxlength="40"></label>
                   <label class="sheet-field"><span>Species</span>
                     <input type="text" data-sheet="race" data-kind="text" maxlength="30"></label>
@@ -291,6 +295,21 @@
                     <div id="sheet-death-fail" class="death-pips fail"></div>
                   </div>
                 </div>
+              </div>
+            </section>
+
+            <!-- The cards are built by src/js/class-features.js from the class
+                 registry there; the toggle is static, as everything the JS
+                 looks up is. It sits *inside* the title because the title is
+                 the section's whole header — the drag handler ignores presses
+                 that land on a button, so it does not start a drag. -->
+            <section class="sheet-widget" data-widget="features">
+              <h3 class="sheet-h widget-title">Class Features
+                <button id="feature-toggle-locked" class="btn-sm widget-action hidden"
+                        type="button"></button>
+              </h3>
+              <div class="widget-body">
+                <div id="sheet-features" class="feature-list"></div>
               </div>
             </section>
 
@@ -1168,6 +1187,7 @@
 <script src="src/js/character-tabs.js"></script>
 <script src="src/js/characters.js"></script>
 <script src="src/js/character-sheet.js"></script>
+<script src="src/js/class-features.js"></script>
 <script src="src/js/sheet-layout.js"></script>
 <script src="src/js/equipment.js"></script>
 <script src="src/js/shop.js"></script>

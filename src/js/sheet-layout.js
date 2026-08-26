@@ -103,13 +103,21 @@ function sheetWidgetNode(id, size) { return { t: 'w', id, size: size ?? 1 }; }
 // `flex: 2 1 420px` used to give it.
 function defaultSheetLayout() {
   return {
-    t: 's', dir: 'row', size: 1,
+    t: 's', dir: 'col', size: 1,
     kids: [
-      sheetWidgetNode('abilities', 2),
       {
-        t: 's', dir: 'col', size: 1,
-        kids: ['combat', 'hp', 'death', 'prof'].map(id => sheetWidgetNode(id)),
+        t: 's', dir: 'row', size: 1,
+        kids: [
+          sheetWidgetNode('abilities', 2),
+          {
+            t: 's', dir: 'col', size: 1,
+            kids: ['combat', 'hp', 'death', 'prof'].map(id => sheetWidgetNode(id)),
+          },
+        ],
       },
+      // A band across the bottom: a run of cards reads badly in a narrow column
+      // and there is no telling how many levels' worth there will be.
+      sheetWidgetNode('features'),
     ],
   };
 }
@@ -414,6 +422,11 @@ let sheetDrag = null;
 document.getElementById('character-sheet').addEventListener('pointerdown', e => {
   const title = e.target.closest('.widget-title');
   if (!title || e.button !== 0) return;
+  // A section's header may carry its own controls (Class Features has a
+  // show/hide toggle). Pressing one is not the start of a drag, and without
+  // this the button would work but the smallest wobble would pick the section
+  // up instead.
+  if (e.target.closest('button, a, input, select, textarea')) return;
   const widget = title.closest('.sheet-widget');
   if (!widget || !widget.closest('#sheet-layout')) return;
 

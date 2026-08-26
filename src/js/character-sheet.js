@@ -300,6 +300,10 @@ function renderCharacterSheet() {
   document.getElementById('sheet-identity').textContent = describePartyCharacter(c) || 'Adventurer';
 
   renderDeathSaves(readOnly);
+
+  // Driven by `classes` and `level`, both of which are edited above — so it
+  // re-runs with everything else rather than needing its own trigger.
+  renderClassFeatures();
 }
 
 function renderProfDot(el, kind) {

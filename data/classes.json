@@ -1,0 +1,204 @@
+{
+  "_comment": [
+    "The classes the app knows, and what each one hands out. Read by",
+    "src/js/class-features.js, which is the only file that may touch this.",
+    "",
+    "A class is { id, name, features[] }; a feature is",
+    "{ id, level, name, description, unlocks? }.",
+    "",
+    "  id          stable, and never derived from position. A default item's id",
+    "              is its CSV row number and that has bitten this project before",
+    "              (see the coin purse) - so ids here are written, not counted.",
+    "  level       the character level the feature arrives at.",
+    "  unlocks     optional. Names one or more parts of the character sheet that",
+    "              stay hidden until this feature is owned. The sheet marks them",
+    "              with data-unlocked-by=\"<key>\"; today the only key is",
+    "              'subclass', on the Subclass field in the Identity section.",
+    "",
+    "Order inside a level is the order written here. Descriptions are terse",
+    "summaries of the mechanic written for this app - do not paste rulebook",
+    "text in.",
+    "",
+    "This file is the shape a user-authored class will take, so keep it data",
+    "only: anything that needs logic belongs in class-features.js."
+  ],
+  "version": 1,
+  "classes": [
+    {
+      "id": "monk",
+      "name": "Monk",
+      "features": [
+        {
+          "id": "monk-martial-arts",
+          "level": 1,
+          "name": "Martial Arts",
+          "description": "Your unarmed strikes use a Martial Arts die for damage, you may use Dexterity for their attack and damage rolls, and you can make an extra unarmed strike as a bonus action when you attack."
+        },
+        {
+          "id": "monk-unarmored-defense",
+          "level": 1,
+          "name": "Unarmored Defense",
+          "description": "While wearing no armor and no shield, your Armor Class equals 10 + your Dexterity modifier + your Wisdom modifier."
+        },
+        {
+          "id": "monk-focus",
+          "level": 2,
+          "name": "Monk's Focus",
+          "description": "You gain Focus Points equal to your monk level, spent on Flurry of Blows, Patient Defense and Step of the Wind. They return on a short or long rest."
+        },
+        {
+          "id": "monk-unarmored-movement",
+          "level": 2,
+          "name": "Unarmored Movement",
+          "description": "Your speed increases while you wear no armor and no shield, improving further as you gain levels."
+        },
+        {
+          "id": "monk-uncanny-metabolism",
+          "level": 2,
+          "name": "Uncanny Metabolism",
+          "description": "Once per long rest, when you roll Initiative you can regain all spent Focus Points and heal yourself."
+        },
+        {
+          "id": "monk-deflect-attacks",
+          "level": 3,
+          "name": "Deflect Attacks",
+          "description": "As a reaction you can reduce the damage of an attack against you, and if you drop it to nothing you may spend Focus to redirect the force at another creature."
+        },
+        {
+          "id": "monk-subclass",
+          "level": 3,
+          "name": "Monk Subclass",
+          "description": "You choose a monk subclass, which grants features now and again at higher levels.",
+          "unlocks": ["subclass"]
+        },
+        {
+          "id": "monk-asi-4",
+          "level": 4,
+          "name": "Ability Score Improvement",
+          "description": "Increase your ability scores or take a feat."
+        },
+        {
+          "id": "monk-slow-fall",
+          "level": 4,
+          "name": "Slow Fall",
+          "description": "As a reaction when you fall, you reduce the falling damage you take."
+        },
+        {
+          "id": "monk-extra-attack",
+          "level": 5,
+          "name": "Extra Attack",
+          "description": "You attack twice instead of once whenever you take the Attack action."
+        },
+        {
+          "id": "monk-stunning-strike",
+          "level": 5,
+          "name": "Stunning Strike",
+          "description": "Once per turn you can spend a Focus Point to force a hit creature to make a Constitution save or be stunned until the end of your next turn."
+        },
+        {
+          "id": "monk-empowered-strikes",
+          "level": 6,
+          "name": "Empowered Strikes",
+          "description": "Your unarmed strikes can deal force damage instead of their normal type."
+        },
+        {
+          "id": "monk-subclass-6",
+          "level": 6,
+          "name": "Subclass Feature",
+          "description": "Your monk subclass grants a further feature."
+        },
+        {
+          "id": "monk-evasion",
+          "level": 7,
+          "name": "Evasion",
+          "description": "When an effect calls for a Dexterity save for half damage, you take none on a success and half on a failure."
+        },
+        {
+          "id": "monk-asi-8",
+          "level": 8,
+          "name": "Ability Score Improvement",
+          "description": "Increase your ability scores or take a feat."
+        },
+        {
+          "id": "monk-acrobatic-movement",
+          "level": 9,
+          "name": "Acrobatic Movement",
+          "description": "While unarmored and without a shield you can move along vertical surfaces and across liquids without falling during your move."
+        },
+        {
+          "id": "monk-heightened-focus",
+          "level": 10,
+          "name": "Heightened Focus",
+          "description": "Flurry of Blows, Patient Defense and Step of the Wind each become more potent for the same cost."
+        },
+        {
+          "id": "monk-self-restoration",
+          "level": 10,
+          "name": "Self-Restoration",
+          "description": "You can end one condition on yourself at the end of your turn, and you no longer suffer exhaustion from going without food or drink."
+        }
+      ]
+    },
+    {
+      "id": "fighter",
+      "name": "Fighter",
+      "features": [
+        {
+          "id": "fighter-fighting-style",
+          "level": 1,
+          "name": "Fighting Style",
+          "description": "You take a Fighting Style feat, shaping how you prefer to fight."
+        },
+        {
+          "id": "fighter-second-wind",
+          "level": 1,
+          "name": "Second Wind",
+          "description": "A bonus action heals you for a roll plus your fighter level, a number of times per rest."
+        },
+        {
+          "id": "fighter-weapon-mastery",
+          "level": 1,
+          "name": "Weapon Mastery",
+          "description": "You can use the mastery property of a few weapon kinds, changing them as you level."
+        },
+        {
+          "id": "fighter-action-surge",
+          "level": 2,
+          "name": "Action Surge",
+          "description": "Once per rest you take one extra action on your turn."
+        },
+        {
+          "id": "fighter-tactical-mind",
+          "level": 2,
+          "name": "Tactical Mind",
+          "description": "When you fail an ability check you can spend a use of Second Wind to add a die to it rather than spending the heal."
+        },
+        {
+          "id": "fighter-subclass",
+          "level": 3,
+          "name": "Fighter Subclass",
+          "description": "You choose a fighter subclass, which grants features now and again at higher levels.",
+          "unlocks": ["subclass"]
+        },
+        {
+          "id": "fighter-asi-4",
+          "level": 4,
+          "name": "Ability Score Improvement",
+          "description": "Increase your ability scores or take a feat."
+        },
+        {
+          "id": "fighter-extra-attack",
+          "level": 5,
+          "name": "Extra Attack",
+          "description": "You attack twice instead of once whenever you take the Attack action."
+        },
+        {
+          "id": "fighter-tactical-shift",
+          "level": 5,
+          "name": "Tactical Shift",
+          "description": "When you use Second Wind you can also move without provoking Opportunity Attacks."
+        }
+      ]
+    }
+  ]
+}
