@@ -1,0 +1,208 @@
+/* =============================================================================
+   SHEET LAYOUT — the character sheet's sections as rearrangeable widgets
+   ============================================================================= */
+/* The split containers, the seam that resizes a row, and the feedback a drag
+   gives. The sections' own insides stay in character.css: this file owns where
+   a section *is*, never what is drawn inside it.
+
+   The model is in src/js/sheet-layout.js — a tree of row/column splits, where a
+   section fills its slot and the drop chooses the slot. Two rules here follow
+   from that and should be read together with it:
+
+   - A `row` divides its width between its children by the shares the tree
+     holds, and gets a draggable seam between each pair. A `col` does not: its
+     children take their natural height, because the sheet is a scrolling page
+     of paper and a page has a width but no height. Hence `gap` on one axis and
+     seam elements on the other.
+   - `min-width: 0` everywhere. A flex child's default `min-width: auto` refuses
+     to shrink below its content, and the ability groups inside one of these are
+     wide — without it a two-column row would push the paper out past the panel
+     instead of squeezing the columns. */
+
+/* Where the widgets sit before the first layout render, and where one is parked
+   while the scaffolding around it is rebuilt. */
+#sheet-widget-store { display: none; }
+
+/* The drop feedback is absolutely positioned against the paper. */
+#character-sheet .sheet-scroll { position: relative; }
+
+/* ── Toolbar ── */
+#sheet-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.sheet-toolbar-hint {
+  margin-right: auto;
+  font-size: 10px;
+  font-style: italic;
+  color: var(--text-dim);
+}
+
+/* ── Splits ── */
+#sheet-layout { min-width: 0; }
+
+.sheet-split { display: flex; min-width: 0; }
+.sheet-split[data-dir="row"] {
+  flex-direction: row;
+  /* A short section ends where it ends rather than stretching to match the
+     tall one beside it — the same reason `.ability-groups` uses `start`. */
+  align-items: flex-start;
+  gap: 0;              /* the seams are real elements and provide the gap */
+}
+.sheet-split[data-dir="col"],
+.sheet-split[data-dir="row"].folded {
+  flex-direction: column;
+  gap: 18px;
+}
+/* A folded row is a column, so its `flex-start` becomes a *cross*-axis rule and
+   would leave each section at its natural width, ragged down the left. Stacked
+   sections fill the width, exactly as a real column's do. */
+.sheet-split[data-dir="row"].folded { align-items: stretch; }
+
+/* How a child spends its share. `--share` is the only thing the JS writes on a
+   node — what it means is settled here, by the parent — so a row that runs out
+   of room folds into a column on one class and every child follows, with
+   nothing to rewrite and no sizes lost. Unfolding restores them exactly.
+
+   `flex-basis: 0` is what makes a row's widths the true ratio of the shares,
+   rather than the shares dividing only whatever is left over after content. In
+   a column it would be a bug instead: the sheet scrolls, so a column has no
+   height to divide, and a zero basis would collapse it to nothing. Hence
+   `0 0 auto` there — a stacked section is as tall as what is in it. */
+.sheet-split[data-dir="row"] > :not(.sheet-seam) {
+  flex: var(--share, 1) 1 0px;
+  min-width: 0;
+}
+.sheet-split[data-dir="col"] > *,
+.sheet-split[data-dir="row"].folded > :not(.sheet-seam) {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+/* A folded row has no width left to divide, so there is nothing to drag. */
+.sheet-split[data-dir="row"].folded > .sheet-seam { display: none; }
+
+/* ── A row's seam ── */
+/* Wide enough to grab, with the visible line down the middle of it. */
+.sheet-seam {
+  position: relative;
+  flex: 0 0 22px;
+  align-self: stretch;   /* the row is flex-start, so say so explicitly */
+  min-height: 40px;
+  cursor: col-resize;
+  touch-action: none;
+}
+.sheet-seam::before {
+  content: '';
+  position: absolute;
+  top: 4px; bottom: 4px; left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background: var(--border);
+}
+.sheet-seam:hover::before,
+.sheet-seam.dragging::before {
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+/* ── A widget ── */
+.sheet-widget { min-width: 0; }
+
+/* The title is the drag handle, so it says so on hover and never selects as
+   text under a press that was meant to move the section. */
+.widget-title {
+  position: relative;
+  margin: 0 0 10px;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+/* The gold rule the sheet's header used to carry alone — every section head has
+   it now, since every section is its own block. */
+.widget-title::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 1px;
+  background: var(--gold-line);
+  opacity: 0.8;
+}
+
+/* Hovering the handle outlines the whole section, so it is clear what the drag
+   will pick up rather than only what the cursor is on. */
+.sheet-widget:has(> .widget-title:hover) {
+  outline: 1px dashed var(--border2);
+  outline-offset: 7px;
+  border-radius: 3px;
+}
+
+/* ── While a section is being dragged ── */
+/* Every section outlines, because they are all drop targets now. The one in
+   flight fades, so the drag reads as moving *that* section rather than as
+   hovering the one under the cursor — the browse list's dragged card does the
+   same, and for the same reason. */
+#character-sheet.sheet-arranging {
+  cursor: grabbing;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#character-sheet.sheet-arranging .widget-title { cursor: grabbing; }
+#character-sheet.sheet-arranging .sheet-widget {
+  outline: 1px dashed var(--border2);
+  outline-offset: 7px;
+  border-radius: 3px;
+}
+#character-sheet.sheet-arranging .sheet-widget.dragging {
+  opacity: 0.3;
+  outline-style: dotted;
+}
+
+/* ── Drop feedback ── */
+/* The slab is where the section will land. Positioned against `.sheet-scroll`,
+   and animated only in place: it jumps between targets often, and easing the
+   move makes the two readings blur into one. */
+#sheet-drop-zone {
+  position: absolute;
+  z-index: 6;
+  pointer-events: none;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  transition: left 0.08s ease, top 0.08s ease, width 0.08s ease, height 0.08s ease;
+}
+/* A drop on the rim spans the whole sheet, which is a bigger claim — say it
+   with a heavier edge rather than a different colour. */
+#sheet-drop-zone.root {
+  border-width: 2px;
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+/* The chip names the drop. On a long sheet the slab often runs off the bottom
+   of the panel, and "full width" and "below Combat" then look much alike. */
+#sheet-drop-hint {
+  position: absolute;
+  z-index: 7;
+  pointer-events: none;
+  white-space: nowrap;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--on-accent);
+  background: var(--accent);
+  border-radius: 3px;
+  box-shadow: 0 2px 6px var(--shadow-soft);
+}
+/* A section dropped back on itself is not a move — quiet, but still shown: an
+   unlabelled drag is indistinguishable from a broken one. */
+#sheet-drop-hint.inert {
+  color: var(--text-dim);
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  box-shadow: none;
+}

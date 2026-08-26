@@ -73,14 +73,19 @@
 /* ─── CHARACTER SHEET ────────────────────────────────────── */
 /* One switch drives the swap: the sheet and the inventory never both show. */
 /* ─── CHARACTER SHEET ────────────────────────────────────── */
-/* Page one of the 2024 sheet. Three columns where there is room, folding to
-   one on a narrow panel — the inventory panel is resizable, so the sheet has
-   to survive being squeezed. */
+/* Page one of the 2024 sheet. Every section on it is a widget the reader can
+   drag into a different slot — see sheet-layout.css for where they sit; this
+   file is what is drawn inside them. */
 #character-sheet { display: none; }
 #inventory-panel.sheet-view #character-sheet {
   display: block;
   flex: 1;
   overflow-y: auto;
+  /* Reserved whether or not the sheet is currently long enough to need it. The
+     widget rows fold when they run out of width (see sheet-layout.js), a fold
+     makes the sheet taller, and a scrollbar arriving at that moment would take
+     back the width the fold was measured against. */
+  scrollbar-gutter: stable;
   /* Guarantees room for the torn edge even when the panel is squeezed narrow
      enough that `.sheet-scroll`'s auto side margins collapse to nothing. */
   padding: 0 62px;
@@ -97,20 +102,10 @@
 .sheet-scroll { max-width: 1100px; margin: 62px auto; padding: 20px 22px 40px; }
 
 /* ── Header ── */
-.sheet-head {
-  position: relative;
-  padding-bottom: 14px;
-  margin-bottom: 18px;
-  border-bottom: 1px solid var(--border);
-}
-.sheet-head::after {
-  content: '';
-  position: absolute;
-  left: 0; right: 0; bottom: -1px;
-  height: 1px;
-  background: var(--gold-line);
-  opacity: 0.8;
-}
+/* The rule and the gold line it used to carry moved to `.widget-title` in
+   sheet-layout.css: the identity block is one section among several now, and
+   every one of them heads itself the same way. */
+.sheet-head { position: relative; }
 
 .sheet-name-input {
   width: 100%;
@@ -169,23 +164,14 @@
   color: var(--accent);
   border-bottom: 1px solid var(--border);
 }
-.sheet-col > .sheet-h:first-child { margin-top: 0; }
 
 .sheet-hint { margin-top: 8px; font-size: 10px; color: var(--text-dim); font-style: italic; }
 
-/* Flex rather than an auto-fit grid, because the two sections are not
-   interchangeable columns: the abilities carry two columns of their own and so
-   want roughly twice the room, and they wrap under each other when the sheet is
-   too narrow to hold both. The project has no media queries — the panel resizes
-   independently of the viewport, so widths are settled intrinsically. */
-.sheet-body {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px 26px;
-  align-items: flex-start;
-}
-.sheet-col { flex: 1 1 240px; min-width: 0; }
-.sheet-col-abilities { flex: 2 1 420px; }
+/* Where the sections sit is no longer settled here. Every section is a widget
+   the reader can drag somewhere else, and the row/column tree that holds them
+   lives in sheet-layout.css and src/js/sheet-layout.js. The 2:1 the abilities
+   used to be given by hand is now the default layout's opening share, and the
+   reader can drag the seam to change it. */
 
 /* ── Ability groups ── */
 /* One number read three ways — the modifier, the save, the skills — so they are

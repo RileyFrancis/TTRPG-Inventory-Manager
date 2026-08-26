@@ -74,6 +74,7 @@ tools/              Standalone dev helpers (not part of the app)
 | `character-tabs.js` | Per-character tabs above the inventory + sheet/inventory switch |
 | `characters.js` | The account's roster of characters, and the home screen |
 | `character-sheet.js` | Page one of the 2024 sheet: abilities, skills, combat stats |
+| `sheet-layout.js` | The sheet's sections as widgets: the split tree, drag-to-tile, seams |
 | `equipment.js` | Equip slots, layout editor, equip/unequip |
 | `shop.js` | The left panel's tabs, GM shop editor, player shopfront, paying |
 | `tooltip.js` | Hover tooltip |
@@ -94,6 +95,7 @@ that owns the element wins.
 | `sidebar.css` | The right panel: browse list, folders, details, context and sort menus |
 | `modals.css` | Modal chrome, and the shape editor inside the item editor |
 | `character.css` | The character tabs, and page one of the 2024 character sheet |
+| `sheet-layout.css` | The sheet's split containers, resize seams, and drop feedback |
 | `party.css` | Party header badge, the sidebar Party tab, party modal, kick |
 | `equipment.css` | The equip rack, the left-panel tabs, the layout editor |
 | `shop.css` | The GM shop editor, the player shopfront, and their modals |
@@ -355,9 +357,11 @@ grid when a tab's *Character Sheet* is picked. It reads and writes the same
   `minmax(max(196px, 46%), 1fr)` is the ceiling — a track can be no narrower
   than 46% of the row, so a third will not fit — while the 196px floor still
   drops it to one column on a squeezed sheet. Past 50% only one column would
-  ever fit; at a third, three would. `.sheet-body` is flex-wrap rather than the
-  auto-fit grid it was, because the ability section carries two columns of its
-  own and wants roughly twice the room of the combat column beside it.
+  ever fit; at a third, three would.
+- **Where the sections sit is no longer settled here.** Each is a widget in the
+  split tree — see *The sheet's layout* above. The 2:1 the abilities used to be
+  given by hand (`flex: 2 1 420px`) is now the default layout's opening share,
+  and the reader drags the seam to change it.
 - The unique boxes are static markup in `index.html`, as everything referenced by
   JS is. The six ability groups are **built once** from
   the `ABILITIES` and `SKILLS` constants that define them — hand-writing eighteen
@@ -372,6 +376,102 @@ grid when a tab's *Character Sheet* is picked. It reads and writes the same
   appearance, alignment, attunement). Equipment and coins are deliberately absent
   — the inventory and the coin purse already own them, and a second copy on the
   sheet would be a second answer.
+
+### The sheet's layout
+
+Every section of the character sheet is a **widget**, and where the widgets sit
+is a **tree of splits** rather than a list (`src/js/sheet-layout.js`). Drag a
+section by its title and drop it on an edge, and that edge splits.
+
+The tree is what answers the question a flat list cannot — when does a section
+run the full width, and when is it stopped by a neighbour?
+
+> A widget has no width of its own. It fills its slot, and the *drop* chooses
+> which slot — so a section's extent is decided by the depth it was dropped at,
+> not by a number stored on it.
+
+Drop a section on the sheet's own top edge and it becomes a band across
+everything. Drop it on the top edge of Combat, which is sharing a row with
+Abilities, and it spans that column only, stopped by Abilities — because the
+slot it split was Combat's, and Combat's slot is half a row. Same gesture, two
+answers, and neither is configured anywhere.
+
+```
+col[ Identity, row[ Abilities, col[ Combat, HP ] ] ]
+
++--------------------------------------+
+|  Identity              (full width)  |
++------------------+-------------------+
+|  Abilities       |  Combat           |
+|  & Skills        +-------------------+
+|                  |  Hit Points       |
++------------------+-------------------+
+```
+
+- A node is `{ t:'w', id, size }` or `{ t:'s', dir:'row'|'col', size, kids[] }`.
+  `size` is the node's share of its parent and lives **on the node**, so it
+  travels with a section when one is moved.
+- **Horizontal splits share space; vertical ones stack at their natural
+  height.** The asymmetry is the document underneath asserting itself: the sheet
+  is a scrolling page of paper — `.paper-sheet` is content-sized so its torn
+  edge hugs what is drawn on it — and a page has a width but not a height. So a
+  row divides its width by the shares and gets a **draggable seam** between each
+  pair; a column's children are simply as tall as their contents and have no
+  seam. Forcing one would clip a section or leave a hole under it.
+- The JS writes **only** `--share` on a node's element. What that share is spent
+  on is settled in `sheet-layout.css` by the *parent's* direction. That is what
+  lets a row fold into a column on one class with nothing to rewrite and no
+  sizes lost.
+- `normalizeSheetLayout()` runs after every edit and is what keeps the tree
+  honest: a split holding one child, a row nested directly in a row, a container
+  emptied by the section just dragged out of it. It **mutates and preserves node
+  identity**, because a drop holds a reference to the node it landed on and has
+  to find it again afterwards.
+- A drop removes the section **first**, normalizes, and only then inserts — so
+  the tree the insert works on is the one the drop will actually produce.
+- Where a section joins a split that already runs the right way, it takes **half
+  of the target's share** and the other children do not shuffle.
+
+**Folding.** A row too narrow to give every child `SHEET_MIN_COL` stops being a
+row and stacks (`foldNarrowRows`, driven by a `ResizeObserver`). This is the
+same fold the sheet has always done, moved off `flex-wrap` — which cannot honour
+the shares the seams set — and onto a measurement. Folds are applied
+**outermost-in** (document order gives that for free: a row that folds hands its
+width back to the rows inside it). The **hysteresis is not a nicety**: folding
+makes the sheet taller, a taller sheet can bring in `#character-sheet`'s
+scrollbar, and the scrollbar takes back the very width that was measured.
+`scrollbar-gutter: stable` removes most of that; `SHEET_FOLD_SLACK` makes it
+impossible.
+
+**The layout is this browser's furniture, not the character's.** Like the theme,
+the panel widths and the browse folders, it describes how *you* read a sheet
+rather than anything about who is on it — and a GM paging through the party must
+keep their own arrangement rather than adopting each player's. So it lives in
+its own key (`dnd_inventory_sheet_layout`), is **not** in the save file, and is
+never synced. That is also why a **read-only sheet is still rearrangeable**:
+moving a section writes nothing to the character.
+
+- The sections are written once as static markup in `#sheet-widget-store`, and
+  the renderer **moves** them into the tree — every id, value and listener
+  survives a rearrange. `renderSheetLayout()` is called when the sheet is first
+  built and after a drop or a reset, and deliberately **not** from
+  `renderCharacterSheet()`, which runs on every party roster update.
+- `SHEET_WIDGET_IDS` is read from the markup rather than written out again in
+  the JS: the sections *are* the markup, and a second list would only be
+  somewhere for the two to disagree. `sanitizeSheetLayout()` therefore copes
+  with a stored layout from a version with a different set of sections — unknown
+  ids are dropped, missing ones appended.
+- Dragging uses pointer events and bounding-rect hit tests, not the HTML5
+  drag-and-drop API, to agree with the drop feedback the browse list and equip
+  rack already give. The drop's edge is picked by **fraction** of each dimension
+  rather than raw pixels, so a short wide section and a tall narrow one both
+  have four reachable edges.
+- The rim band is tested first and is thin; everywhere else inside the sheet
+  resolves to the nearest section, because a drag that lands on nothing reads as
+  broken. A drop back onto the section's own slot is refused, but still labelled
+  ("Back where it started") — refusing silently is the one thing it must not do.
+- `#character-sheet` is in `DRAG_SCROLLERS`, so a long sheet scrolls under a held
+  drag exactly as the browse list does.
 
 ### Character tabs
 

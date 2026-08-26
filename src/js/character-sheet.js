@@ -162,6 +162,12 @@ function buildCharacterSheet() {
 
   const abilBox = document.getElementById('sheet-abilities');
   ABILITIES.forEach(a => abilBox.appendChild(abilityGroup(a)));
+
+  // Where the sections *sit* is the reader's own arrangement, and it is put
+  // together here for the same reason the ability groups are: once, when the
+  // sheet is first opened. See src/js/sheet-layout.js — nothing below this line
+  // knows or cares which slot a section ended up in.
+  ensureSheetLayout();
 }
 
 // A score, its save, and the skills that read off it.

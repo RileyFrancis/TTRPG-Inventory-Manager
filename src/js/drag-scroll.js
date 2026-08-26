@@ -26,7 +26,7 @@ const DRAG_SCROLL_MAX  = 22; // px per frame with the cursor right on the edge
 // Explicit rather than "any scrollable ancestor": the same bounding-rect
 // approach the equip cards and folder headers use, for the same reason — the
 // ghost sits under the cursor and elementFromPoint would keep finding it.
-const DRAG_SCROLLERS = ['#item-list', '#grid-scroll', '#equip-slots-scroll', '.shop-body'];
+const DRAG_SCROLLERS = ['#item-list', '#grid-scroll', '#equip-slots-scroll', '.shop-body', '#character-sheet'];
 
 let dragScrollRaf = null;
 let dragScrollRefresh = null;

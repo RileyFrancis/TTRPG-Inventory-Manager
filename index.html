@@ -27,6 +27,7 @@
   <link rel="stylesheet" href="src/css/sidebar.css">
   <link rel="stylesheet" href="src/css/modals.css">
   <link rel="stylesheet" href="src/css/character.css">
+  <link rel="stylesheet" href="src/css/sheet-layout.css">
   <link rel="stylesheet" href="src/css/party.css">
   <link rel="stylesheet" href="src/css/equipment.css">
   <link rel="stylesheet" href="src/css/shop.css">
@@ -152,111 +153,157 @@
       <!-- Page one of the 2024 sheet. The unique boxes are here; the six
            ability groups — each one a score, its save and the skills that read
            off it — are built once from the constants in character-sheet.js,
-           which is where they are defined. -->
+           which is where they are defined.
+
+           Each section is a *widget*, and where the widgets sit is a tree of
+           row/column splits the reader rearranges by dragging a section title
+           (src/js/sheet-layout.js). The sections below are written once, in
+           #sheet-widget-store, and *moved* into that tree — so a rearrange
+           costs no element its id, its value or its listeners. -->
       <div id="character-sheet">
         <div class="sheet-scroll paper-sheet">
 
-          <div class="sheet-head">
-            <input type="text" id="sheet-name" class="sheet-name-input" maxlength="40"
-                   data-sheet="name" data-kind="text" placeholder="Character name"
-                   aria-label="Character name">
-            <div id="sheet-identity" class="sheet-identity"></div>
-            <div class="sheet-id-grid">
-              <label class="sheet-field"><span>Class</span>
-                <input type="text" data-sheet="classes" data-kind="classlist"
-                       maxlength="60" placeholder="Fighter, Rogue"></label>
-              <label class="sheet-field narrow"><span>Level</span>
-                <input type="number" data-sheet="level" data-kind="int" min="1" max="20"></label>
-              <label class="sheet-field"><span>Subclass</span>
-                <input type="text" data-sheet="subclass" data-kind="text" maxlength="40"></label>
-              <label class="sheet-field"><span>Species</span>
-                <input type="text" data-sheet="race" data-kind="text" maxlength="30"></label>
-              <label class="sheet-field"><span>Background</span>
-                <input type="text" data-sheet="background" data-kind="text" maxlength="40"></label>
-              <label class="sheet-field narrow"><span>XP</span>
-                <input type="number" data-sheet="xp" data-kind="int" min="0"></label>
-            </div>
+          <div id="sheet-toolbar">
+            <span class="sheet-toolbar-hint">Drag a section by its title to rearrange it.</span>
+            <button id="sheet-reset-layout-btn" class="btn-sm">Reset Layout</button>
           </div>
 
-          <div class="sheet-body">
+          <!-- The layout tree in sheet-layout.js builds its split containers in
+               here and *moves* the widgets below into them. Nothing is rebuilt
+               by a rearrange, so every input, id and listener survives one. -->
+          <div id="sheet-layout"></div>
 
-            <section class="sheet-col sheet-col-abilities">
-              <h3 class="sheet-h">Abilities &amp; Skills</h3>
-              <div id="sheet-abilities" class="ability-groups"><!-- built from ABILITIES + SKILLS --></div>
-              <p class="sheet-hint">Click a dot to cycle proficient → expertise.</p>
+          <!-- Where the widgets live before the first layout render, and where
+               one is put back if it is ever dropped from the tree. Everything
+               the JS looks up is still static markup in this file, as the rest
+               of the app's is. -->
+          <div id="sheet-widget-store" hidden>
+
+            <section class="sheet-widget" data-widget="identity">
+              <h3 class="sheet-h widget-title">Identity</h3>
+              <div class="widget-body">
+                <div class="sheet-head">
+                  <input type="text" id="sheet-name" class="sheet-name-input" maxlength="40"
+                         data-sheet="name" data-kind="text" placeholder="Character name"
+                         aria-label="Character name">
+                  <div id="sheet-identity" class="sheet-identity"></div>
+                  <div class="sheet-id-grid">
+                    <label class="sheet-field"><span>Class</span>
+                      <input type="text" data-sheet="classes" data-kind="classlist"
+                             maxlength="60" placeholder="Fighter, Rogue"></label>
+                    <label class="sheet-field narrow"><span>Level</span>
+                      <input type="number" data-sheet="level" data-kind="int" min="1" max="20"></label>
+                    <label class="sheet-field"><span>Subclass</span>
+                      <input type="text" data-sheet="subclass" data-kind="text" maxlength="40"></label>
+                    <label class="sheet-field"><span>Species</span>
+                      <input type="text" data-sheet="race" data-kind="text" maxlength="30"></label>
+                    <label class="sheet-field"><span>Background</span>
+                      <input type="text" data-sheet="background" data-kind="text" maxlength="40"></label>
+                    <label class="sheet-field narrow"><span>XP</span>
+                      <input type="number" data-sheet="xp" data-kind="int" min="0"></label>
+                  </div>
+                </div>
+              </div>
             </section>
 
-            <section class="sheet-col">
-              <h3 class="sheet-h">Combat</h3>
-              <div class="stat-grid">
-                <label class="stat-tile"><span>Armor Class</span>
-                  <input type="number" data-sheet="ac" data-kind="int" min="0" max="40"></label>
-                <div class="stat-tile derived"><span>Initiative</span>
-                  <strong id="sheet-initiative">+0</strong></div>
-                <label class="stat-tile"><span>Speed</span>
-                  <input type="number" data-sheet="speed" data-kind="int" min="0" max="200"></label>
-                <div class="stat-tile derived"><span>Prof. Bonus</span>
-                  <strong id="sheet-prof-bonus">+2</strong></div>
-                <div class="stat-tile derived"><span>Passive Perc.</span>
-                  <strong id="sheet-passive">10</strong></div>
-                <label class="stat-tile"><span>Size</span>
-                  <select data-sheet="size" data-kind="text">
-                    <option>Tiny</option><option>Small</option><option>Medium</option>
-                    <option>Large</option><option>Huge</option><option>Gargantuan</option>
-                  </select></label>
+            <section class="sheet-widget" data-widget="abilities">
+              <h3 class="sheet-h widget-title">Abilities &amp; Skills</h3>
+              <div class="widget-body">
+                <div id="sheet-abilities" class="ability-groups"><!-- built from ABILITIES + SKILLS --></div>
+                <p class="sheet-hint">Click a dot to cycle proficient &rarr; expertise.</p>
               </div>
+            </section>
 
-              <h3 class="sheet-h">Hit Points</h3>
-              <div class="hp-row">
-                <label class="stat-tile"><span>Current</span>
-                  <input type="number" data-sheet="hp.current" data-kind="int"></label>
-                <label class="stat-tile"><span>Max</span>
-                  <input type="number" data-sheet="hp.max" data-kind="int" min="0"></label>
-                <label class="stat-tile"><span>Temp</span>
-                  <input type="number" data-sheet="hp.temp" data-kind="int" min="0"></label>
-              </div>
-              <div class="hp-row">
-                <label class="stat-tile"><span>Hit Die</span>
-                  <select data-sheet="hitDice.die" data-kind="text">
-                    <option>d6</option><option>d8</option><option>d10</option><option>d12</option>
-                  </select></label>
-                <label class="stat-tile"><span>Dice Max</span>
-                  <input type="number" data-sheet="hitDice.max" data-kind="int" min="0" max="20"></label>
-                <label class="stat-tile"><span>Spent</span>
-                  <input type="number" data-sheet="hitDice.spent" data-kind="int" min="0" max="20"></label>
-              </div>
-
-              <div class="death-row">
-                <div class="death-block">
-                  <span class="death-label">Death Saves — Successes</span>
-                  <div id="sheet-death-succ" class="death-pips"></div>
+            <section class="sheet-widget" data-widget="combat">
+              <h3 class="sheet-h widget-title">Combat</h3>
+              <div class="widget-body">
+                <div class="stat-grid">
+                  <label class="stat-tile"><span>Armor Class</span>
+                    <input type="number" data-sheet="ac" data-kind="int" min="0" max="40"></label>
+                  <div class="stat-tile derived"><span>Initiative</span>
+                    <strong id="sheet-initiative">+0</strong></div>
+                  <label class="stat-tile"><span>Speed</span>
+                    <input type="number" data-sheet="speed" data-kind="int" min="0" max="200"></label>
+                  <div class="stat-tile derived"><span>Prof. Bonus</span>
+                    <strong id="sheet-prof-bonus">+2</strong></div>
+                  <div class="stat-tile derived"><span>Passive Perc.</span>
+                    <strong id="sheet-passive">10</strong></div>
+                  <label class="stat-tile"><span>Size</span>
+                    <select data-sheet="size" data-kind="text">
+                      <option>Tiny</option><option>Small</option><option>Medium</option>
+                      <option>Large</option><option>Huge</option><option>Gargantuan</option>
+                    </select></label>
                 </div>
-                <div class="death-block">
-                  <span class="death-label">Failures</span>
-                  <div id="sheet-death-fail" class="death-pips fail"></div>
+                <label class="sheet-check">
+                  <input type="checkbox" data-sheet="inspiration" data-kind="check">
+                  <span>Heroic Inspiration</span>
+                </label>
+              </div>
+            </section>
+
+            <section class="sheet-widget" data-widget="hp">
+              <h3 class="sheet-h widget-title">Hit Points</h3>
+              <div class="widget-body">
+                <div class="hp-row">
+                  <label class="stat-tile"><span>Current</span>
+                    <input type="number" data-sheet="hp.current" data-kind="int"></label>
+                  <label class="stat-tile"><span>Max</span>
+                    <input type="number" data-sheet="hp.max" data-kind="int" min="0"></label>
+                  <label class="stat-tile"><span>Temp</span>
+                    <input type="number" data-sheet="hp.temp" data-kind="int" min="0"></label>
+                </div>
+                <div class="hp-row">
+                  <label class="stat-tile"><span>Hit Die</span>
+                    <select data-sheet="hitDice.die" data-kind="text">
+                      <option>d6</option><option>d8</option><option>d10</option><option>d12</option>
+                    </select></label>
+                  <label class="stat-tile"><span>Dice Max</span>
+                    <input type="number" data-sheet="hitDice.max" data-kind="int" min="0" max="20"></label>
+                  <label class="stat-tile"><span>Spent</span>
+                    <input type="number" data-sheet="hitDice.spent" data-kind="int" min="0" max="20"></label>
                 </div>
               </div>
+            </section>
 
-              <label class="sheet-check">
-                <input type="checkbox" data-sheet="inspiration" data-kind="check">
-                <span>Heroic Inspiration</span>
-              </label>
-
-              <h3 class="sheet-h">Proficiencies</h3>
-              <div class="armor-row">
-                <span class="armor-label">Armor Training</span>
-                <label class="sheet-check inline"><input type="checkbox" data-sheet="armorTraining.light"    data-kind="check"><span>Light</span></label>
-                <label class="sheet-check inline"><input type="checkbox" data-sheet="armorTraining.medium"   data-kind="check"><span>Medium</span></label>
-                <label class="sheet-check inline"><input type="checkbox" data-sheet="armorTraining.heavy"    data-kind="check"><span>Heavy</span></label>
-                <label class="sheet-check inline"><input type="checkbox" data-sheet="armorTraining.shields"  data-kind="check"><span>Shields</span></label>
+            <section class="sheet-widget" data-widget="death">
+              <h3 class="sheet-h widget-title">Death Saves</h3>
+              <div class="widget-body">
+                <div class="death-row">
+                  <div class="death-block">
+                    <span class="death-label">Successes</span>
+                    <div id="sheet-death-succ" class="death-pips"></div>
+                  </div>
+                  <div class="death-block">
+                    <span class="death-label">Failures</span>
+                    <div id="sheet-death-fail" class="death-pips fail"></div>
+                  </div>
+                </div>
               </div>
-              <label class="sheet-field"><span>Weapons</span>
-                <textarea data-sheet="weaponProf" data-kind="text" rows="2"></textarea></label>
-              <label class="sheet-field"><span>Tools</span>
-                <textarea data-sheet="toolProf" data-kind="text" rows="2"></textarea></label>
+            </section>
+
+            <section class="sheet-widget" data-widget="prof">
+              <h3 class="sheet-h widget-title">Proficiencies</h3>
+              <div class="widget-body">
+                <div class="armor-row">
+                  <span class="armor-label">Armor Training</span>
+                  <label class="sheet-check inline"><input type="checkbox" data-sheet="armorTraining.light"    data-kind="check"><span>Light</span></label>
+                  <label class="sheet-check inline"><input type="checkbox" data-sheet="armorTraining.medium"   data-kind="check"><span>Medium</span></label>
+                  <label class="sheet-check inline"><input type="checkbox" data-sheet="armorTraining.heavy"    data-kind="check"><span>Heavy</span></label>
+                  <label class="sheet-check inline"><input type="checkbox" data-sheet="armorTraining.shields"  data-kind="check"><span>Shields</span></label>
+                </div>
+                <label class="sheet-field"><span>Weapons</span>
+                  <textarea data-sheet="weaponProf" data-kind="text" rows="2"></textarea></label>
+                <label class="sheet-field"><span>Tools</span>
+                  <textarea data-sheet="toolProf" data-kind="text" rows="2"></textarea></label>
+              </div>
             </section>
 
           </div>
+
+          <!-- Shades where the section will land, and rides the cursor naming
+               the drop. Absolutely positioned, so `.sheet-scroll` is relative. -->
+          <div id="sheet-drop-zone" class="hidden"></div>
+          <div id="sheet-drop-hint" class="hidden"></div>
         </div>
       </div>
 
@@ -1023,6 +1070,7 @@
 <script src="src/js/character-tabs.js"></script>
 <script src="src/js/characters.js"></script>
 <script src="src/js/character-sheet.js"></script>
+<script src="src/js/sheet-layout.js"></script>
 <script src="src/js/equipment.js"></script>
 <script src="src/js/shop.js"></script>
 <script src="src/js/tooltip.js"></script>
