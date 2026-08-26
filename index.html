@@ -1055,6 +1055,17 @@
         <button class="btn-sm color-clear" data-role="secondary" type="button">Reset</button>
       </div>
 
+      <!-- One hue at six depths: the panels, the page behind them, both border
+           shades and the desk under the torn paper. The swatch shows the panel,
+           which is the lightest step. -->
+      <div class="color-row" data-role="surface">
+        <span class="color-row-name">Panels</span>
+        <button class="color-swatch" id="color-swatch-surface" data-role="surface"
+                type="button" aria-label="Panel colour"></button>
+        <span class="color-row-value" id="color-value-surface"></span>
+        <button class="btn-sm color-clear" data-role="surface" type="button">Reset</button>
+      </div>
+
       <!-- The wheel. Hue around, saturation outward; the lightness is the
            theme's own, which is why there is no slider for it. -->
       <div id="color-wheel-pop" class="hidden">
@@ -1075,7 +1086,8 @@
       <p class="setting-hint">
         Each theme keeps its own lightness, so a colour stays readable on
         parchment and by candlelight alike. Secondary follows the primary until
-        you set it yourself.
+        you set it yourself; the page behind the panels is the panel colour,
+        darker.
       </p>
     </div>
 

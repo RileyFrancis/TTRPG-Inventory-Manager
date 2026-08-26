@@ -37,25 +37,68 @@
 
 const ACCENT_KEY = 'dnd_inventory_colors';
 
-// The two roles, the token each drives, and the lightness each theme wants for
-// it. The figures are the defaults in tokens.css measured back into HSL, so an
-// untouched app and a custom colour are lit the same way.
+// The three roles, the tokens each drives, and the saturation and lightness
+// each theme wants for each of them. Every figure is a default from tokens.css
+// measured back into HSL, so an untouched app and a custom colour are built the
+// same way — nothing here is invented.
+//
+// **A role can drive a whole family, not just one token.** `surface` is the
+// interesting one: panels, the page behind them, the desk under the paper and
+// both border shades are one colour seen at six depths, so they move together
+// and keep their ladder. The *first* token is the role's reference — it is what
+// the swatch shows, what the wheel is painted at, and what the other tokens'
+// saturations are measured against.
+//
+//   --panel    L 91   the panels themselves, the lightest step
+//   --surface  L 86
+//   --bg       L 78   the page behind them: the same colour, darker
+//   --border   L 63
+//   --border2  L 50
+//   --desk     L 48   under the torn paper, darkest of all
+//
+// So "the background is a darker version of the panel colour" is not a rule
+// applied afterwards — it is what having one hue and six lightnesses *means*.
 const ACCENT_ROLES = {
-  primary:   { token: '--accent',      label: 'Primary',   light: 33, dark: 56 },
-  secondary: { token: '--accent-soft', label: 'Secondary', light: 47, dark: 47 },
+  primary: {
+    label: 'Primary',
+    tokens: [{ name: '--accent', light: { s: 66, l: 33 }, dark: { s: 61, l: 56 } }],
+  },
+  secondary: {
+    label: 'Secondary',
+    tokens: [{ name: '--accent-soft', light: { s: 46, l: 47 }, dark: { s: 52, l: 47 } }],
+  },
+  surface: {
+    label: 'Panels',
+    tokens: [
+      { name: '--panel',   light: { s: 66, l: 91 }, dark: { s: 25, l: 12 } },
+      { name: '--surface', light: { s: 55, l: 86 }, dark: { s: 29, l:  9 } },
+      { name: '--bg',      light: { s: 42, l: 78 }, dark: { s: 29, l:  6 } },
+      { name: '--border',  light: { s: 37, l: 63 }, dark: { s: 28, l: 19 } },
+      { name: '--border2', light: { s: 29, l: 50 }, dark: { s: 30, l: 28 } },
+      { name: '--desk',    light: { s: 27, l: 48 }, dark: { s: 24, l:  4 } },
+    ],
+  },
 };
 
 // Every property this module may write on <html>. Listed so a reset can *remove*
 // what it no longer sets and hand the palette back to tokens.css, rather than
 // leaving a stale override behind.
-const ACCENT_MANAGED = ['--accent', '--accent-soft', '--on-accent'];
+const ACCENT_MANAGED = ['--on-accent'].concat(
+  Object.values(ACCENT_ROLES).flatMap(r => r.tokens.map(t => t.name))
+);
 
 // { primary: {h,s}|null, secondary: {h,s}|null, vars: { light:{}, dark:{} } }
 let accentPrefs = defaultAccentPrefs();
 
 function defaultAccentPrefs() {
-  return { primary: null, secondary: null, vars: { light: {}, dark: {} } };
+  const out = { vars: { light: {}, dark: {} } };
+  Object.keys(ACCENT_ROLES).forEach(role => { out[role] = null; });
+  return out;
 }
+
+// The token a role is *named* by: the one its swatch shows, its wheel is
+// painted at, and its family's saturations are measured against.
+function roleReferenceToken(role) { return ACCENT_ROLES[role].tokens[0]; }
 
 // =============================================================================
 // COLOUR MATHS
@@ -107,6 +150,27 @@ function readableInkOn(hex) {
 // =============================================================================
 // RESOLVING AND APPLYING
 // =============================================================================
+// Every token a role owns, at one theme. The pick supplies the hue; each token
+// keeps its own lightness, and its saturation is scaled by how saturated it is
+// *relative to the role's reference token* — so a family keeps the shape it had
+// (the desk was always the flattest step, the panel the richest) whatever hue is
+// poured into it.
+//
+// The pinned lightness is also what stops a strong pick going garish. `s: 100`
+// sounds alarming until you notice the light theme's panel is fixed at L 91%:
+// `hsl(210, 100%, 91%)` is a pale blue tint, not a blue. The theme constrains
+// the chroma for free, exactly as it does for the accent.
+function resolveRoleTokens(role, pick, theme) {
+  const tokens = ACCENT_ROLES[role].tokens;
+  const ref = tokens[0][theme].s;
+  const out = {};
+  tokens.forEach(t => {
+    const s = ref ? pick.s * (t[theme].s / ref) : pick.s;
+    out[t.name] = hslToHex(pick.h, Math.max(0, Math.min(100, s)), t[theme].l);
+  });
+  return out;
+}
+
 // Both themes, up front. See the header: the paint path never does maths.
 function computeAccentVars(prefs) {
   const out = { light: {}, dark: {} };
@@ -114,20 +178,25 @@ function computeAccentVars(prefs) {
   ['light', 'dark'].forEach(theme => {
     const p = prefs.primary;
     if (p) {
-      const hex = hslToHex(p.h, p.s, ACCENT_ROLES.primary[theme]);
-      out[theme]['--accent'] = hex;
-      out[theme]['--on-accent'] = readableInkOn(hex);
+      Object.assign(out[theme], resolveRoleTokens('primary', p, theme));
+      out[theme]['--on-accent'] = readableInkOn(out[theme]['--accent']);
     }
 
     const s = prefs.secondary;
     if (s) {
-      out[theme]['--accent-soft'] = hslToHex(s.h, s.s, ACCENT_ROLES.secondary[theme]);
+      Object.assign(out[theme], resolveRoleTokens('secondary', s, theme));
     } else if (p) {
       // Untouched, the secondary follows the primary — a slightly calmer
       // version of it, which is exactly the relationship the default gold pair
       // has. Setting it explicitly is what breaks the link.
-      out[theme]['--accent-soft'] = hslToHex(p.h, Math.max(0, p.s - 8), ACCENT_ROLES.secondary[theme]);
+      Object.assign(out[theme], resolveRoleTokens(
+        'secondary', { h: p.h, s: Math.max(0, p.s - 8) }, theme));
     }
+
+    // The panels stand on their own: nothing follows them and they follow
+    // nothing. A page tinted to match its own accent is a much louder app than
+    // anyone asked for.
+    if (prefs.surface) Object.assign(out[theme], resolveRoleTokens('surface', prefs.surface, theme));
   });
 
   return out;
@@ -156,7 +225,7 @@ function loadAccentPrefs() {
 function sanitizeAccentPrefs(raw) {
   const out = defaultAccentPrefs();
   if (!raw || typeof raw !== 'object') return out;
-  ['primary', 'secondary'].forEach(role => {
+  Object.keys(ACCENT_ROLES).forEach(role => {
     const v = raw[role];
     if (!v || typeof v !== 'object') return;
     const h = parseFloat(v.h), s = parseFloat(v.s);
@@ -201,10 +270,10 @@ function clearAccentColor(role) {
 // is one, otherwise whatever tokens.css is currently painting.
 function currentAccentHex(role) {
   const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
-  const custom = accentPrefs.vars?.[theme]?.[ACCENT_ROLES[role].token];
+  const token = roleReferenceToken(role).name;
+  const custom = accentPrefs.vars?.[theme]?.[token];
   if (custom) return custom;
-  return getComputedStyle(document.documentElement)
-    .getPropertyValue(ACCENT_ROLES[role].token).trim() || '#000000';
+  return getComputedStyle(document.documentElement).getPropertyValue(token).trim() || '#000000';
 }
 
 // =============================================================================
@@ -221,13 +290,23 @@ function currentAccentHex(role) {
 let wheelRole = null;
 let wheelDragging = false;
 
-function wheelLightnessFor(role) {
+// The wheel is drawn at the lightness the role will actually be given, so it
+// previews the result — but only as far as that stays *legible*. A panel is
+// L 91% on parchment and L 12% by candlelight, and a wheel at either is a flat
+// white or a flat black disc with no hues to tell apart. So the face is clamped
+// into a band where colour still reads, and the swatch beside the row (plus the
+// app itself, which recolours live) shows the true result.
+const WHEEL_FACE_MIN = 38;
+const WHEEL_FACE_MAX = 62;
+
+function wheelFaceLightness(role) {
   const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
-  return ACCENT_ROLES[role][theme];
+  const l = roleReferenceToken(role)[theme].l;
+  return Math.max(WHEEL_FACE_MIN, Math.min(WHEEL_FACE_MAX, l));
 }
 
 function paintWheelFace(role) {
-  const l = wheelLightnessFor(role);
+  const l = wheelFaceLightness(role);
   const stops = [];
   for (let h = 0; h <= 360; h += 30) stops.push(`hsl(${h} 100% ${l}%)`);
   const wheel = document.getElementById('color-wheel');

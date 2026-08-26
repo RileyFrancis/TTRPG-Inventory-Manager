@@ -723,9 +723,15 @@ or it will be wrong in one of the two themes. The single exception is the hue wh
   That script also applies the **custom accent** before first paint, for the same reason.
 - The theme picker itself lives on the **Appearance page** (Settings → Appearance),
   beside the colour wheel — the two halves of one question.
-- `--accent` / `--accent-soft` / `--on-accent` can be **overridden per browser** by a
-  user-chosen colour, set as inline properties on `<html>`. Anything reading them still
-  just reads the token; see *The accent colour* for how the two themes are resolved.
+- `--accent` / `--accent-soft` / `--on-accent`, and the whole panel family
+  (`--panel` / `--surface` / `--bg` / `--border` / `--border2` / `--desk`), can be
+  **overridden per browser** by a user-chosen colour, set as inline properties on
+  `<html>`. Anything reading them still just reads the token; see *The accent colour*
+  for how the two themes are resolved. `ACCENT_MANAGED` in `appearance.js` is the full
+  list, and it is built from the roles rather than written out.
+- `--text` / `--text-dim` deliberately **do not** follow a custom panel colour. They do
+  not need to: each theme pins its surfaces' lightness, so a light theme's panels stay
+  light however they are tinted and the ink still reads.
 - The stored *preference* (`dnd_inventory_theme` in `localStorage`) is `light`, `dark`,
   or `system`. `system` is re-resolved live from `prefers-color-scheme`.
 - Deliberately **not** part of the `dnd_inventory_v1` save file: the theme belongs to the
@@ -804,11 +810,37 @@ A pale yellow chosen in dark mode cannot come out invisible on cream paper,
 because the light palette never uses the pale version of it. The wheel therefore
 has **no lightness slider**: there is nothing there to offer.
 
-- Two roles. `primary` drives `--accent`, `secondary` drives `--accent-soft`
-  (the gold rules and gradients). Until the secondary is set on its own it
-  **follows the primary**, eight points calmer — which is the relationship the
-  default gold pair already has. Setting it explicitly is what breaks the link;
-  resetting it restores it.
+- Three roles. `primary` drives `--accent`; `secondary` drives `--accent-soft`
+  (the gold rules and gradients); `surface` drives the whole panel family.
+  Until the secondary is set on its own it **follows the primary**, eight points
+  calmer — which is the relationship the default gold pair already has. Setting
+  it explicitly is what breaks the link; resetting it restores it. The panels
+  follow nothing and nothing follows them: a page tinted to match its own accent
+  is a much louder app than anyone asked for.
+- **A role can drive a family, not just one token.** `surface` is one hue at six
+  lightnesses, so "the background is a darker version of the panel colour" is
+  not a rule applied afterwards — it is what having one hue and six lightnesses
+  *means*:
+
+  ```
+  --panel    L 91   the panels themselves, the lightest step
+  --surface  L 86
+  --bg       L 78   the page behind them: the same colour, darker
+  --border   L 63
+  --border2  L 50
+  --desk     L 48   under the torn paper, darkest of all
+  ```
+
+  (Light-theme figures; the dark palette has its own ladder, 12 down to 4.)
+  `--paper-veil` is a `color-mix` over `--bg`, so it follows for free.
+  The **first token is the role's reference**: what the swatch shows, what the
+  wheel is painted at, and what the family's saturations are scaled against —
+  so the desk stays the flattest step and the panel the richest, whatever hue is
+  poured in.
+- Pinned lightness is also what stops a strong pick going garish. `s: 100`
+  sounds alarming until you notice a light-theme panel is fixed at L 91%:
+  `hsl(210, 100%, 91%)` is a pale blue tint, not a blue. The theme constrains
+  the chroma for free.
 - `--on-accent` is derived, never picked: whichever of `--ink` / `--paper` has
   the better **WCAG contrast ratio** against the resolved accent. Not chosen off
   HSL lightness — a saturated yellow and a saturated blue at the same `l` are
@@ -843,7 +875,11 @@ has **no lightness slider**: there is nothing there to offer.
   belong there**: everything else must be a token or it is wrong in one of the
   two palettes, but a spectrum is not themed — it *is* the colours, and it means
   the same thing in both. The gradient is rebuilt at the lightness the role will
-  actually be given, so the wheel previews the result rather than a nominal 50%.
+  actually be given, so the wheel previews the result rather than a nominal 50%
+  — **clamped to a legible band** (`WHEEL_FACE_MIN`/`MAX`), because a panel is
+  L 91% on parchment and L 12% by candlelight, and a wheel at either is a flat
+  white or a flat black disc with no hues to tell apart. The swatch beside the
+  row, and the app recolouring live, carry the true result.
 - The wheel panel is **moved under whichever row was clicked** rather than
   floating, so a row reads as opening. This modal can scroll on a short window,
   and a popover would need positioning and clipping logic to survive that for no
