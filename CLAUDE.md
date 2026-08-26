@@ -724,7 +724,7 @@ or it will be wrong in one of the two themes. The single exception is the hue wh
 - The theme picker itself lives on the **Appearance page** (Settings → Appearance),
   beside the colour wheel — the two halves of one question.
 - `--accent` / `--accent-soft` / `--on-accent`, and the whole panel family
-  (`--panel` / `--surface` / `--bg` / `--border` / `--border2` / `--desk`), can be
+  (`--panel` / `--surface` / `--field` / `--border` / `--border2` / `--desk` / `--bg`), can be
   **overridden per browser** by a user-chosen colour, set as inline properties on
   `<html>`. Anything reading them still just reads the token; see *The accent colour*
   for how the two themes are resolved. `ACCENT_MANAGED` in `appearance.js` is the full
@@ -825,14 +825,50 @@ has **no lightness slider**: there is nothing there to offer.
   ```
   --panel    L 91   the panels themselves, the lightest step
   --surface  L 86
-  --bg       L 78   the page behind them: the same colour, darker
+  --field    L 78   recessed wells: inputs, equip slots, shape-editor cells
   --border   L 63
   --border2  L 50
-  --desk     L 48   under the torn paper, darkest of all
+  --desk     L 48   under the torn paper, darkest of the ladder
   ```
 
   (Light-theme figures; the dark palette has its own ladder, 12 down to 4.)
-  `--paper-veil` is a `color-mix` over `--bg`, so it follows for free.
+  `--paper-veil` is a `color-mix` over `--field`, so it follows for free.
+- **The inventory grid is deliberately not in the family.** Its cells, its
+  carry zones and everything drawn on them keep the palette's own colours
+  whatever the panels are tinted to. The grid is the parchment a character's kit
+  is laid out on, not part of the app's chrome, and it should read as itself
+  rather than as another panel.
+- **`--bg` is not on that ladder.** The page behind everything takes the panel's
+  *hue* and nothing else, at a fixed `oklch(L 0.04 H)` — so the app always sits
+  on a deep, near-neutral ground and the panels read as lit sheets on it.
+  `oklch` rather than `hsl` because that is the whole point: perceptual
+  lightness is what "this dark" has to mean when the hue can be anything, and an
+  HSL lightness of 25% is a very different darkness for yellow than for blue.
+  The hue comes from the **resolved panel colour** via `oklchHueOf()`, not from
+  the pick — OKLCH and HSL hues disagree, sometimes by tens of degrees (an HSL
+  pick of 200 lands at OKLCH 231).
+- **`--field` exists because `--bg` used to do two jobs** — the page ground *and*
+  every recessed well. They parted company the moment the ground went dark: at
+  L 0.25 the light theme's inputs would have been near-black boxes holding dark
+  brown text (contrast 1.12). A field is a dip in the panel, so it belongs to the
+  panel's ladder. `--bg` now paints only `body` and `#home-screen`.
+- **`--on-bg`** is the ink for anything drawn straight onto the ground (the
+  roster page's heading and empty state). Unlike `--on-accent` it needs no
+  deriving and is not per-theme: the ground is locked dark in both palettes, so
+  it is always `--paper`. Never use `--text` there.
+- **The ground's lightness is per palette — 0.32 on parchment, 0.25 by
+  candlelight** — and it is the one figure to touch if the ground wants nudging.
+  It lives in two places that must agree: `tokens.css` for the stock palettes and
+  `ACCENT_ROLES.surface` in `appearance.js` for a custom colour. The chroma
+  (0.04) and the hue rule are shared.
+
+  They differ because the ground has to clear its own panels. The dark palette's
+  panels sit at OKLCH 0.247, so 0.25 puts the ground level with them — `--panel`
+  against `--bg` is a contrast ratio of **1.00**, and on the roster page the
+  cards are held by their 1px border alone. That is **deliberate and signed off**:
+  it reads as one continuous dark surface. The light palette's panels are at 0.95
+  with room to spare, so its ground is lifted to 0.32 (10.97 against the panels)
+  where 0.25 was heavier than wanted.
   The **first token is the role's reference**: what the swatch shows, what the
   wheel is painted at, and what the family's saturations are scaled against —
   so the desk stays the flattest step and the panel the richest, whatever hue is

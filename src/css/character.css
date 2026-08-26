@@ -432,7 +432,7 @@
   position: absolute;
   inset: 0;
   z-index: 5;
-  background: var(--bg);
+  background: var(--surface);
   display: flex;
   align-items: center;
   justify-content: center;

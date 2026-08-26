@@ -52,7 +52,28 @@
   --font-body: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', sans-serif;
 
   /* ─── Light: aged parchment, sepia ink, tooled leather ─── */
-  --bg:       #ded0ae;
+  /* The page behind everything. Locked to OKLCH L 0.25 / C 0.04, with only the
+     *hue* coming from the panel colour — so the app always sits on a deep,
+     near-neutral ground and the panels read as lit sheets laid on it. Stated in
+     `oklch()` rather than hex because that is the whole point: perceptual
+     lightness is what "as dark as that" has to mean when the hue can be
+     anything, and 0.25 in HSL terms is a different darkness for yellow than for
+     blue. The hue here is the OKLCH hue of `--panel` below.
+
+     The *lightness* is per palette, and it is the one figure to touch if the
+     ground wants nudging: 0.32 on parchment, 0.25 by candlelight. They differ
+     because the ground has to clear its own panels — the dark palette's panels
+     sit at OKLCH 0.247, so a light ground there would swallow them, while the
+     light palette's are at 0.95 and have room to spare. `ACCENT_ROLES.surface`
+     in appearance.js carries the same two numbers for a custom colour. */
+  --bg:       oklch(0.32 0.04 88.4);
+
+  /* Recessed wells — inputs, equip slots, the shape editor's cells. This was
+     `--bg` doing two jobs, and they parted company the moment the page ground
+     went dark: a field is a *dip in the panel*, so it belongs to the panel's
+     ladder and stays light on parchment. */
+  --field:    #ded0ae;
+
   --surface:  #efe4c8;
   --panel:    #f7eed8;
   --border:   #c4ab7e;
@@ -75,6 +96,14 @@
      second, drifting copy of these two values. */
   --ink:   #1a1206;
   --paper: #fdf6e4;
+
+  /* The ink that goes on the page ground. Unlike `--on-accent` this is not a
+     per-theme choice and never needs deriving: `--bg` is locked dark in both
+     palettes, so what sits on it is always the paper. Anything drawn straight
+     onto the ground — the roster page's heading and its empty state — must use
+     this and not `--text`, which is a dark brown meant for lit panels and
+     scores 1.12 against the ground. */
+  --on-bg: var(--paper);
 
   /* Parchment grain + leather emboss */
   --grain-a:    rgba(94, 66, 26, 0.055);
@@ -99,7 +128,7 @@
      drag. Turn the texture down by raising the percentage. */
   --paper-tile:   url('../../img/paper-antique-seamless.jpg');
   --paper-tile-w: 640px;
-  --paper-veil:   color-mix(in srgb, var(--bg) 26%, transparent);
+  --paper-veil:   color-mix(in srgb, var(--field) 26%, transparent);
   /* What shows *around* the torn edge — the desk the sheet is lying on. A frayed
      edge is only an edge if something different is behind it. */
   --desk:         #9a8259;
@@ -158,7 +187,9 @@
 
 :root[data-theme="dark"] {
   /* ─── Dark: candlelit tavern, oiled leather, gold leaf ─── */
-  --bg:       #14100b;
+  /* Same rule, this palette's panel hue. See the light block for why. */
+  --bg:       oklch(0.25 0.04 77.8);
+  --field:    #14100b;
   --surface:  #1d1710;
   --panel:    #262017;
   --border:   #3d3122;
@@ -184,7 +215,7 @@
      candlelit room into a grey one — the grid stops reading against it. Same
      tile, same ratio, far more veil: enough grain to feel like paper, not
      enough to lift the background. */
-  --paper-veil: color-mix(in srgb, var(--bg) 79%, transparent);
+  --paper-veil: color-mix(in srgb, var(--field) 79%, transparent);
   --desk:       #0d0b08;
   --paper-edge: rgba(0, 0, 0, 0.62);
   --paper-cast: rgba(0, 0, 0, 0.6);

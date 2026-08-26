@@ -53,7 +53,6 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   color: var(--accent);
-  text-shadow: 0 1px 0 var(--emboss-hi);
 }
 
 #home-settings-btn { font-size: 15px; line-height: 1; }
@@ -89,8 +88,10 @@
   font-size: 28px;
   font-weight: 700;
   letter-spacing: 0.04em;
-  color: var(--accent);
-  text-shadow: 0 1px 0 var(--emboss-hi);
+  /* On the page ground, not on a panel — so the ground's own ink, and no
+     emboss: that highlight is a lit-surface effect and only muddies a dark
+     one. The accent still leads the page, in the gold rule underneath. */
+  color: var(--on-bg);
 }
 
 .home-header-actions { display: flex; align-items: center; gap: 10px; }
@@ -108,7 +109,9 @@
 }
 
 .home-empty {
-  color: var(--text-dim);
+  /* Also directly on the ground. Dimmed from the ground's ink rather than
+     reaching for --text-dim, which is a panel colour. */
+  color: color-mix(in srgb, var(--on-bg) 62%, transparent);
   font-size: 13px;
   padding: 40px 0;
   text-align: center;

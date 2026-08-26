@@ -72,10 +72,28 @@ const ACCENT_ROLES = {
     tokens: [
       { name: '--panel',   light: { s: 66, l: 91 }, dark: { s: 25, l: 12 } },
       { name: '--surface', light: { s: 55, l: 86 }, dark: { s: 29, l:  9 } },
-      { name: '--bg',      light: { s: 42, l: 78 }, dark: { s: 29, l:  6 } },
+      { name: '--field',   light: { s: 42, l: 78 }, dark: { s: 29, l:  6 } },
       { name: '--border',  light: { s: 37, l: 63 }, dark: { s: 28, l: 19 } },
       { name: '--border2', light: { s: 29, l: 50 }, dark: { s: 30, l: 28 } },
       { name: '--desk',    light: { s: 27, l: 48 }, dark: { s: 24, l:  4 } },
+
+      // The inventory grid is deliberately **not** here. Its cells, its carry
+      // zones and everything drawn on them keep the palette's own colours
+      // whatever the panels are tinted to: the grid is the parchment the
+      // character's kit is laid out on, not part of the app's chrome, and it
+      // reads as itself rather than as another panel.
+
+      // The page behind everything is the odd one out and does not join the
+      // HSL ladder at all: it takes the panel's *hue* and nothing else, at a
+      // fixed OKLCH lightness and chroma. `oklch` rather than `hsl` because
+      // that is the whole point — perceptual lightness is what "this dark" has
+      // to mean when the hue is anything the user likes, and an HSL lightness
+      // of 25% is a very different darkness for yellow than for blue.
+      //
+      // The lightness is per palette, and mirrors tokens.css: the ground has to
+      // clear its own panels, and the dark palette's sit at OKLCH 0.247 where
+      // the light palette's are at 0.95.
+      { name: '--bg', oklch: { light: { l: 0.32, c: 0.04 }, dark: { l: 0.25, c: 0.04 } } },
     ],
   },
 };
@@ -133,6 +151,30 @@ function relativeLuminance(hex) {
   return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
 }
 
+// The OKLCH hue of an sRGB colour: sRGB → linear → LMS → OKLab → the angle of
+// (a, b). Only the hue is wanted — the page's lightness and chroma are locked —
+// but the whole conversion is here because there is no shortcut to the angle.
+//
+// Note this hue is **not** the HSL hue the wheel hands out: the two spaces
+// disagree, sometimes by tens of degrees. Deriving it from the *resolved panel
+// colour* rather than from the pick is what keeps the ground matched to the
+// panels rather than to a number that happens to share their name.
+function oklchHueOf(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  const lin = v => { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+  const r = lin((n >> 16) & 255), g = lin((n >> 8) & 255), b = lin(n & 255);
+
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+
+  const A = 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s;
+  const B = 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s;
+
+  const h = (Math.atan2(B, A) * 180) / Math.PI;
+  return h < 0 ? h + 360 : h;
+}
+
 function contrastRatio(a, b) {
   const la = relativeLuminance(a), lb = relativeLuminance(b);
   return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
@@ -162,12 +204,25 @@ function readableInkOn(hex) {
 // the chroma for free, exactly as it does for the accent.
 function resolveRoleTokens(role, pick, theme) {
   const tokens = ACCENT_ROLES[role].tokens;
-  const ref = tokens[0][theme].s;
+  const refToken = tokens[0];
+  const ref = refToken[theme].s;
   const out = {};
+
   tokens.forEach(t => {
+    if (t.oklch) return; // resolved below, off the finished reference colour
     const s = ref ? pick.s * (t[theme].s / ref) : pick.s;
     out[t.name] = hslToHex(pick.h, Math.max(0, Math.min(100, s)), t[theme].l);
   });
+
+  // Second pass, because an `oklch` token reads the hue of the *resolved*
+  // reference rather than of the pick — see `oklchHueOf`.
+  const refHex = out[refToken.name];
+  tokens.forEach(t => {
+    if (!t.oklch || !refHex) return;
+    const { l, c } = t.oklch[theme];
+    out[t.name] = `oklch(${l} ${c} ${oklchHueOf(refHex).toFixed(1)})`;
+  });
+
   return out;
 }
 

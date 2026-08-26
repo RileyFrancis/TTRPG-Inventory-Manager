@@ -46,7 +46,7 @@ h1, h2, h3,
 
 button { cursor: pointer; border: none; background: none; color: inherit; font: inherit; }
 input, select, textarea {
-  background: var(--bg);
+  background: var(--field);
   border: 1px solid var(--border2);
   color: var(--text);
   border-radius: 3px;
