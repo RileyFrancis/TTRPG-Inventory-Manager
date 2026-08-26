@@ -28,12 +28,11 @@
 
 /* ── The pinned header ── */
 /* The identity block sits outside #sheet-layout, which is the whole of what
-   makes it unmovable (see sheet-layout.js). All that is left here is to stop it
-   *offering* what it cannot do: no grab cursor, no hover outline, and no
-   dashed drop-target outline while a drag is in the air. */
+   makes it unmovable (see sheet-layout.js). It carries no title either — the
+   character's own name heads the page — so there is no handle to un-offer, and
+   all that is left here is to keep the dashed drop-target outline off it while
+   a drag is in the air. */
 .sheet-widget.pinned { margin-bottom: 18px; }
-.sheet-widget.pinned > .widget-title { cursor: default; }
-.sheet-widget.pinned:has(> .widget-title:hover) { outline: none; }
 #character-sheet.sheet-arranging .sheet-widget.pinned { outline: none; }
 
 /* ── Splits ── */

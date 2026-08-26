@@ -425,9 +425,11 @@ special case in the drag — it simply lives **outside `#sheet-layout`** in
 test is scoped to the tree. A section that is not in the tree cannot be moved by
 a thing that only moves the tree. `sanitizeSheetLayout()` therefore drops an
 `identity` node left in a layout stored before this, exactly as it drops any
-other id it does not recognise, and the sheet heals itself on load. The `pinned`
-class does nothing but stop it *offering* what it cannot do: no grab cursor, no
-hover outline, no drop-target outline mid-drag.
+other id it does not recognise, and the sheet heals itself on load. It carries
+no section title either — the character's own name heads the page, and an
+"Identity" rule above it only said again what the name says — so there is no
+handle to hover or grab; the `pinned` class does nothing but keep the
+drop-target outline off it mid-drag.
 
 - A node is `{ t:'w', id, size }` or `{ t:'s', dir:'row'|'col', size, kids[] }`.
   `size` is the node's share of its parent and lives **on the node**, so it
