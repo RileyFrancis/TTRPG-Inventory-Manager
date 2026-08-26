@@ -63,6 +63,24 @@ input:focus, select:focus, textarea:focus {
 select option { background: var(--panel); color: var(--text); }
 textarea { resize: vertical; }
 
+/* No spinners on a number field. They were the last unstyled chrome in the app —
+   painted by the browser, so they answer to neither palette — and they cost the
+   narrow boxes real room: an ability Score box is 46px wide and the arrows take
+   a third of it. The field still behaves as a number field; only the arrows go,
+   so the keyboard's own up/down still step the value.
+
+   Both halves are needed. `appearance: textfield` is what Firefox reads, and
+   Chrome and Safari need their spin-button pseudo-elements switched off by
+   name — and the `margin: 0` with them, or the space they were reserving stays
+   behind. */
+input[type="number"] { appearance: textfield; -moz-appearance: textfield; }
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+
 /* ─── BUTTONS ────────────────────────────────────────────── */
 /* Gold leaf: warm gradient, hairline bevel, pressed state sinks. */
 .btn-primary {
