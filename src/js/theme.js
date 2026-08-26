@@ -44,8 +44,13 @@ function resolveTheme(pref) {
 // Paint the resolved palette and bring rarity-coloured DOM back in sync.
 function applyTheme(pref, { rerender = true } = {}) {
   document.documentElement.setAttribute('data-theme', resolveTheme(pref));
+  // A custom accent is resolved per palette, so which half of it applies has
+  // just changed. Straight after `data-theme` and before anything reads a
+  // colour back out of CSS. See src/js/appearance.js.
+  applyAccentVars();
   clearRarityColorCache();
   updateThemePickerUI(pref);
+  updateAppearanceUI();
   if (rerender) rerenderThemedContent();
 }
 
@@ -89,6 +94,9 @@ function updateThemePickerUI(pref) {
 }
 
 function initTheme() {
+  // The colour has to be loaded before the first applyTheme(), which paints it.
+  initAppearance();
+
   const pref = getThemePreference();
   applyTheme(pref, { rerender: false }); // init() renders everything right after
 
@@ -106,8 +114,9 @@ function initTheme() {
   }
 }
 
+// The theme picker moved to the Appearance page, so Settings itself no longer
+// has one to bring up to date.
 function openSettingsModal() {
-  updateThemePickerUI(getThemePreference());
   showModal('settings-modal');
 }
 
@@ -117,6 +126,10 @@ document.getElementById('home-settings-btn').addEventListener('click', openSetti
 
 // The info pages replace the settings modal rather than stacking on top of it —
 // a click on the backdrop closes every open modal, so two at once would both go.
+// Appearance is one of these pages too, but its button is wired in
+// appearance.js: this file's listeners run at *load* time, and appearance.js
+// has not been parsed yet at that point, so binding its handler from here would
+// silently attach `undefined`.
 document.getElementById('how-to-btn').addEventListener('click', () => {
   hideModal('settings-modal');
   showModal('how-to-modal');

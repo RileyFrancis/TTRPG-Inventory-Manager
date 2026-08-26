@@ -15,6 +15,17 @@
         ((!pref || pref === 'system') &&
           window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
       document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+
+      // The custom accent, before first paint too — otherwise the app flashes
+      // gold and then recolours. Both themes were resolved to finished CSS at
+      // the moment the colour was picked (see appearance.js), so all there is
+      // to do here is read the right half out and set it. No colour maths in
+      // the <head>, and no second copy of it to drift.
+      try {
+        var c = JSON.parse(localStorage.getItem('dnd_inventory_colors'));
+        var v = c && c.vars && c.vars[dark ? 'dark' : 'light'];
+        if (v) for (var k in v) document.documentElement.style.setProperty(k, v[k]);
+      } catch (e) { /* absent or unreadable — the tokens' own gold stands */ }
     })();
   </script>
   <!-- Stylesheets, in cascade order. tokens.css must stay first: every
@@ -35,6 +46,7 @@
   <link rel="stylesheet" href="src/css/stash.css">
   <link rel="stylesheet" href="src/css/coins.css">
   <link rel="stylesheet" href="src/css/settings.css">
+  <link rel="stylesheet" href="src/css/appearance.css">
   <link rel="stylesheet" href="src/css/auth.css">
   <link rel="stylesheet" href="src/css/home.css">
 </head>
@@ -941,6 +953,14 @@
     <h2>Settings</h2>
 
     <div class="setting-row" id="settings-nav">
+      <button id="appearance-btn" class="settings-nav-btn" type="button">
+        <span class="settings-nav-icon">&#9673;</span>
+        <span class="settings-nav-label">
+          <span class="settings-nav-title">Appearance</span>
+          <span class="settings-nav-sub">Theme and colours</span>
+        </span>
+        <span class="settings-nav-chev">&#8250;</span>
+      </button>
       <button id="how-to-btn" class="settings-nav-btn" type="button">
         <span class="settings-nav-icon ico ico-info"></span>
         <span class="settings-nav-label">
@@ -959,21 +979,8 @@
       </button>
     </div>
 
-    <div class="setting-row">
-      <span class="setting-label">Theme</span>
-      <div class="segmented" id="theme-picker" role="group" aria-label="Theme">
-        <button class="seg-btn" data-theme-choice="light" type="button">
-          <span class="seg-icon ico ico-sun"></span><span>Light</span>
-        </button>
-        <button class="seg-btn" data-theme-choice="dark" type="button">
-          <span class="seg-icon ico ico-moon"></span><span>Dark</span>
-        </button>
-        <button class="seg-btn" data-theme-choice="system" type="button">
-          <span class="seg-icon ico ico-setting"></span><span>System</span>
-        </button>
-      </div>
-      <p class="setting-hint" id="theme-hint"></p>
-    </div>
+    <!-- The theme picker and the colour wheel now live on the Appearance page
+         below, reached by the button above. -->
 
     <!-- Hidden entirely when the deploy has no Firebase — see auth.js -->
     <div class="setting-row hidden" id="account-row">
@@ -1002,6 +1009,83 @@
 </div>
 
 <!-- ===== HOW TO USE MODAL ===== -->
+<!-- ===== APPEARANCE MODAL =====
+     Opened from Settings; the Back button returns there. Two halves of one
+     question — which palette (theme.js) and which colour (appearance.js).
+
+     The wheel panel is moved under whichever colour row was clicked, so the
+     row reads as opening rather than as a dialog floating over the page.
+     It lives here at the end so it has somewhere to be when nothing is open. -->
+<div id="appearance-modal" class="modal hidden">
+  <div class="modal-box narrow">
+    <h2>Appearance</h2>
+
+    <div class="setting-row">
+      <span class="setting-label">Theme</span>
+      <div class="segmented" id="theme-picker" role="group" aria-label="Theme">
+        <button class="seg-btn" data-theme-choice="light" type="button">
+          <span class="seg-icon ico ico-sun"></span><span>Light</span>
+        </button>
+        <button class="seg-btn" data-theme-choice="dark" type="button">
+          <span class="seg-icon ico ico-moon"></span><span>Dark</span>
+        </button>
+        <button class="seg-btn" data-theme-choice="system" type="button">
+          <span class="seg-icon ico ico-setting"></span><span>System</span>
+        </button>
+      </div>
+      <p class="setting-hint" id="theme-hint"></p>
+    </div>
+
+    <div class="setting-row" id="color-settings">
+      <span class="setting-label">Colour</span>
+
+      <div class="color-row" data-role="primary">
+        <span class="color-row-name">Primary</span>
+        <button class="color-swatch" id="color-swatch-primary" data-role="primary"
+                type="button" aria-label="Primary colour"></button>
+        <span class="color-row-value" id="color-value-primary"></span>
+        <button class="btn-sm color-clear" data-role="primary" type="button">Reset</button>
+      </div>
+
+      <div class="color-row" data-role="secondary">
+        <span class="color-row-name">Secondary</span>
+        <button class="color-swatch" id="color-swatch-secondary" data-role="secondary"
+                type="button" aria-label="Secondary colour"></button>
+        <span class="color-row-value" id="color-value-secondary"></span>
+        <button class="btn-sm color-clear" data-role="secondary" type="button">Reset</button>
+      </div>
+
+      <!-- The wheel. Hue around, saturation outward; the lightness is the
+           theme's own, which is why there is no slider for it. -->
+      <div id="color-wheel-pop" class="hidden">
+        <div class="wheel-head">
+          <span id="wheel-title">Primary</span>
+          <button id="wheel-close" class="btn-sm icon-only" type="button"
+                  aria-label="Close the colour wheel">&times;</button>
+        </div>
+        <div id="color-wheel" class="color-wheel">
+          <div id="color-wheel-knob" class="wheel-knob hidden"></div>
+        </div>
+        <div class="wheel-foot">
+          <span id="wheel-hex" class="wheel-hex"></span>
+          <button id="wheel-default-btn" class="btn-sm" type="button">Use default</button>
+        </div>
+      </div>
+
+      <p class="setting-hint">
+        Each theme keeps its own lightness, so a colour stays readable on
+        parchment and by candlelight alike. Secondary follows the primary until
+        you set it yourself.
+      </p>
+    </div>
+
+    <div class="modal-footer">
+      <button class="settings-back-btn btn-sm">&#8249; Back</button>
+      <button class="cancel-btn btn-sm">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- Opened from Settings; the Back button returns there. Fill in the prose
      below — the .info-body wrapper carries the reading styles. -->
 <div id="how-to-modal" class="modal hidden">
@@ -1063,6 +1147,7 @@
 <script src="src/js/persistence.js"></script>
 <script src="src/js/theme.js"></script>
 <script src="src/js/panels.js"></script>
+<script src="src/js/appearance.js"></script>
 
 <script src="src/js/firebase-config.js"></script>
 <script src="src/js/party.js"></script>

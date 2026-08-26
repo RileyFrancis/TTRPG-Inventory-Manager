@@ -66,6 +66,7 @@ tools/              Standalone dev helpers (not part of the app)
 | `helpers.js` | Shared formatting + lookup helpers |
 | `persistence.js` | `saveState`, `loadState`, `exportItemsCSV` |
 | `theme.js` | Light/dark palette switching + the settings modal |
+| `appearance.js` | The accent colour, its per-theme resolution, and the hue wheel |
 | `panels.js` | Side-panel resize handles, collapse, and reopen buttons |
 | `firebase-config.js` | Parses `.env` → `FIREBASE_CONFIG` (`null` when absent) |
 | `party.js` | Firebase party sync + party UI |
@@ -103,6 +104,7 @@ that owns the element wins.
 | `stash.css` | The stash (items needing placement) and the container tabs |
 | `coins.css` | The multi-denomination cost input and the coin purse |
 | `settings.css` | The settings modal, the theme picker, and the info pages |
+| `appearance.css` | The Appearance page's colour rows and the hue wheel |
 | `auth.css` | The sign-in modal, the Settings account row, cloud conflict |
 | `home.css` | The home button, the roster page, and the character cards |
 
@@ -712,10 +714,18 @@ describes the *catalogue*, not the character, so it has its own localStorage key
 Two palettes, both defined as CSS custom properties in `tokens.css`:
 `:root` holds the light (aged parchment) tokens, `:root[data-theme="dark"]` the dark
 (candlelit) ones. **Every colour is a token — never write a literal colour in a rule**,
-or it will be wrong in one of the two themes.
+or it will be wrong in one of the two themes. The single exception is the hue wheel in
+`appearance.css`, which is not a themed surface but the spectrum itself — see
+*The accent colour* above.
 
 - `<html data-theme>` is always `light` or `dark`, never unset. The inline script in
   `index.html` `<head>` sets it before first paint (no flash); `theme.js` owns it after.
+  That script also applies the **custom accent** before first paint, for the same reason.
+- The theme picker itself lives on the **Appearance page** (Settings → Appearance),
+  beside the colour wheel — the two halves of one question.
+- `--accent` / `--accent-soft` / `--on-accent` can be **overridden per browser** by a
+  user-chosen colour, set as inline properties on `<html>`. Anything reading them still
+  just reads the token; see *The accent colour* for how the two themes are resolved.
 - The stored *preference* (`dnd_inventory_theme` in `localStorage`) is `light`, `dark`,
   or `system`. `system` is re-resolved live from `prefers-color-scheme`.
 - Deliberately **not** part of the `dnd_inventory_v1` save file: the theme belongs to the
@@ -770,6 +780,80 @@ or it will be wrong in one of the two themes.
   `applyTheme()` clears the cache and re-renders everything that bakes a colour into an
   inline style. **If you add a render path that inlines a palette colour, it must be
   re-run from `rerenderThemedContent()`.**
+
+### The accent colour
+
+Light/dark is the *palette*; this is the *colour* — the one hue everything gold
+in the app is drawn in. Both are reached from **Settings → Appearance**, which
+is an info page like How to Use and About: the theme picker lives there now, not
+on the Settings page itself. Light/dark stays in `theme.js`; the colour is
+`src/js/appearance.js`.
+
+**What the user picks is a hue and a saturation. Never a lightness.** That is
+the whole design, and it is what keeps a custom colour readable. Each theme
+already knows how light its accent has to be to sit on its own background —
+dark brown on parchment (L 33%), light gold on candlelit (L 56%) — so a pick
+supplies the *colour* and the theme supplies the *contrast*:
+
+```
+picked hsl(0, 66%)  ->  light theme  hsl(0, 66%, 33%)   a deep brick
+                    ->  dark  theme  hsl(0, 66%, 56%)   a warm coral
+```
+
+A pale yellow chosen in dark mode cannot come out invisible on cream paper,
+because the light palette never uses the pale version of it. The wheel therefore
+has **no lightness slider**: there is nothing there to offer.
+
+- Two roles. `primary` drives `--accent`, `secondary` drives `--accent-soft`
+  (the gold rules and gradients). Until the secondary is set on its own it
+  **follows the primary**, eight points calmer — which is the relationship the
+  default gold pair already has. Setting it explicitly is what breaks the link;
+  resetting it restores it.
+- `--on-accent` is derived, never picked: whichever of `--ink` / `--paper` has
+  the better **WCAG contrast ratio** against the resolved accent. Not chosen off
+  HSL lightness — a saturated yellow and a saturated blue at the same `l` are
+  nowhere near as bright as each other, and lightness alone would put black text
+  on the blue.
+- `--ink` and `--paper` are declared once in `tokens.css` **outside both
+  `[data-theme]` blocks**, because they are not a palette's choice — they are
+  the two things `--on-accent` is chosen *between*, and each theme just picks
+  one. `appearance.js` reads them rather than carrying a second copy.
+- **Both themes are resolved at pick time, not at paint time.** The stored
+  `vars` is a finished map of CSS properties per theme, so switching theme is
+  reading strings out of storage and never colour maths. That is what lets the
+  no-flash script in `index.html` `<head>` stay four lines instead of carrying
+  its own `hslToHex` — it applies the custom accent before first paint exactly
+  as it already applied `data-theme`. `sanitizeAccentPrefs()` recomputes `vars`
+  on load rather than trusting it, so a hand-edited cache cannot paint a colour
+  the wheel does not show.
+- **Nothing re-renders.** `rerenderThemedContent()` exists because rarity and
+  coin colours are baked into inline styles; the accent never is — it is read
+  straight from `var(--accent)` by ~150 rules and by nothing in JS — so setting
+  the property on `<html>` is the entire operation. Live drag-preview on the
+  wheel is free, and only the pointer *release* writes to storage.
+- A reset **removes** the property rather than writing the old value back, which
+  hands the palette to `tokens.css` instead of pinning a stale override.
+  `ACCENT_MANAGED` is the list of what may be removed.
+- Stored per browser (`dnd_inventory_colors`), like the theme, the folders, the
+  panel widths and the sheet layout: it describes this browser's idea of the
+  app, not anything about a character, and must be readable before app state
+  loads. Not in the save file, never synced.
+- The wheel is hue around and saturation outward, drawn from two CSS gradients
+  rather than a canvas. **It holds the only literal colours in the app, and they
+  belong there**: everything else must be a token or it is wrong in one of the
+  two palettes, but a spectrum is not themed — it *is* the colours, and it means
+  the same thing in both. The gradient is rebuilt at the lightness the role will
+  actually be given, so the wheel previews the result rather than a nominal 50%.
+- The wheel panel is **moved under whichever row was clicked** rather than
+  floating, so a row reads as opening. This modal can scroll on a short window,
+  and a popover would need positioning and clipping logic to survive that for no
+  gain.
+- **`appearance.js` loads after `theme.js`, so it wires its own button.**
+  theme.js's listeners run at *load* time and `openAppearanceModal` is not
+  defined yet at that point — binding it from there attaches `undefined`
+  silently, with no error to notice. Anything of appearance's that theme.js
+  needs is called at *runtime* (`applyAccentVars()` and `updateAppearanceUI()`
+  from `applyTheme`, `initAppearance()` from `initTheme`), which is fine.
 
 ### Icons
 

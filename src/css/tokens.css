@@ -61,8 +61,20 @@
   --text-dim: #71603f;
   --accent:      #8a5a1c;
   --accent-soft: #b08542;
-  --on-accent:   #fdf6e4;
+  --on-accent:   var(--paper);
   --danger:      #a3291f;
+
+  /* The two inks that go *on* an accent fill, declared once here rather than
+     per palette because they are not a palette's choice — they are the two
+     things `--on-accent` is chosen *between*, and each theme simply picks the
+     one its accent is dark or light enough to carry. Outside both `[data-theme]`
+     blocks so they survive either.
+
+     appearance.js reads them: a user-chosen accent has to pick its own ink by
+     luminance, and reading the tokens is what keeps that decision from being a
+     second, drifting copy of these two values. */
+  --ink:   #1a1206;
+  --paper: #fdf6e4;
 
   /* Parchment grain + leather emboss */
   --grain-a:    rgba(94, 66, 26, 0.055);
@@ -155,7 +167,7 @@
   --text-dim: #a08d6c;
   --accent:      #d4a24c;
   --accent-soft: #b8873a;
-  --on-accent:   #1a1206;
+  --on-accent:   var(--ink);
   --danger:      #d9584f;
 
   --grain-a:    rgba(255, 226, 170, 0.030);
