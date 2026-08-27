@@ -269,6 +269,29 @@ function applyFeatureUnlocks() {
 // actually have — is the one you want on opening the sheet.
 let showLockedFeatures = false;
 
+// Which cards are folded shut, for the same reason and by the same argument:
+// reading a long section by collapsing what you have already read is a glance,
+// not a property of the character. So it is a Set in memory — never in the save
+// file, never synced, gone on reload — and every card opens expanded, which is
+// the state that shows you what you have.
+//
+// **Keyed with the section's scope, not the bare id.** Class feature ids are
+// bare words (`rage`) where species trait ids are prefixed (`dwarf-darkvision`),
+// so the two files could collide on one, and a collision here would fold a card
+// in one section because you folded an unrelated one in the other. Ids in this
+// project are hand-written and the coin purse is the standing reminder of what
+// assuming they are unique costs.
+const collapsedFeatures = new Set();
+
+function featureKey(row, scope) {
+  return `${scope}:${row.id}`;
+}
+
+function toggleFeatureCollapsed(key) {
+  if (!collapsedFeatures.delete(key)) collapsedFeatures.add(key);
+  return !collapsedFeatures.has(key);   // the new expanded state
+}
+
 function renderClassFeatures() {
   const box = document.getElementById('sheet-features');
   const btn = document.getElementById('feature-toggle-locked');
@@ -323,19 +346,38 @@ function renderClassFeatures() {
 // is noise where information should be. Class features always carry theirs.
 function featureCard(row, opts = {}) {
   const withBadge = opts.badge !== false;
+  const key = featureKey(row, opts.scope ?? 'class');
+  const expanded = !collapsedFeatures.has(key);
 
   const card = document.createElement('article');
   card.className = 'feature-card' + (row.owned ? '' : ' locked')
-                 + (withBadge ? '' : ' no-badge');
+                 + (withBadge ? '' : ' no-badge')
+                 + (expanded ? '' : ' collapsed');
+  card.dataset.featureKey = key;
 
   const level = document.createElement('span');
   level.className = 'feature-level';
   level.textContent = row.level;
   level.title = `Unlocked at level ${row.level}`;
 
+  // **The name is a real `<button>` inside the heading**, which is the standard
+  // disclosure pattern: the heading keeps its meaning for anything reading the
+  // sheet's structure, and the button is a control that Tab reaches and Enter
+  // and Space work on without a keydown handler of our own. Styled back to bare
+  // text in the CSS, so the card looks exactly as it did before it could fold.
+  //
+  // Clicking anywhere on the card also toggles it — that is the delegated
+  // listener at the bottom of this file, which this button's click reaches by
+  // bubbling rather than by a second listener, so the two cannot double-fire.
   const name = document.createElement('h4');
   name.className = 'feature-name';
-  name.textContent = row.name;
+
+  const nameBtn = document.createElement('button');
+  nameBtn.type = 'button';
+  nameBtn.className = 'feature-name-btn';
+  nameBtn.textContent = row.name;
+  nameBtn.setAttribute('aria-expanded', String(expanded));
+  name.appendChild(nameBtn);
 
   if (row.showClass) {
     const tag = document.createElement('span');
@@ -354,6 +396,8 @@ function featureCard(row, opts = {}) {
   // render in the GM's browser exactly as a player's backstory does.
   const desc = document.createElement('div');
   desc.className = 'feature-desc';
+  desc.id = 'fd-' + key.replace(/[^\w-]/g, '-');
+  nameBtn.setAttribute('aria-controls', desc.id);
   renderMarkdownInto(desc, row.description);
 
   const text = document.createElement('div');
@@ -383,3 +427,50 @@ document.getElementById('feature-toggle-locked').addEventListener('click', () =>
   showLockedFeatures = !showLockedFeatures;
   renderClassFeatures();
 });
+
+// =============================================================================
+// FOLDING A CARD SHUT
+// =============================================================================
+// **One listener per section, not one per card** — the same argument the sheet
+// makes about its ~80 inputs, and these sections are rebuilt on every render, so
+// per-card listeners would be re-attached each time. The containers themselves
+// are static markup and outlive every rebuild, so a listener on them does not.
+//
+// Both sections are wired from here because `featureCard()` is here: the card is
+// one kind of thing drawn off two registries, and a fold that worked in one
+// section but not the other would be the two copies drifting that sharing the
+// card exists to prevent.
+//
+// The toggle only flips classes and the aria state on the card that was hit. It
+// deliberately does **not** re-render the section: a render rebuilds every card,
+// which would throw away keyboard focus mid-click and cost a Markdown parse per
+// feature to change one `display`.
+function initFeatureFolding() {
+  ['sheet-features', 'sheet-species-traits'].forEach(id => {
+    const box = document.getElementById(id);
+    if (box) box.addEventListener('click', onFeatureCardClick);
+  });
+}
+
+function onFeatureCardClick(e) {
+  const card = e.target.closest('.feature-card');
+  if (!card) return;
+
+  // A description is Markdown and may hold a link — and the section's own
+  // controls sit in the title above it. Anything that is already a control
+  // keeps its own click.
+  if (e.target.closest('a, input, textarea, select, label')) return;
+  if (e.target.closest('button') && !e.target.closest('.feature-name-btn')) return;
+
+  // A click that ends a drag-select is the reader highlighting a passage to
+  // copy, not asking for the card to shut under their cursor.
+  const sel = window.getSelection();
+  if (sel && !sel.isCollapsed && card.contains(sel.anchorNode)) return;
+
+  const expanded = toggleFeatureCollapsed(card.dataset.featureKey);
+  card.classList.toggle('collapsed', !expanded);
+  const btn = card.querySelector('.feature-name-btn');
+  if (btn) btn.setAttribute('aria-expanded', String(expanded));
+}
+
+initFeatureFolding();

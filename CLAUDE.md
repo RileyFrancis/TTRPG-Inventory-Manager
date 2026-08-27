@@ -634,6 +634,44 @@ are edited there — it needs no trigger of its own.
   `button`/`a`/field — without that the button would still work, but the
   smallest wobble would pick the section up instead.
 
+**Folding a card shut.** Clicking a card collapses it to its name, and clicking
+it again opens it. Like the locked-features toggle it is **session-only** — a
+`collapsedFeatures` Set in memory, never in the save file and never synced,
+because reading a long section by folding away what you have already read is a
+glance, not a property of the character. Every card opens expanded.
+
+- **The name is a real `<button>` inside the heading** — the standard disclosure
+  pattern. The heading keeps its meaning in the sheet's structure, and the
+  button is what Tab reaches and what Enter and Space work on, so there is no
+  keydown handler here at all. `.feature-name-btn` styles it back to bare text
+  (`font`/`color: inherit` from `.feature-name`, so the two cannot drift), which
+  is what keeps an expanded card pixel-identical to the one that could not fold.
+- One delegated listener **per section**, not per card, for the reason the sheet
+  gives about its ~80 inputs — and here also because the sections are rebuilt on
+  every render while the containers are static markup that outlives them. Both
+  are wired from `class-features.js` because `featureCard()` is: species traits
+  fold too, and a fold that worked in one section only would be exactly the
+  drift that sharing the card prevents.
+- The button's own click reaches that listener **by bubbling**, not by a second
+  listener, so a click on the name cannot toggle twice.
+- The key is `scope:id` (`class:rage`, `species:dwarf-darkvision`), not the bare
+  id. Class ids are bare words where species ids are prefixed, so the two files
+  could collide on one — and a collision would fold a card in one section
+  because you folded an unrelated one in the other. The coin purse is the
+  standing reminder of what assuming a hand-written id is unique costs.
+- The toggle flips classes and `aria-expanded` on the card that was hit and
+  deliberately **does not re-render the section**: a render rebuilds every card,
+  throwing away keyboard focus mid-click and costing a Markdown parse per
+  feature to change one `display`. The Set is read at build time, so the state
+  still survives a render driven by anything else (a party sync).
+- Clicks on a link, field or other control inside a description are left alone,
+  and **a click that ends a drag-select does not fold** — that is a reader
+  highlighting a passage to copy, not asking for the card to shut under them.
+- **No caret or chevron**, on purpose: an expanded card was to look exactly as
+  it always has, and a glyph at rest is a change to that. The hover lift
+  (`border-color: var(--accent)`) is the affordance instead, the same one
+  `.folder-header` uses for the same gesture.
+
 ### Species traits
 
 The sheet's Species Traits section reads `state.character.race` (a name, as

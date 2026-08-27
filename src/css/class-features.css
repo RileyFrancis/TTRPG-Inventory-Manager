@@ -87,6 +87,49 @@
   color: var(--accent);
 }
 
+/* ── Folding ── */
+/* The name is a `<button>` so the fold has a real keyboard control (see
+   `featureCard()`), and everything here exists to make that button look like
+   the heading text it replaced — an expanded card is pixel-identical to the one
+   that could not fold. `font: inherit` and `color: inherit` take the styling
+   from `.feature-name` above, so the two cannot drift. */
+.feature-name-btn {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: 2px;
+  cursor: pointer;
+}
+.feature-name-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* The whole card is the click target, so the whole card takes the cursor. The
+   description is still selectable — a reader copying a passage is not folding
+   anything, which `onFeatureCardClick` checks for. */
+.feature-card { cursor: pointer; }
+.feature-name { user-select: none; }
+
+/* There is no caret or chevron on purpose: an expanded card was to look exactly
+   as it always has, and a glyph at rest is a change to that. The hover lift is
+   the affordance instead — the same one `.folder-header` uses for the same
+   gesture. */
+.feature-card:hover { border-color: var(--accent); }
+
+/* Collapsed: the name and nothing else. The heading's bottom margin goes with
+   the body it was spacing away from, or the card keeps a gap under a card that
+   has nothing left to separate. */
+.feature-card.collapsed .feature-desc { display: none; }
+.feature-card.collapsed .feature-name { margin-bottom: 0; }
+
 /* Only drawn when the character has more than one class — see `showClass`. */
 .feature-class {
   flex-shrink: 0;

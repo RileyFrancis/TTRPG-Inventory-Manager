@@ -204,7 +204,8 @@ function renderSpeciesTraits() {
   const graded = drawn.some(r => r.level > 1);
 
   drawn.forEach(row => {
-    box.appendChild(featureCard({ ...row, showClass: false }, { badge: graded }));
+    box.appendChild(featureCard({ ...row, showClass: false },
+      { badge: graded, scope: 'species' }));
   });
 
   // Every trait is locked and the reader has chosen not to see them.
