@@ -40,6 +40,7 @@
   <link rel="stylesheet" href="src/css/character.css">
   <link rel="stylesheet" href="src/css/sheet-layout.css">
   <link rel="stylesheet" href="src/css/class-features.css">
+  <link rel="stylesheet" href="src/css/sheet-prose.css">
   <link rel="stylesheet" href="src/css/party.css">
   <link rel="stylesheet" href="src/css/equipment.css">
   <link rel="stylesheet" href="src/css/shop.css">
@@ -312,6 +313,20 @@
               </div>
             </section>
 
+            <!-- The same cards as Class Features, from the species registry in
+                 src/js/species-traits.js. The two sections share the markup and
+                 class-features.css deliberately: they are one kind of thing
+                 read two ways, and a second copy would only drift. -->
+            <section class="sheet-widget" data-widget="species">
+              <h3 class="sheet-h widget-title">Species Traits
+                <button id="trait-toggle-locked" class="btn-sm widget-action hidden"
+                        type="button"></button>
+              </h3>
+              <div class="widget-body">
+                <div id="sheet-species-traits" class="feature-list"></div>
+              </div>
+            </section>
+
             <section class="sheet-widget" data-widget="prof">
               <h3 class="sheet-h widget-title">Proficiencies</h3>
               <div class="widget-body">
@@ -326,6 +341,47 @@
                   <textarea data-sheet="weaponProf" data-kind="text" rows="2"></textarea></label>
                 <label class="sheet-field"><span>Tools</span>
                   <textarea data-sheet="toolProf" data-kind="text" rows="2"></textarea></label>
+                <label class="sheet-field"><span>Languages</span>
+                  <textarea data-sheet="languages" data-kind="text" rows="2"
+                            placeholder="Common, Elvish"></textarea></label>
+              </div>
+            </section>
+
+            <!-- The written sections. Each is one Markdown field with two
+                 faces — the textarea and the formatted reading of it — swapped
+                 by the button at the top left of the body. `data-prose` is also
+                 the `data-sheet` path, so src/js/sheet-prose.js needs no table
+                 of its own; see markdown.js for what the formatting allows and
+                 what its sanitizer refuses. -->
+            <section class="sheet-widget" data-widget="backstory">
+              <h3 class="sheet-h widget-title">Backstory &amp; Personality</h3>
+              <div class="widget-body">
+                <div class="prose-section" data-prose="backstory"
+                     data-prose-empty="No backstory written yet.">
+                  <div class="prose-bar">
+                    <button class="btn-sm prose-toggle" type="button">Preview</button>
+                    <span class="prose-hint">Markdown, plus HTML tags for anything it does not cover</span>
+                  </div>
+                  <textarea class="prose-input" data-sheet="backstory" data-kind="text" rows="12"
+                            placeholder="Where they came from, what they want, who they owe.&#10;&#10;## A heading&#10;**bold**, *italic*, - lists, &gt; quotes"></textarea>
+                  <div class="prose-preview"></div>
+                </div>
+              </div>
+            </section>
+
+            <section class="sheet-widget" data-widget="appearance">
+              <h3 class="sheet-h widget-title">Appearance</h3>
+              <div class="widget-body">
+                <div class="prose-section" data-prose="appearance"
+                     data-prose-empty="No description written yet.">
+                  <div class="prose-bar">
+                    <button class="btn-sm prose-toggle" type="button">Preview</button>
+                    <span class="prose-hint">Markdown, plus HTML tags for anything it does not cover</span>
+                  </div>
+                  <textarea class="prose-input" data-sheet="appearance" data-kind="text" rows="8"
+                            placeholder="Height, build, colouring, scars, how they carry themselves."></textarea>
+                  <div class="prose-preview"></div>
+                </div>
               </div>
             </section>
 
@@ -1187,6 +1243,11 @@
 <script src="src/js/characters.js"></script>
 <script src="src/js/character-sheet.js"></script>
 <script src="src/js/class-features.js"></script>
+<!-- After class-features.js: it reads that file's normalizeUnlocks() while
+     parsing data/species.json, which happens at load time, not at render. -->
+<script src="src/js/species-traits.js"></script>
+<script src="src/js/markdown.js"></script>
+<script src="src/js/sheet-prose.js"></script>
 <script src="src/js/sheet-layout.js"></script>
 <script src="src/js/equipment.js"></script>
 <script src="src/js/shop.js"></script>

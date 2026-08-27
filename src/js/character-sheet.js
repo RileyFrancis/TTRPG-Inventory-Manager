@@ -81,7 +81,10 @@ function defaultSheetFields() {
     saveProf: {},   // { [abilityId]: true }
     skillProf: {},  // { [skillId]: 0 | 1 | 2 }
     armorTraining: { light: false, medium: false, heavy: false, shields: false },
-    weaponProf: '', toolProf: '',
+    weaponProf: '', toolProf: '', languages: '',
+    // The written sections. Markdown, rendered by src/js/sheet-prose.js — plain
+    // strings here, because that is all they are to everything else.
+    backstory: '', appearance: '',
   };
 }
 
@@ -301,9 +304,17 @@ function renderCharacterSheet() {
 
   renderDeathSaves(readOnly);
 
-  // Driven by `classes` and `level`, both of which are edited above — so it
-  // re-runs with everything else rather than needing its own trigger.
+  // All three are driven by fields edited above — `classes`, `race`, `level`,
+  // and the two prose fields — so they re-run with everything else rather than
+  // needing a trigger of their own.
+  //
+  // Species first: `applyFeatureUnlocks()` runs inside `renderClassFeatures()`
+  // and unions both registries' keys, so it wants the species list settled. It
+  // reads the registry rather than the section, so the order is not load-
+  // bearing — but the two reading the same character in the same pass is.
+  renderSpeciesTraits();
   renderClassFeatures();
+  renderSheetProse();
 }
 
 function renderProfDot(el, kind) {

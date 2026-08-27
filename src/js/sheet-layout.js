@@ -115,9 +115,17 @@ function defaultSheetLayout() {
           },
         ],
       },
-      // A band across the bottom: a run of cards reads badly in a narrow column
-      // and there is no telling how many levels' worth there will be.
-      sheetWidgetNode('features'),
+      // Bands across the bottom. A run of feature cards reads badly in a narrow
+      // column and there is no telling how many levels' worth there will be;
+      // the written sections want the width for the same reason a page of prose
+      // does. Species sits beside Class Features because the two are read
+      // together — what your character *is*, either side of one row.
+      {
+        t: 's', dir: 'row', size: 1,
+        kids: [sheetWidgetNode('features'), sheetWidgetNode('species')],
+      },
+      sheetWidgetNode('backstory'),
+      sheetWidgetNode('appearance'),
     ],
   };
 }

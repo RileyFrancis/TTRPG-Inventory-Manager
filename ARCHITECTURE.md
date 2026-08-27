@@ -21,6 +21,7 @@ data/
   items.csv             Default item database, loaded at startup
   item_dtypes.csv       Reference: the allowed values for each items.csv column
   classes.json          The classes the app knows, and the features each grants
+  species.json          The species the app knows, and the traits each grants
   generic_items.csv     Reference data, not loaded
   items_old.csv         Reference data, not loaded
 img/                    Image assets — the icon set and the paper texture
@@ -82,6 +83,9 @@ In load order.
 | `characters.js` | The account's roster of characters, and the home screen |
 | `character-sheet.js` | Page one of the 2024 sheet: abilities, skills, combat stats |
 | `class-features.js` | The class registry, and the sheet's Class Features section |
+| `species-traits.js` | The species registry, and the sheet's Species Traits section |
+| `markdown.js` | Markdown to HTML for the written sections, and the sanitizer |
+| `sheet-prose.js` | Backstory & Appearance: the editor/preview swap |
 | `sheet-layout.js` | The sheet's sections as widgets: the split tree, drag-to-tile |
 | `equipment.js` | Equip slots, layout editor, equip/unequip |
 | `shop.js` | The left panel's tabs, GM shop editor, player shopfront, paying |
@@ -104,7 +108,8 @@ that owns the element wins.
 | `modals.css` | Modal chrome, and the shape editor inside the item editor |
 | `character.css` | The character tabs, and page one of the 2024 sheet |
 | `sheet-layout.css` | The sheet's split containers, resize seams, drop feedback |
-| `class-features.css` | The Class Features cards and their corner level badges |
+| `class-features.css` | The feature cards and badges — Class Features and Species Traits both |
+| `sheet-prose.css` | The written sections: the bar, the editor, and the rendered prose |
 | `party.css` | Party header badge, sidebar Party tab, party modal, kick |
 | `equipment.css` | The equip rack, the left-panel tabs, the layout editor |
 | `shop.css` | The GM shop editor, the player shopfront, and their modals |
@@ -182,9 +187,17 @@ Never write one into the code.
 reference to check against. `tools/shape-editor.html` draws a shape visually and
 prints the `shape` string to paste in.
 
-`data/classes.json` is the class registry — `{ id, name, features: [...] }` —
-read at load the same blocking way. Class data is **content, not code**: adding a
-class should never mean a code change.
+`data/classes.json` and `data/species.json` are the class and species
+registries — `{ id, name, features: [...] }` and `{ id, name, traits: [...] }` —
+read at load the same blocking way. Both are **content, not code**: adding a
+class or a species should never mean a code change, and both files are already
+the shape a user-authored one will take.
+
+The character sheet's written sections (Backstory, Appearance) are Markdown, and
+**raw HTML in them is allowed on purpose**. `src/js/markdown.js` is the only
+place in the app that turns a string into markup, so its sanitizer is what keeps
+one party member's backstory from running code in another's browser. Formatting
+survives; anything that can execute, fetch or navigate does not.
 
 ## Theming
 

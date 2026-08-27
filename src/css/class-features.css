@@ -1,9 +1,15 @@
 /* =============================================================================
-   class-features.css — the Class Features section of the character sheet
+   class-features.css — the feature cards, for both sections that use them
    ============================================================================= */
 /* One card per feature, in level order, each with its unlock level on a badge
    that rides the card's top-left corner. The model and the cards' markup are in
    src/js/class-features.js; where the section *sits* is sheet-layout.css.
+
+   **Two sections draw these cards**: Class Features, and Species Traits from
+   src/js/species-traits.js. They are one kind of thing — a named thing your
+   character has, with a level it arrived at — read off two registries, so they
+   share the styling rather than keeping two copies to drift apart. The only
+   difference is `.no-badge`, below.
 
    The badge is the whole trick here. It sits neither inside the card nor beside
    it but **across the corner**, about a third of it hanging off — so the level
@@ -60,6 +66,13 @@
   border-radius: 50%;
   box-shadow: 0 0 0 2px var(--panel), 0 1px 4px var(--emboss-lo);
 }
+
+/* A list whose levels are all the same is drawn without badges — see the
+   `badge` option in `featureCard()`. With nothing hanging off the corner the
+   card needs neither the inset that cleared it nor the room to hang into, so it
+   takes back both and the list closes up. */
+.feature-card.no-badge { padding-left: 13px; }
+.feature-list:has(> .feature-card.no-badge) { padding-left: 0; }
 
 /* ── The text ── */
 .feature-name {

@@ -1,0 +1,186 @@
+/* =============================================================================
+   sheet-prose.css — the character sheet's written sections
+   ============================================================================= */
+/* Backstory & Personality and Appearance: one Markdown field each, with two
+   faces. The swap is a single class on `.prose-section` — `previewing` — so
+   nothing in src/js/sheet-prose.js has to know which elements to show or hide,
+   and neither face can be left half-drawn.
+
+   The rendered half is the only place in the app where markup the *user* wrote
+   is painted. Every element under `.prose-preview` is therefore styled here
+   from scratch: what arrives is whatever survived markdown.js's allowlist, and
+   it must read as part of the sheet however it was written. */
+
+/* ── The bar ── */
+/* Top left of the section's body, above the writing. Not in the title: that is
+   the drag handle, and it already carries the section's name at the left. */
+.prose-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.prose-toggle {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  min-width: 62px;   /* "Edit" and "Preview" must not resize the bar */
+}
+
+/* Says what the box accepts, since neither Markdown nor raw HTML announces
+   itself. Drops out in the reading view, where there is nothing to type into. */
+.prose-hint {
+  font-size: 10px;
+  font-style: italic;
+  color: var(--text-dim);
+}
+.prose-section.previewing .prose-hint { visibility: hidden; }
+
+/* ── The two faces ── */
+.prose-input {
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.prose-preview { display: none; }
+.prose-section.previewing .prose-input { display: none; }
+.prose-section.previewing .prose-preview { display: block; }
+
+.prose-empty {
+  margin: 0;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--text-dim);
+}
+
+/* ── The rendered writing ── */
+/* Sized in the sheet's own terms rather than the browser's defaults, which are
+   built for a document rather than for a panel on a page of paper. The vertical
+   rhythm is one margin between blocks and none at the ends, so a section is
+   flush with the box whatever it happens to start or finish with. */
+.prose-preview {
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--text);
+  overflow-wrap: break-word;   /* a pasted URL must not widen the section */
+}
+
+.prose-preview > :first-child { margin-top: 0; }
+.prose-preview > :last-child { margin-bottom: 0; }
+
+.prose-preview p { margin: 0 0 0.85em; }
+
+/* The headings step down in size but share the section head's voice, so a
+   heading inside the writing reads as the writer's, not as another section. */
+.prose-preview h1,
+.prose-preview h2,
+.prose-preview h3,
+.prose-preview h4,
+.prose-preview h5,
+.prose-preview h6 {
+  margin: 1.2em 0 0.4em;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+.prose-preview h1 { font-size: 15px; }
+.prose-preview h2 { font-size: 14px; }
+.prose-preview h3 { font-size: 13px; }
+.prose-preview h4,
+.prose-preview h5,
+.prose-preview h6 { font-size: 12px; }
+
+.prose-preview ul,
+.prose-preview ol { margin: 0 0 0.85em; padding-left: 1.5em; }
+.prose-preview li { margin-bottom: 0.2em; }
+.prose-preview li > ul,
+.prose-preview li > ol { margin: 0.2em 0 0; }
+
+/* A quote is set off by a rule in the accent rather than by indentation alone,
+   which at this size reads as an accident. */
+.prose-preview blockquote {
+  margin: 0 0 0.85em;
+  padding: 0.1em 0 0.1em 0.9em;
+  border-left: 2px solid var(--accent-soft);
+  color: var(--text-dim);
+  font-style: italic;
+}
+.prose-preview blockquote > :last-child { margin-bottom: 0; }
+
+.prose-preview code {
+  padding: 0.1em 0.35em;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.92em;
+  background: var(--field);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+
+.prose-preview pre {
+  margin: 0 0 0.85em;
+  padding: 9px 11px;
+  background: var(--field);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow-x: auto;            /* a long line scrolls itself, never the sheet */
+}
+.prose-preview pre code {
+  padding: 0;
+  background: none;
+  border: none;
+}
+
+.prose-preview hr {
+  height: 1px;
+  margin: 1.2em 0;
+  border: 0;
+  background: var(--gold-line);
+  opacity: 0.8;
+}
+
+.prose-preview a { color: var(--accent); text-decoration: underline; }
+.prose-preview a:hover { text-decoration: none; }
+
+/* Whatever was linked to, it has to sit inside the section it was written in. */
+.prose-preview img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 3px;
+}
+
+.prose-preview strong, .prose-preview b { font-weight: 700; }
+.prose-preview mark {
+  padding: 0 0.2em;
+  color: var(--ink);
+  background: var(--accent-soft);
+}
+
+/* Hand-written tables — markdown.js does not parse pipe syntax, so anything
+   here was typed as HTML. It still has to look like it belongs. */
+.prose-preview table {
+  width: 100%;
+  margin: 0 0 0.85em;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+.prose-preview th,
+.prose-preview td {
+  padding: 4px 7px;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+.prose-preview th {
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  background: var(--field);
+}

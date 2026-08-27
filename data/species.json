@@ -1,0 +1,285 @@
+{
+  "_comment": [
+    "The species the app knows, and what each one hands out. Read by",
+    "src/js/species-traits.js, which is the only file that may touch this.",
+    "",
+    "A species is { id, name, traits[] }; a trait is",
+    "{ id, level, name, description, unlocks? }.",
+    "",
+    "  id          stable, and never derived from position. A default item's id",
+    "              is its CSV row number and that has bitten this project before",
+    "              (see the coin purse) - so ids here are written, not counted.",
+    "  level       optional, defaults to 1. Most species traits arrive at level",
+    "              1; the few that scale (Draconic Flight, Large Form) say so.",
+    "  unlocks     optional. Names one or more parts of the character sheet that",
+    "              stay hidden until this trait is owned - the same key space",
+    "              class features use, and the same data-unlocked-by markup.",
+    "              No species uses one today; the support is here because a",
+    "              user-authored species is expected to.",
+    "",
+    "Order inside a level is the order written here. Descriptions are terse",
+    "summaries of the mechanic written for this app - do not paste rulebook",
+    "text in.",
+    "",
+    "This file is the shape a user-authored species will take, so keep it data",
+    "only: anything that needs logic belongs in species-traits.js. The",
+    "character field these match against is `race`, which is what the state",
+    "has always called it; the sheet labels it Species."
+  ],
+  "version": 1,
+  "species": [
+    {
+      "id": "aasimar",
+      "name": "Aasimar",
+      "traits": [
+        {
+          "id": "aasimar-celestial-resistance",
+          "name": "Celestial Resistance",
+          "description": "You have resistance to necrotic and radiant damage."
+        },
+        {
+          "id": "aasimar-darkvision",
+          "name": "Darkvision",
+          "description": "You see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light."
+        },
+        {
+          "id": "aasimar-healing-hands",
+          "name": "Healing Hands",
+          "description": "As a Magic action, touch a creature and heal it for a number of d4s equal to your proficiency bonus. Once per long rest."
+        },
+        {
+          "id": "aasimar-light-bearer",
+          "name": "Light Bearer",
+          "description": "You know the Light cantrip, cast with Charisma."
+        },
+        {
+          "id": "aasimar-celestial-revelation",
+          "level": 3,
+          "name": "Celestial Revelation",
+          "description": "As a bonus action, transform for one minute - Heavenly Wings, Inner Radiance or Necrotic Shroud - and add extra damage once per turn while it lasts. Once per long rest."
+        }
+      ]
+    },
+    {
+      "id": "dragonborn",
+      "name": "Dragonborn",
+      "traits": [
+        {
+          "id": "dragonborn-draconic-ancestry",
+          "name": "Draconic Ancestry",
+          "description": "Choose a kind of dragon. That choice sets the damage type of your Breath Weapon and your resistance."
+        },
+        {
+          "id": "dragonborn-breath-weapon",
+          "name": "Breath Weapon",
+          "description": "Replace one attack with a 15-foot cone or 30-foot line of your ancestry's damage type. Dex save for half; the dice grow at 5th, 11th and 17th level. Uses equal to your proficiency bonus per long rest."
+        },
+        {
+          "id": "dragonborn-damage-resistance",
+          "name": "Damage Resistance",
+          "description": "You have resistance to the damage type of your Draconic Ancestry."
+        },
+        {
+          "id": "dragonborn-darkvision",
+          "name": "Darkvision",
+          "description": "You see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light."
+        },
+        {
+          "id": "dragonborn-draconic-flight",
+          "level": 5,
+          "name": "Draconic Flight",
+          "description": "As a bonus action, sprout spectral wings for ten minutes and gain a fly speed equal to your walking speed. Once per long rest."
+        }
+      ]
+    },
+    {
+      "id": "dwarf",
+      "name": "Dwarf",
+      "traits": [
+        {
+          "id": "dwarf-darkvision",
+          "name": "Darkvision",
+          "description": "You see in dim light within 120 feet as if it were bright light, and in darkness as if it were dim light."
+        },
+        {
+          "id": "dwarf-dwarven-resilience",
+          "name": "Dwarven Resilience",
+          "description": "You have resistance to poison damage and advantage on saves against being poisoned."
+        },
+        {
+          "id": "dwarf-dwarven-toughness",
+          "name": "Dwarven Toughness",
+          "description": "Your hit point maximum increases by 1, and by 1 again at every level after."
+        },
+        {
+          "id": "dwarf-stonecunning",
+          "name": "Stonecunning",
+          "description": "As a bonus action, gain tremorsense out to 60 feet for ten minutes while on a stone surface. Uses equal to your proficiency bonus per long rest."
+        }
+      ]
+    },
+    {
+      "id": "elf",
+      "name": "Elf",
+      "traits": [
+        {
+          "id": "elf-darkvision",
+          "name": "Darkvision",
+          "description": "You see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light."
+        },
+        {
+          "id": "elf-elven-lineage",
+          "name": "Elven Lineage",
+          "description": "Choose Drow, High Elf or Wood Elf. Each grants a cantrip now and a spell at 3rd and 5th level, and Drow widens your Darkvision to 120 feet while Wood Elf raises your speed to 35."
+        },
+        {
+          "id": "elf-fey-ancestry",
+          "name": "Fey Ancestry",
+          "description": "You have advantage on saves to avoid or end the charmed condition."
+        },
+        {
+          "id": "elf-keen-senses",
+          "name": "Keen Senses",
+          "description": "You gain proficiency in Insight, Perception or Survival."
+        },
+        {
+          "id": "elf-trance",
+          "name": "Trance",
+          "description": "You do not sleep. A long rest takes you four hours of light meditation instead of eight."
+        }
+      ]
+    },
+    {
+      "id": "gnome",
+      "name": "Gnome",
+      "traits": [
+        {
+          "id": "gnome-darkvision",
+          "name": "Darkvision",
+          "description": "You see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light."
+        },
+        {
+          "id": "gnome-gnomish-cunning",
+          "name": "Gnomish Cunning",
+          "description": "You have advantage on Intelligence, Wisdom and Charisma saving throws."
+        },
+        {
+          "id": "gnome-gnomish-lineage",
+          "name": "Gnomish Lineage",
+          "description": "Choose Forest Gnome for Minor Illusion and Speak with Animals, or Rock Gnome for Mending, Prestidigitation and a small clockwork device you can build."
+        }
+      ]
+    },
+    {
+      "id": "goliath",
+      "name": "Goliath",
+      "traits": [
+        {
+          "id": "goliath-giant-ancestry",
+          "name": "Giant Ancestry",
+          "description": "Choose a supernatural boon from your giant forebears - Cloud, Fire, Frost, Hill, Stone or Storm. Uses equal to your proficiency bonus per long rest."
+        },
+        {
+          "id": "goliath-powerful-build",
+          "name": "Powerful Build",
+          "description": "You have advantage on saves against being grappled, and count as one size larger for carrying capacity."
+        },
+        {
+          "id": "goliath-large-form",
+          "level": 5,
+          "name": "Large Form",
+          "description": "As a bonus action, become Large for ten minutes, with advantage on Strength checks and 10 extra feet of speed. Once per long rest."
+        }
+      ]
+    },
+    {
+      "id": "halfling",
+      "name": "Halfling",
+      "traits": [
+        {
+          "id": "halfling-brave",
+          "name": "Brave",
+          "description": "You have advantage on saves to avoid or end the frightened condition."
+        },
+        {
+          "id": "halfling-halfling-nimbleness",
+          "name": "Halfling Nimbleness",
+          "description": "You can move through the space of any creature larger than you."
+        },
+        {
+          "id": "halfling-luck",
+          "name": "Luck",
+          "description": "When a d20 test rolls a 1, reroll it and use the new roll."
+        },
+        {
+          "id": "halfling-naturally-stealthy",
+          "name": "Naturally Stealthy",
+          "description": "You can hide even when obscured only by a creature at least one size larger than you."
+        }
+      ]
+    },
+    {
+      "id": "human",
+      "name": "Human",
+      "traits": [
+        {
+          "id": "human-resourceful",
+          "name": "Resourceful",
+          "description": "You gain Heroic Inspiration whenever you finish a long rest."
+        },
+        {
+          "id": "human-skillful",
+          "name": "Skillful",
+          "description": "You gain proficiency in one skill of your choice."
+        },
+        {
+          "id": "human-versatile",
+          "name": "Versatile",
+          "description": "You gain an Origin feat of your choice."
+        }
+      ]
+    },
+    {
+      "id": "orc",
+      "name": "Orc",
+      "traits": [
+        {
+          "id": "orc-adrenaline-rush",
+          "name": "Adrenaline Rush",
+          "description": "Take the Dash action as a bonus action and gain temporary hit points equal to your proficiency bonus. Uses equal to your proficiency bonus per short or long rest."
+        },
+        {
+          "id": "orc-darkvision",
+          "name": "Darkvision",
+          "description": "You see in dim light within 120 feet as if it were bright light, and in darkness as if it were dim light."
+        },
+        {
+          "id": "orc-relentless-endurance",
+          "name": "Relentless Endurance",
+          "description": "When reduced to 0 hit points without being killed outright, drop to 1 instead. Once per long rest."
+        }
+      ]
+    },
+    {
+      "id": "tiefling",
+      "name": "Tiefling",
+      "traits": [
+        {
+          "id": "tiefling-darkvision",
+          "name": "Darkvision",
+          "description": "You see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light."
+        },
+        {
+          "id": "tiefling-fiendish-legacy",
+          "name": "Fiendish Legacy",
+          "description": "Choose Abyssal, Chthonic or Infernal. Each grants a damage resistance and a cantrip now, and a spell at 3rd and 5th level."
+        },
+        {
+          "id": "tiefling-otherworldly-presence",
+          "name": "Otherworldly Presence",
+          "description": "You know the Thaumaturgy cantrip, cast with the ability your Fiendish Legacy uses."
+        }
+      ]
+    }
+  ]
+}

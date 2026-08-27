@@ -25,6 +25,7 @@ src/js/*.js         Application logic, one file per concern
 data/items.csv      Default item database
 data/item_dtypes.csv  Reference only — the allowed values for each items.csv column
 data/classes.json   The classes the app knows, and the features each grants
+data/species.json   The species the app knows, and the traits each grants
 img/                Image assets (the tiled paper texture)
 tools/              Standalone dev helpers (not part of the app)
 ```
@@ -78,6 +79,9 @@ tools/              Standalone dev helpers (not part of the app)
 | `character-sheet.js` | Page one of the 2024 sheet: abilities, skills, combat stats |
 | `sheet-layout.js` | The sheet's sections as widgets: the split tree, drag-to-tile, seams |
 | `class-features.js` | The class registry, and the sheet's Class Features section |
+| `species-traits.js` | The species registry, and the sheet's Species Traits section |
+| `markdown.js` | Markdown to HTML for the written sections, and the sanitizer |
+| `sheet-prose.js` | Backstory & Appearance: the editor/preview swap |
 | `equipment.js` | Equip slots, layout editor, equip/unequip |
 | `shop.js` | The left panel's tabs, GM shop editor, player shopfront, paying |
 | `tooltip.js` | Hover tooltip |
@@ -99,7 +103,8 @@ that owns the element wins.
 | `modals.css` | Modal chrome, and the shape editor inside the item editor |
 | `character.css` | The character tabs, and page one of the 2024 character sheet |
 | `sheet-layout.css` | The sheet's split containers, resize seams, and drop feedback |
-| `class-features.css` | The Class Features cards and their corner level badges |
+| `class-features.css` | The feature cards and corner badges, for Class Features *and* Species Traits |
+| `sheet-prose.css` | The written sections: the bar, the editor, and the rendered prose |
 | `party.css` | Party header badge, the sidebar Party tab, party modal, kick |
 | `equipment.css` | The equip rack, the left-panel tabs, the layout editor |
 | `shop.css` | The GM shop editor, the player shopfront, and their modals |
@@ -377,12 +382,14 @@ grid when a tab's *Character Sheet* is picked. It reads and writes the same
   party roster update, and a sync landing mid-word must not reset the box.
 - One delegated listener per event, not one per box: there are ~80 of them.
 - Read-only when `isReadOnly()` — a player looking at someone else's sheet.
-- **Class features** are their own section, built from a class registry — see
-  *Class features* below.
-- **Not yet built:** the attacks table, and all of page two (spells, backstory,
-  appearance, alignment, attunement). Equipment and coins are deliberately absent
-  — the inventory and the coin purse already own them, and a second copy on the
-  sheet would be a second answer.
+- **Class features** and **species traits** are their own sections, built from
+  registries — see *Class features* and *Species traits* below.
+- **Backstory & Personality** and **Appearance** are Markdown, with an
+  editor/preview swap — see *The written sections* below.
+- **Not yet built:** the attacks table, and the rest of page two (spells,
+  alignment, attunement). Equipment and coins are deliberately absent — the
+  inventory and the coin purse already own them, and a second copy on the sheet
+  would be a second answer.
 
 ### The sheet's layout
 
@@ -596,6 +603,121 @@ are edited there — it needs no trigger of its own.
   `button`/`a`/field — without that the button would still work, but the
   smallest wobble would pick the section up instead.
 
+### Species traits
+
+The sheet's Species Traits section reads `state.character.race` (a name, as
+typed) and `level`, and shows what that species hands out. It is deliberately
+`class-features.js` again, in `src/js/species-traits.js`: same registry shape,
+same card, same locked/unlocked toggle, same reasoning. Read the Class features
+section above first — what follows is only where the two differ.
+
+- **The data is `data/species.json`**, read the same blocking way and for the
+  same reason: content, not code. `{ id, name, traits: [...] }`, and a trait is
+  `{ id, name, level?, description, unlocks? }`.
+- **`level` is optional here** and defaults to 1, where a class feature's is
+  required. Almost every species trait arrives at level 1, so writing it on each
+  of them would be ceremony that only invites a typo; the handful that scale
+  (Draconic Flight, Large Form, Celestial Revelation) say so.
+- **One species, not a list.** `race` is a single field where `classes` is a
+  list, so there is no per-card species tag and no sort by species. That is the
+  whole of the difference in the model.
+- **The level badge is drawn only when the levels differ**, judged on the rows
+  actually *drawn*. For a class the badge is what the list is scanned by; for a
+  species almost everything is level 1, and a column of identical `1`s is noise
+  standing where information should be. So a level-1 Dragonborn gets no badges,
+  and they appear when the reader asks to see the locked trait and the levels
+  start to differ. `featureCard(row, { badge })` and `.feature-card.no-badge`
+  are the two halves of that.
+- The cards and their CSS are **shared, not copied** — `featureCard()` and
+  `featureNote()` live in `class-features.js`, and `class-features.css` styles
+  both sections. They are one kind of thing (a named thing you have, with a
+  level it arrived at) read off two registries; two copies would only drift.
+  That sharing is why **`species-traits.js` must load after `class-features.js`**:
+  it calls `normalizeUnlocks()` while parsing the JSON, which happens at load
+  time rather than at render.
+
+**Unlocks are now a union.** A species trait may name parts of the sheet exactly
+as a class feature may — same key space, same `data-unlocked-by` markup.
+`applyFeatureUnlocks()` in `class-features.js` still owns the mechanism and
+gathers both sets of keys; `speciesUnlockKeys()` / `speciesUnlocksAreAuthoritative()`
+are the species half.
+
+- The authoritative test is an **AND**, and has to be: if either half of what
+  the character is cannot be reasoned about, a hidden box might be one they
+  should have, and hiding it reads as the app having eaten a field. So a
+  Fighter/Warforged keeps their Subclass field, because this app has never heard
+  of a Warforged and will not guess on its behalf.
+- A **blank** species is authoritative — it grants nothing and hides nothing,
+  which is the honest reading of an empty field. Only a *typed and unknown* one
+  disables the mechanism.
+- No species in `data/species.json` uses `unlocks` today. The support is there
+  because a user-authored species is expected to, and because a Lineage field
+  (Elven Lineage, Fiendish Legacy) is the obvious next one to arrive — it is
+  exactly the Subclass field's shape.
+
+### The written sections
+
+Backstory & Personality and Appearance are the parts of a character the rules
+have nothing to say about, so they are not boxes and derived numbers but a page
+to write on. `src/js/sheet-prose.js` is the sections; `src/js/markdown.js` is
+the formatting.
+
+- **Neither section owns data.** They are two more `data-sheet` string fields on
+  `state.character` (`backstory`, `appearance`), written by the same delegated
+  listener as every other box, saved by the same save, synced by the same sync.
+  `data-prose` on the wrapper *is* the `data-sheet` path, so a section needs no
+  table in the JS — a row of markup is the whole of adding one.
+- **The mode is not a setting.** Which face you are looking at is a glance —
+  the same argument the feature toggles make — so it is session-only. What it
+  *is* is a guess: a section with writing in it opens formatted, because that is
+  the readable form; an empty one opens in the editor, because a blank preview
+  is a dead end. Touching the toggle replaces the guess with your choice, until
+  the sheet on screen changes to a different character (`proseCharacterId`).
+- **The preview is only rendered when it is on screen.** Every keystroke
+  re-renders the sheet, and parsing a whole backstory each time to update
+  something nobody is looking at would be work for nothing.
+- Read-only does not gate the swap: someone looking at another player's sheet
+  can still read how a passage was written. The textarea is disabled by
+  `renderCharacterSheet()` along with every other input, so nothing can change.
+- The toggle is at the top left of the widget *body*, not in the title — the
+  title is the drag handle and already carries the section's name at the left.
+
+**Markdown, and the sanitizer that is not optional.** `markdown.js` is the only
+place in the app that turns a string into markup; everywhere else builds DOM
+with `createElement` and `textContent`, which cannot inject anything.
+
+> A character sheet is not private. Party sync copies it to Firebase, and every
+> other member — and the GM — renders it in their own browser. Unsanitized, a
+> `<script>` or an `onerror=` in a player's backstory would run on the GM's
+> machine, against the GM's signed-in Firebase session.
+
+- So the rule is **formatting is allowed, behaviour is not**. Raw HTML passes
+  through on purpose, because reaching past what the renderer offers is the
+  point; then `MD_ALLOWED_TAGS` / `MD_ALLOWED_ATTRS` decide what survives.
+  `<b>`, `<span style>` and a hand-written `<table>` all work; `<script>`,
+  `<iframe>`, `on*=` and `javascript:` do not.
+- An unknown tag is **unwrapped** — its text is the player's writing and is
+  kept. `MD_DROP_WHOLE` is the short list that goes with its contents instead,
+  because inside a `<script>` the text *is* the payload.
+- Parsing happens in a detached `<template>`, whose content has no browsing
+  context — nothing loads or runs while it is being scrubbed.
+- URLs are checked after control characters, spaces and entities are stripped
+  (`stripInvisible`), because `java&#9;script:` is a URL a browser will happily
+  run and a naive prefix check will happily pass. `style` is refused whole if it
+  contains `url(`, `@import` or friends: formatting needs none of them.
+- `on*` attributes are dropped **before** the allowlist is consulted rather than
+  by relying on it — that is the one class of attribute a later edit to the
+  lists must not be able to let through.
+- **Every block branch must consume a line.** The tests that end a paragraph are
+  looser than the ones that open a block, so a line like ```` ```js extra ````
+  can fall through all of them; leaving `i` where it was is an infinite loop, on
+  text a player is allowed to type. Whatever reaches the end with nothing
+  collected is taken as one line of paragraph.
+- A single newline is a **line break**, not a space. Standard Markdown wants two
+  trailing spaces, which is a rule nobody writing a backstory in a box knows.
+- Pipe tables are **not** parsed. A hand-written `<table>` is the escape hatch,
+  and `sheet-prose.css` styles one to match the sheet.
+
 ### Character tabs
 
 The strip above the inventory (`character-tabs.js`) holds one tab per character —
@@ -709,9 +831,10 @@ the *only* place that knows there were ever two shapes. The key is unchanged
 (`dnd_inventory_v1`): it names the storage slot, not the payload version, and
 renaming it would orphan every existing save.
 
-`class-features.js` reads `data/classes.json` the same blocking way, and is
-skipped over silently if it is missing — the sheet is usable with no classes
-known, it simply says it has not heard of whatever was typed.
+`class-features.js` reads `data/classes.json` the same blocking way, and
+`species-traits.js` reads `data/species.json` beside it. Both are skipped over
+silently if missing — the sheet is usable with no classes or species known, it
+simply says it has not heard of whatever was typed.
 
 `items.js` reads `data/items.csv` with a **synchronous** `XMLHttpRequest` so `DEFAULT_ITEMS`
 is populated before `init()` runs. That is why the app needs an HTTP server rather than

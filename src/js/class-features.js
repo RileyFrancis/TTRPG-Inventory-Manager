@@ -190,9 +190,25 @@ function featureUnlocksAreAuthoritative(character) {
   return names.length > 0 && names.every(n => !!findClassByName(n));
 }
 
+// **Both registries feed one key space.** A species trait may unlock a part of
+// the sheet exactly as a class feature may, so the keys are unioned here and the
+// markup never has to know which kind of thing granted it. This function owns
+// the mechanism; species-traits.js supplies its half through the two functions
+// called below.
+//
+// The *authoritative* test is an AND, and has to be: if either half of what the
+// character is cannot be reasoned about, a hidden box might be one they should
+// have, and hiding it reads as the app having eaten a field they were using.
 function applyFeatureUnlocks() {
-  const authoritative = featureUnlocksAreAuthoritative(state.character);
-  const keys = authoritative ? unlockedSheetKeys(state.character) : null;
+  const authoritative = featureUnlocksAreAuthoritative(state.character)
+                     && speciesUnlocksAreAuthoritative(state.character);
+
+  let keys = null;
+  if (authoritative) {
+    keys = unlockedSheetKeys(state.character);
+    speciesUnlockKeys(state.character).forEach(k => keys.add(k));
+  }
+
   document.querySelectorAll('#character-sheet [data-unlocked-by]').forEach(el => {
     const key = el.dataset.unlockedBy;
     el.classList.toggle('hidden', !!keys && !keys.has(key));
@@ -254,9 +270,17 @@ function renderClassFeatures() {
 // the badge is what you scan the list by, so it breaks the edge to be read
 // before the card it belongs to. `.feature-list` carries the padding that keeps
 // the overhang from being clipped.
-function featureCard(row) {
+//
+// **Shared with the species traits section**, which draws the same card from the
+// same list shape (see species-traits.js). `opts.badge` is what it varies: a
+// species grants almost everything at level 1, and a column of identical badges
+// is noise where information should be. Class features always carry theirs.
+function featureCard(row, opts = {}) {
+  const withBadge = opts.badge !== false;
+
   const card = document.createElement('article');
-  card.className = 'feature-card' + (row.owned ? '' : ' locked');
+  card.className = 'feature-card' + (row.owned ? '' : ' locked')
+                 + (withBadge ? '' : ' no-badge');
 
   const level = document.createElement('span');
   level.className = 'feature-level';
@@ -282,7 +306,8 @@ function featureCard(row) {
   text.className = 'feature-text';
   text.append(name, desc);
 
-  card.append(level, text);
+  if (withBadge) card.append(level, text);
+  else card.append(text);
   return card;
 }
 
