@@ -103,7 +103,7 @@ that owns the element wins.
 | `modals.css` | Modal chrome, and the shape editor inside the item editor |
 | `character.css` | The character tabs, and page one of the 2024 character sheet |
 | `sheet-layout.css` | The sheet's split containers, resize seams, and drop feedback |
-| `class-features.css` | The feature cards and corner badges, for Class Features *and* Species Traits |
+| `class-features.css` | The feature cards, corner badges, and the Markdown inside a description — for Class Features *and* Species Traits |
 | `sheet-prose.css` | The written sections: the bar, the editor, and the rendered prose |
 | `party.css` | Party header badge, the sidebar Party tab, party modal, kick |
 | `equipment.css` | The equip rack, the left-panel tabs, the layout editor |
@@ -556,6 +556,37 @@ an unreadable file leaves the registry empty rather than throwing.
   (`showClass`) — one class does not need saying on every card.
 - Descriptions are terse summaries of the mechanic, written for this app. Do not
   paste rulebook text in.
+- **A description is Markdown**, rendered by `markdown.js` through the same
+  `renderMarkdownInto()` the written sections use — so a feature can bold the
+  name of a mechanic and list what it grants rather than running it all into one
+  sentence. That makes the class and species files a *second consumer of the
+  sanitizer*, which is the point: a user-authored class will sync to Firebase and
+  render in the GM's browser exactly as a player's backstory does. `.feature-desc`
+  is therefore a `<div>`, never a `<p>` — a paragraph cannot legally hold the
+  list or second paragraph the renderer emits.
+- **`description` may be an array** (`normalizeDescription()`, shared with
+  species-traits.js). JSON has no multi-line string, and a bulleted feature
+  written as one `"…\n- one\n- two"` line is unreadable in the file it has to be
+  hand-edited in. It is the convention the files' own `_comment` blocks already
+  use. That is also the answer to "should this be YAML" — it should not: a
+  parser is a dependency, and this app has none.
+  - **An entry is a block, not a line.** Entries are separated by a *blank*
+    line, so a paragraph is one entry and nothing has to type `""` between them.
+  - **Except a list item, which joins to the line above.** `collectListItems()`
+    stops at a blank line, so a blank between two bullets yields two separate
+    one-item lists with a gap — never what someone writing `- a` / `- b` on two
+    entries meant. The one case where the blank line would be wrong is the one
+    case it is not inserted. The test is `MD_LIST_RE`, **borrowed from
+    markdown.js rather than copied**, so what counts as a list line here cannot
+    drift from what the parser does with it.
+  - **A nested array is one block with its lines kept together**, for the two
+    things that need consecutive lines and are not lists: a hand-written
+    `<table>` (the raw-HTML branch reads to the next blank line), and a stanza
+    wanting hard breaks mid-paragraph.
+  - Borrowing `MD_LIST_RE` is why **`markdown.js` now loads before
+    `class-features.js`**: the JSON is parsed at load time, not at render, so
+    the regex has to exist by then. markdown.js declares only functions and
+    constants, so it is safe that early.
 
 **Unlocks — sheet parts that arrive with a feature.** A feature may name parts
 of the sheet it brings with it (`"unlocks": ["subclass"]`). The sheet marks

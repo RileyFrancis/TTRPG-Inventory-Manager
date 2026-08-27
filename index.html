@@ -1242,11 +1242,16 @@
 <script src="src/js/character-tabs.js"></script>
 <script src="src/js/characters.js"></script>
 <script src="src/js/character-sheet.js"></script>
-<script src="src/js/class-features.js"></script>
-<!-- After class-features.js: it reads that file's normalizeUnlocks() while
-     parsing data/species.json, which happens at load time, not at render. -->
-<script src="src/js/species-traits.js"></script>
+<!-- Before class-features.js, which reads MD_LIST_RE while parsing
+     data/classes.json — and that parse happens at load time, not at render.
+     markdown.js itself declares only functions and constants, so it is safe
+     this early. -->
 <script src="src/js/markdown.js"></script>
+<script src="src/js/class-features.js"></script>
+<!-- After class-features.js: it reads that file's normalizeUnlocks() and
+     normalizeDescription() while parsing data/species.json, which happens at
+     load time, not at render. -->
+<script src="src/js/species-traits.js"></script>
 <script src="src/js/sheet-prose.js"></script>
 <script src="src/js/sheet-layout.js"></script>
 <script src="src/js/equipment.js"></script>

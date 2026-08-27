@@ -81,8 +81,8 @@ function sanitizeTrait(t) {
   return {
     id, name,
     level: Number.isFinite(level) ? Math.max(1, Math.min(20, level)) : 1,
-    description: String(t?.description ?? ''),
-    unlocks: normalizeUnlocks(t?.unlocks), // shared with class-features.js
+    description: normalizeDescription(t?.description), // shared, as below
+    unlocks: normalizeUnlocks(t?.unlocks),              // shared with class-features.js
   };
 }
 

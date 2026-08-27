@@ -99,11 +99,105 @@
   color: var(--text-dim);
 }
 
+/* ── The description ── */
+/* Markdown, rendered by markdown.js — so this styles the blocks *inside* the
+   box rather than the box's own text. Deliberately a trimmed set rather than a
+   copy of `.prose-preview` in sheet-prose.css: that is a page someone writes on
+   and wants headings and rules for, this is a card two or three lines long, and
+   the shared rhythm is the only part worth having twice.
+
+   As there, the vertical rhythm is one margin between blocks and none at the
+   ends, so a description sits flush in the card whatever it starts or finishes
+   with. Everything is sized in `em` off the card's own 11.5px. */
 .feature-desc {
   margin: 0;
   font-size: 11.5px;
   line-height: 1.5;
   color: var(--text);
+  overflow-wrap: break-word;
+}
+
+.feature-desc > :first-child { margin-top: 0; }
+.feature-desc > :last-child { margin-bottom: 0; }
+
+.feature-desc p { margin: 0 0 0.6em; }
+
+/* A heading in a feature is unusual but legal, so it must not arrive at the
+   browser's default size — that is built for a document, not for a card. */
+.feature-desc h1,
+.feature-desc h2,
+.feature-desc h3,
+.feature-desc h4,
+.feature-desc h5,
+.feature-desc h6 {
+  margin: 0.9em 0 0.3em;
+  font-family: var(--font-display);
+  font-size: 1em;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+
+/* What most descriptions are actually for: the two or three things a feature
+   hands you, one per line, instead of a sentence with semicolons in it. */
+.feature-desc ul,
+.feature-desc ol { margin: 0 0 0.6em; padding-left: 1.35em; }
+.feature-desc li { margin-bottom: 0.15em; }
+.feature-desc li > ul,
+.feature-desc li > ol { margin: 0.15em 0 0; }
+
+.feature-desc blockquote {
+  margin: 0 0 0.6em;
+  padding: 0.1em 0 0.1em 0.8em;
+  border-left: 2px solid var(--accent-soft);
+  color: var(--text-dim);
+  font-style: italic;
+}
+.feature-desc blockquote > :last-child { margin-bottom: 0; }
+
+.feature-desc code {
+  padding: 0.05em 0.3em;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.92em;
+  background: var(--field);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+.feature-desc pre {
+  margin: 0 0 0.6em;
+  padding: 7px 9px;
+  background: var(--field);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow-x: auto;            /* a long line scrolls itself, never the card */
+}
+.feature-desc pre code { padding: 0; background: none; border: none; }
+
+.feature-desc a { color: var(--accent); text-decoration: underline; }
+.feature-desc a:hover { text-decoration: none; }
+
+.feature-desc strong, .feature-desc b { font-weight: 700; }
+.feature-desc em, .feature-desc i { font-style: italic; }
+
+/* Hand-written tables — markdown.js does not parse pipe syntax, so a damage
+   ladder or a scaling table was typed as HTML. It still has to look like it
+   belongs on the card. */
+.feature-desc table {
+  width: 100%;
+  margin: 0 0 0.6em;
+  border-collapse: collapse;
+  font-size: 0.95em;
+}
+.feature-desc th,
+.feature-desc td {
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+.feature-desc th {
+  background: var(--field);
+  font-weight: 700;
+  color: var(--text-dim);
 }
 
 /* ── Locked ── */

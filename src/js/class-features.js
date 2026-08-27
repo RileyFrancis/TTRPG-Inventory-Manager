@@ -86,7 +86,7 @@ function sanitizeFeature(f) {
   return {
     id, name,
     level: Math.max(1, Math.min(20, level)),
-    description: String(f?.description ?? ''),
+    description: normalizeDescription(f?.description),
     unlocks: normalizeUnlocks(f?.unlocks),
   };
 }
@@ -97,6 +97,52 @@ function normalizeUnlocks(raw) {
   if (!raw) return [];
   const list = Array.isArray(raw) ? raw : [raw];
   return list.map(k => String(k).trim()).filter(Boolean);
+}
+
+// **A description is Markdown**, rendered by markdown.js exactly as a backstory
+// is — so a feature can bold the name of a mechanic and list what it grants
+// rather than running it all together in one sentence.
+//
+// JSON has no multi-line string, and a bulleted feature written as one
+// `"...\n- one\n- two"` line is unreadable in the file it has to be edited in.
+// So an **array is accepted**, which is the convention `data/classes.json`
+// already uses for its own `_comment` block. Shared with species-traits.js,
+// whose traits are the same kind of thing.
+//
+// **An entry is a block, not a line.** Blocks are separated by a blank line,
+// so a paragraph is one entry and nothing has to type `""` between them:
+//
+//     [ "Enter a Rage as a Bonus Action.",     ->  <p>Enter a Rage…</p>
+//       "- **Damage Resistance.** …",          ->  <ul><li>…</li>
+//       "- **Rage Damage.** …",                ->      <li>…</li></ul>
+//       "It lasts until your next turn." ]     ->  <p>It lasts…</p>
+//
+// **Except a list item, which joins to the line above it.** A blank line
+// between two bullets does not make a longer list — `collectListItems()` stops
+// at it, so they come out as two separate one-item lists with a gap between.
+// Nobody writing `- a` and `- b` on two entries means that, so the one case
+// where the blank line would be wrong is the one case it is not inserted.
+// `MD_LIST_RE` is markdown.js's own test, borrowed rather than copied, so what
+// counts as a list line here cannot drift from what the parser does with it.
+//
+// **A nested array is one block whose lines are kept together**, for the two
+// things that need consecutive lines and are not lists: a hand-written
+// `<table>` (the raw-HTML branch reads to the next blank line) and a stanza
+// wanting hard breaks mid-paragraph.
+function normalizeDescription(raw) {
+  if (!Array.isArray(raw)) return String(raw ?? '');
+
+  const blocks = raw.map(b => Array.isArray(b)
+    ? b.map(line => String(line ?? '')).join('\n')
+    : String(b ?? ''));
+
+  return blocks.reduce((acc, block, i) => {
+    if (i === 0) return block;
+    const prevLine = acc.slice(acc.lastIndexOf('\n') + 1);
+    const thisLine = block.slice(0, block.indexOf('\n') + 1 || undefined);
+    const runOn = MD_LIST_RE.test(prevLine) && MD_LIST_RE.test(thisLine);
+    return acc + (runOn ? '\n' : '\n\n') + block;
+  }, '');
 }
 
 loadDefaultClasses();
@@ -298,9 +344,17 @@ function featureCard(row, opts = {}) {
     name.appendChild(tag);
   }
 
-  const desc = document.createElement('p');
+  // A `<div>`, not a `<p>`: the description is Markdown, and what comes back is
+  // block-level — a paragraph cannot legally hold a list or a second paragraph,
+  // and a browser would close it early and strand the rest outside the card.
+  //
+  // `renderMarkdownInto` is the *only* way markup may be built from a string
+  // here — it sanitizes on the way in. That matters even though today's
+  // descriptions are ours: a user-authored class will sync to Firebase and
+  // render in the GM's browser exactly as a player's backstory does.
+  const desc = document.createElement('div');
   desc.className = 'feature-desc';
-  desc.textContent = row.description;
+  renderMarkdownInto(desc, row.description);
 
   const text = document.createElement('div');
   text.className = 'feature-text';
