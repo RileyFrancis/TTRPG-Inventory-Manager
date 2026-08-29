@@ -5,8 +5,10 @@
 //
 // Columns: name, rarity, description, cost, tags, damage, damageType,
 //          attunement, stackSize, image, shape,
-//          container, containerRows, containerCols, properties, mastery
+//          container, containerRows, containerCols, properties, mastery, source
 //
+// source     — the source material the item comes from, e.g. PHB, DMG, TCoE.
+//              "HB" (homebrew) is used for items the player adds in-app.
 // tags       — pipe-separated list, e.g.  weapon|melee|finesse
 // properties — semicolon-separated list, e.g.  finesse;light;thrown
 // shape      — rows pipe-separated, each row is 0/1 digits,  e.g.  11|01|10
@@ -100,6 +102,7 @@ function loadDefaultItems() {
         containerCols:  v('containerCols') ? parseInt(v('containerCols'), 10) : undefined,
         properties:  v('properties') ? v('properties').split(';').map(s => s.trim()).filter(Boolean) : [],
         mastery:     v('mastery') || undefined,
+        source:      v('source') || undefined,
       };
     }).filter(t => t.name);
   } catch (err) {

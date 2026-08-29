@@ -223,6 +223,8 @@ function openItemModal(templateId) {
   // type should read as Automatic rather than look hand-placed.
   populateFolderSelect(document.getElementById('f-folder'), templateId ? explicitFolderOf(templateId) : null);
   document.getElementById('f-image').value        = t?.image ?? '';
+  // Player-authored items default to homebrew; an edit keeps whatever it had.
+  document.getElementById('f-source').value        = t?.source ?? 'HB';
   document.getElementById('f-damage').value       = t?.damage ?? '';
   document.getElementById('f-damage-type').value  = t?.damageType ?? '';
   document.getElementById('f-attunement').checked = t?.attunement ?? false;
@@ -339,6 +341,7 @@ document.getElementById('save-item-btn').addEventListener('click', () => {
     },
     tags,
     image:       document.getElementById('f-image').value.trim(),
+    source:      document.getElementById('f-source').value.trim() || 'HB',
     damage:      document.getElementById('f-damage').value.trim() || undefined,
     damageType:  document.getElementById('f-damage-type').value || undefined,
     attunement:  document.getElementById('f-attunement').checked || undefined,

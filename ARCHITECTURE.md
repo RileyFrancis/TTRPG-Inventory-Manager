@@ -182,6 +182,7 @@ Never write one into the code.
 | `containerRows`, `containerCols` | Interior grid size for containers (blank = 5) |
 | `properties` | Semicolon-separated — `Finesse; Light; Thrown` |
 | `image` | Path to artwork, relative to the project root |
+| `source` | Source material — `PHB`, `DMG`, `TCoE`, … ; `HB` (homebrew) for items the player adds in-app |
 
 `data/item_dtypes.csv` lists the allowed values for every column and is the
 reference to check against. `tools/shape-editor.html` draws a shape visually and

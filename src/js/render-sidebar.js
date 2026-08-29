@@ -424,6 +424,14 @@ function populateDetailsPanel(t, inst) {
 
   document.getElementById('details-attunement-row').classList.toggle('hidden', !t.attunement);
 
+  const sourceRow = document.getElementById('details-source-row');
+  if (t.source) {
+    sourceRow.classList.remove('hidden');
+    document.getElementById('details-source').textContent = t.source;
+  } else {
+    sourceRow.classList.add('hidden');
+  }
+
   const tagsEl = document.getElementById('details-tags');
   tagsEl.innerHTML = '';
   t.tags.forEach(tag => {

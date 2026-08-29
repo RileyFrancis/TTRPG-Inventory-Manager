@@ -478,6 +478,9 @@
             <div class="meta-row" id="details-stack-row">
               <span class="meta-label">Stack</span><span id="details-stack"></span>
             </div>
+            <div class="meta-row hidden" id="details-source-row">
+              <span class="meta-label">Source</span><span id="details-source"></span>
+            </div>
           </div>
           <div id="details-tags"></div>
           <div id="details-desc"></div>
@@ -702,9 +705,15 @@
         </label>
       </div>
 
-      <div class="field">
-        <span>Image URL (optional)</span>
-        <input type="text" id="f-image" placeholder="https://…">
+      <div class="form-two-col">
+        <label class="field">
+          <span>Image URL (optional)</span>
+          <input type="text" id="f-image" placeholder="https://…">
+        </label>
+        <label class="field">
+          <span>Source</span>
+          <input type="text" id="f-source" placeholder="PHB, DMG, HB, …">
+        </label>
       </div>
 
       <div class="field-group">
