@@ -165,10 +165,24 @@ function speciesUnlocksAreAuthoritative(character) {
 // not a setting.
 let showLockedTraits = false;
 
+// Like the class-features section: `renderCharacterSheet()` calls this on every
+// keystroke and party sync, but it only changes with the character's species,
+// level, and the show-locked toggle. Skip the rebuild when none of those moved.
+let speciesTraitsSig = null;
+
+function speciesTraitsSignature() {
+  const c = state.character || {};
+  return [c.race || '', c.level ?? '', showLockedTraits ? '1' : '0'].join('‖');
+}
+
 function renderSpeciesTraits() {
   const box = document.getElementById('sheet-species-traits');
   const btn = document.getElementById('trait-toggle-locked');
   if (!box) return;
+
+  const sig = speciesTraitsSignature();
+  if (sig === speciesTraitsSig) return;
+  speciesTraitsSig = sig;
 
   const rows = speciesTraitsFor(state.character);
   const locked = rows.filter(r => !r.owned).length;

@@ -362,12 +362,36 @@ function toggleFeatureCollapsed(key) {
   return !collapsedFeatures.has(key);   // the new expanded state
 }
 
+// `renderCharacterSheet()` re-runs on every keystroke in any sheet field and on
+// every party-roster sync, but this section only changes with the character's
+// classes, subclass, level, and species (species feeds `applyFeatureUnlocks`),
+// plus the show-locked toggle. When none of those moved, the cards, the unlock
+// flags and the datalist are all still correct — so skip the rebuild, which is
+// what used to re-parse every card's Markdown on every stroke.
+let classFeaturesSig = null;
+
+function classFeaturesSignature() {
+  const c = state.character || {};
+  return [
+    (c.classes || []).join('␟'),
+    c.subclass || '', c.level ?? '', c.race || '',
+    showLockedFeatures ? '1' : '0',
+  ].join('‖');
+}
+
 function renderClassFeatures() {
   const box = document.getElementById('sheet-features');
   const btn = document.getElementById('feature-toggle-locked');
   if (!box) return;
 
+  // `applyFeatureUnlocks()` is cheap and left unconditional, so a hidden field
+  // is never left in the wrong state; the costly card rebuild below is gated.
   applyFeatureUnlocks();
+
+  const sig = classFeaturesSignature();
+  if (sig === classFeaturesSig) return;
+  classFeaturesSig = sig;
+
   populateSubclassOptions(state.character);
 
   const rows = classFeaturesFor(state.character);
@@ -408,6 +432,24 @@ function renderClassFeatures() {
     box.appendChild(featureNote(
       `No features known for ${unknown.map(n => `“${n}”`).join(', ')}.`));
   }
+}
+
+// Parsed descriptions are cached by their raw Markdown string. A feature's text
+// never changes, so the parse + sanitize — a real cost now that descriptions
+// run to several paragraphs with lists and tables — happens once per distinct
+// string for the life of the page, and each card gets a fresh clone. The key
+// space is the fixed set of descriptions across every class and species.
+const featureDescCache = new Map();
+
+function renderFeatureDesc(el, src) {
+  const key = String(src ?? '');
+  let tpl = featureDescCache.get(key);
+  if (!tpl) {
+    tpl = document.createElement('template');
+    renderMarkdownInto(tpl.content, key);
+    featureDescCache.set(key, tpl);
+  }
+  el.appendChild(tpl.content.cloneNode(true));
 }
 
 // The level rides the card's top-left corner rather than sitting inside it —
@@ -479,7 +521,7 @@ function featureCard(row, opts = {}) {
   desc.className = 'feature-desc';
   desc.id = 'fd-' + key.replace(/[^\w-]/g, '-');
   nameBtn.setAttribute('aria-controls', desc.id);
-  renderMarkdownInto(desc, row.description);
+  renderFeatureDesc(desc, row.description);
 
   const text = document.createElement('div');
   text.className = 'feature-text';
