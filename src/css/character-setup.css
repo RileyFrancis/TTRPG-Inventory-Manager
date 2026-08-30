@@ -1,0 +1,108 @@
+/* =============================================================================
+   CHARACTER SETUP — the gear on the sheet, and the class rows in its modal
+   =============================================================================
+   The dialog itself is ordinary modal chrome (modals.css). What is here is the
+   one thing it has that no other form does: a *list* of classes, each with its
+   own level and its own subclass. */
+
+/* ── The gear on the character sheet ──────────────────────────────────────────
+   Top right of the identity block, opposite the character's name. It is the
+   only way into everything those boxes used to hold, so it sits at the corner
+   the eye ends on rather than in the run of fields. */
+.sheet-setup-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  font-size: 15px;
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.sheet-setup-btn:hover {
+  color: var(--accent);
+  border-color: var(--border2);
+}
+
+/* The name input runs the full width, so it has to be kept clear of the gear. */
+.sheet-head { padding-right: 38px; }
+
+/* ── The class list ─────────────────────────────────────────────────────────── */
+.class-editor {
+  margin: 14px 0 4px;
+  padding: 10px 10px 12px;
+  background: var(--field);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+
+.class-editor-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.class-editor-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+/* The character's level, derived from the rows above it — never typed. */
+.class-editor-total {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+/* One row per class. The name takes what is going; the level is as narrow as
+   two digits need; the subclass gets a share only when it is on screen at all,
+   and folds to its own line before the row is squeezed unreadable. */
+.class-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.class-row:last-child { margin-bottom: 0; }
+
+.class-row-field { flex: 1 1 130px; margin-bottom: 0; gap: 3px; }
+.class-row-field > span {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.class-row-field input { width: 100%; }
+
+/* Two digits, and no more — a level box as wide as a class name reads as
+   something you are meant to write a sentence in. */
+.class-row-field-level { flex: 0 0 62px; }
+
+.class-row-remove {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+}
+.class-row-remove:hover { color: var(--danger); }
+
+#char-add-class-btn { margin-top: 2px; }
+
+/* The plain Level box, for a character with no class for the total to be the
+   sum of. It sits under the (empty) list rather than beside the button. */
+.class-editor-level { max-width: 90px; margin: 8px 0 0; }

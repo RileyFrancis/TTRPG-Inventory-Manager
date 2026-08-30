@@ -24,83 +24,8 @@ document.getElementById('tag-filter').addEventListener('change', renderItemList)
 // =============================================================================
 // CHARACTER MODAL
 // =============================================================================
-// One dialog, three jobs: the header's Edit Character, a card's Edit, and New
-// Character on the home screen.
-//
-// `charModalTargetId` names the slot in the roster to edit. A null target is
-// the character *on screen*, which is not always one of yours — a GM editing a
-// player's Strength from the header is editing the working copy and the party
-// roster, never their own slot.
-let charModalTargetId = null;
-let charModalIsNew = false;
-
-document.getElementById('edit-character-btn').addEventListener('click', () => openCharModal());
-
-function openCharModal(targetId = null, { isNew = false } = {}) {
-  charModalIsNew = isNew;
-  charModalTargetId = isNew ? null : targetId;
-
-  const c = charModalIsNew
-    ? blankCharacterMeta('')
-    : (charModalTargetId ? state.characters[charModalTargetId]?.character : null) ?? state.character;
-
-  document.getElementById('character-modal-title').textContent =
-    charModalIsNew ? 'New Character' : 'Character Setup';
-  document.getElementById('char-name-input').value  = charModalIsNew ? '' : c.name;
-  document.getElementById('char-str-input').value   = c.strength;
-  document.getElementById('char-level-input').value = c.level ?? 1;
-  document.getElementById('char-race-input').value  = c.race ?? '';
-  document.getElementById('char-class-input').value = (c.classes ?? []).join(', ');
-  document.getElementById('save-char-btn').textContent = charModalIsNew ? 'Create' : 'Save';
-  updateCharModalNote();
-  showModal('character-modal');
-  setTimeout(() => document.getElementById('char-name-input').focus(), 0);
-}
-
-// `current` is the character being edited, because Strength is now one of six
-// abilities: it has to be written *into* the existing set rather than beside it,
-// or normalizeCharacterMeta would take the untouched `abilities.str` and the box
-// the user just typed in would appear to do nothing.
-function readCharModalFields(current) {
-  const str = parseInt(document.getElementById('char-str-input').value, 10);
-  return {
-    name: document.getElementById('char-name-input').value.trim() || 'Unnamed Hero',
-    level: parseInt(document.getElementById('char-level-input').value, 10),
-    race: document.getElementById('char-race-input').value.trim(),
-    classes: document.getElementById('char-class-input').value,
-    abilities: { ...(current?.abilities ?? {}), str: Number.isFinite(str) ? str : 10 },
-  };
-}
-
-function updateCharModalNote() {
-  const str = parseInt(document.getElementById('char-str-input').value) || 10;
-  document.getElementById('modal-capacity-normal').textContent = str * 15 + ' slots';
-  document.getElementById('modal-capacity-total').textContent  = str * 45 + ' slots';
-}
-document.getElementById('char-str-input').addEventListener('input', updateCharModalNote);
-
-document.getElementById('save-char-btn').addEventListener('click', () => {
-  const current = charModalIsNew ? null
-    : (charModalTargetId ? state.characters[charModalTargetId]?.character : state.character);
-  const fields = readCharModalFields(current);
-  hideModal('character-modal');
-
-  if (charModalIsNew) {
-    const id = createCharacter(fields);
-    // Straight into the new character, unless you are the GM — they have no
-    // character in play, so creating one only adds it to the roster.
-    if (canSelectCharacter()) { activateCharacter(id); closeHomeScreen(); }
-    else { debouncedSync(); renderHomeScreen(); }
-  } else if (charModalTargetId) {
-    // A card on the home screen — the slot, which may not be the one on screen.
-    updateCharacterMeta(charModalTargetId, fields);
-  } else {
-    // The header's Edit Character: whoever is on screen, yours or a player's.
-    applyMetaToLiveCharacter(fields);
-  }
-  charModalTargetId = null;
-  charModalIsNew = false;
-});
+// It lives in src/js/character-setup.js — the dialog grew a list of class rows,
+// which is a concern of its own rather than one more form in here.
 
 function rebuildGrid() {
   state.activeContainer = null;

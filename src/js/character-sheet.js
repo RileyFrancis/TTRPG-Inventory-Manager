@@ -278,10 +278,6 @@ function renderCharacterSheet() {
     el.disabled = readOnly;
     if (kind === 'check') { el.checked = !!readSheetPath(el.dataset.sheet); return; }
     if (el === document.activeElement) return; // being typed into
-    if (kind === 'classlist') {
-      el.value = (c.classes ?? []).join(', ');
-      return;
-    }
     const v = readSheetPath(el.dataset.sheet);
     el.value = v === null || v === undefined ? '' : v;
   });
@@ -299,8 +295,16 @@ function renderCharacterSheet() {
   document.getElementById('sheet-initiative').textContent = formatMod(initiativeBonus());
   document.getElementById('sheet-passive').textContent    = passivePerception();
 
-  // The identity line under the name — the same summary the party panel shows.
-  document.getElementById('sheet-identity').textContent = describePartyCharacter(c) || 'Adventurer';
+  // The identity line under the name. It is now the *whole* readout of what the
+  // gear edits — those boxes have left the sheet — so it says more than the
+  // party panel's one-liner: each class's own level and subclass, and the
+  // background.
+  document.getElementById('sheet-identity').textContent = describeSheetIdentity(c) || 'Adventurer';
+
+  // Nothing on someone else's sheet is editable, and a gear that opens a dialog
+  // whose Save would write to a character that is not yours is worse than no
+  // gear at all.
+  document.getElementById('sheet-setup-btn').classList.toggle('hidden', readOnly);
 
   renderDeathSaves(readOnly);
 
@@ -315,6 +319,24 @@ function renderCharacterSheet() {
   renderSpeciesTraits();
   renderClassFeatures();
   renderSheetProse();
+}
+
+// "Level 7 · Tiefling · Warlock 5 (The Fiend) / Bard 2 · Soldier", skipping
+// whatever is missing. A class's own level is said only when there is more than
+// one — a single class is already at the level printed at the front of the line.
+function describeSheetIdentity(c) {
+  const entries = classEntriesOf(c);
+  const classes = entries.map(e => {
+    const level = entries.length > 1 ? ` ${e.level}` : '';
+    return e.subclass ? `${e.name}${level} (${e.subclass})` : `${e.name}${level}`;
+  }).join(' / ');
+
+  const parts = [];
+  if (c.level) parts.push('Level ' + c.level);
+  if (c.race) parts.push(c.race);
+  if (classes) parts.push(classes);
+  if (c.background) parts.push(c.background);
+  return parts.join(' · ');
 }
 
 function renderProfDot(el, kind) {
@@ -379,10 +401,6 @@ function onSheetInput(e) {
   let value;
   if (kind === 'check') {
     value = el.checked;
-  } else if (kind === 'classlist') {
-    // The same comma-separated list the character modal takes, so the two
-    // editors of one field agree on what a multiclass looks like.
-    value = el.value.split(/[,/]/).map(s => s.trim()).filter(Boolean);
   } else if (kind === 'int') {
     const n = parseInt(el.value, 10);
     value = Number.isFinite(n) ? n : 0;

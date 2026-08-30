@@ -230,7 +230,7 @@ function speciesEmptyState(character) {
   const unknown = unknownSpeciesName(character);
   return featureNote(unknown
     ? `No traits known for “${unknown}”.`
-    : 'Set a species in the Identity section to see its traits.');
+    : 'Set a species in Character Setup to see its traits.');
 }
 
 document.getElementById('trait-toggle-locked').addEventListener('click', () => {

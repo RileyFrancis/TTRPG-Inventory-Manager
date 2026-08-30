@@ -36,7 +36,100 @@ function newCharacterId() {
 // Every field a card shows, in the shape the rest of the app expects. `id` is
 // carried on the character itself so a slot and its meta can never be orphaned.
 function blankCharacterMeta(name = 'Unnamed Hero') {
-  return normalizeCharacterMeta({ id: newCharacterId(), name, strength: 10, level: 1, race: '', classes: [] });
+  return normalizeCharacterMeta({ id: newCharacterId(), name, strength: 10, level: 1, race: '', classLevels: [] });
+}
+
+// =============================================================================
+// CLASS LEVELS — the authoritative multiclass model
+// =============================================================================
+// A character's classes are `classLevels`: an ordered list of
+// `{ name, level, subclass }`, one entry per class, each carrying **its own**
+// level and **its own** subclass. A Warlock 5 / Bard 2 is two entries, and the
+// character is level 7.
+//
+// The three fields that came before it — `classes` (names), `level` (one
+// number) and `subclass` (one name) — are kept as **mirrors**, written only by
+// `normalizeCharacterMeta()` and read by everything that only wants the summary:
+// the home cards, the party panel, the proficiency bonus, the species traits.
+// This is exactly the arrangement `strength` and `abilities.str` already have,
+// and for the same two reasons: every existing reader keeps working untouched,
+// and a party member running an older client still renders a sensible line
+// instead of `[object Object]`.
+//
+//   classLevels  [{ name: 'Warlock', level: 5, subclass: 'The Fiend' },
+//                 { name: 'Bard',    level: 2, subclass: '' }]   authoritative
+//   classes      ['Warlock', 'Bard']                             mirror
+//   level        7                                               mirror (the sum)
+//   subclass     'The Fiend'                                      mirror (the first)
+//
+// One writer means the two can never drift. Nothing outside this function may
+// write a mirror — writing a bare `level` on a character that has classes is
+// ignored, precisely as writing a bare `strength` is.
+const MAX_LEVEL = 20;
+
+function blankClassEntry(name = '') {
+  return { name: String(name).trim(), level: 1, subclass: '' };
+}
+
+// Reads the new field when it is there, and folds the old three into it when it
+// is not — an older save, or a party member on an older client.
+//
+// **The split is a guess, and only for a multiclass.** The old model had one
+// level that every listed class was read at, so a "Fighter, Rogue" at level 5
+// says nothing about how those five levels were spent. The first class is given
+// what is left after one level each for the rest, so the *total* — which is what
+// the proficiency bonus and the species traits are worked out from — comes
+// through exactly right. A single class, which is nearly every character, is
+// migrated with no guessing at all.
+function normalizeClassLevels(m) {
+  if (Array.isArray(m.classLevels)) return sanitizeClassLevels(m.classLevels);
+
+  const names = Array.isArray(m.classes)
+    ? m.classes.map(c => String(c).trim()).filter(Boolean)
+    : String(m.classes ?? '').split(/[,/]/).map(c => c.trim()).filter(Boolean);
+  if (!names.length) return [];
+
+  const total = clampLevel(parseInt(m.level, 10) || 1);
+  const first = Math.max(1, total - (names.length - 1));
+  return sanitizeClassLevels(names.map((name, i) => ({
+    name,
+    level: i === 0 ? first : 1,
+    subclass: i === 0 ? (m.subclass ?? '') : '',
+  })));
+}
+
+function sanitizeClassLevels(raw) {
+  return raw
+    .map(e => (typeof e === 'string' ? { name: e } : (e ?? {})))
+    .map(e => ({
+      name: String(e.name ?? '').trim(),
+      level: clampLevel(parseInt(e.level, 10) || 1),
+      subclass: String(e.subclass ?? '').trim(),
+    }))
+    .filter(e => e.name);
+}
+
+function clampLevel(n) { return Math.max(1, Math.min(MAX_LEVEL, n)); }
+
+// **The one way to read a character's classes.** Everything that wants to know
+// what someone is — the feature registry, the cards, the party panel — asks
+// here rather than reaching for `classLevels` or `classes` directly.
+//
+// A character that has been through `normalizeCharacterMeta()` hands its list
+// straight back. Anything that has not been — a party roster entry written by an
+// older client, which carries only names and one level — is folded on the way
+// out, so a caller never has to know which kind it was given.
+function classEntriesOf(c) {
+  if (Array.isArray(c?.classLevels) && c.classLevels.length) return c.classLevels;
+  return normalizeClassLevels(c ?? {});
+}
+
+// The character's level: the sum of what they have taken in each class, capped
+// at 20. A character with no class at all still has a level, and there it is the
+// typed one — the Character Setup modal offers the box in exactly that case.
+function totalLevelOf(entries, fallbackLevel) {
+  if (!entries.length) return clampLevel(parseInt(fallbackLevel, 10) || 1);
+  return clampLevel(entries.reduce((sum, e) => sum + e.level, 0));
 }
 
 // Old saves — and party data from an older client — carry only name + strength.
@@ -62,17 +155,22 @@ function normalizeCharacterMeta(meta, id) {
       : m[key];
   });
 
+  const classLevels = normalizeClassLevels(m);
+
   return {
     id: id ?? m.id ?? newCharacterId(),
     name: String(m.name ?? 'Unnamed Hero'),
-    level: Math.max(1, Math.min(20, parseInt(m.level, 10) || 1)),
     race: String(m.race ?? ''),
-    classes: Array.isArray(m.classes)
-      ? m.classes.map(c => String(c).trim()).filter(Boolean)
-      : String(m.classes ?? '').split(/[,/]/).map(c => c.trim()).filter(Boolean),
     abilities,
-    strength: abilities.str, // mirror — see above
     ...sheet,
+    // The authoritative multiclass model, and the three mirrors derived from it.
+    // They come last so nothing merged in above can overwrite one — see the
+    // note on `normalizeClassLevels()`.
+    classLevels,
+    classes: classLevels.map(e => e.name),
+    level: totalLevelOf(classLevels, m.level),
+    subclass: classLevels.find(e => e.subclass)?.subclass ?? '',
+    strength: abilities.str, // mirror — see above
   };
 }
 
@@ -296,8 +394,15 @@ function closeHomeScreen() {
   homeScreenEl.classList.add('hidden');
 }
 
+// "Fighter" for one class, "Warlock 5 / Bard 2" for a multiclass — the level is
+// worth saying only when the classes disagree about it. A single class is
+// already at the character's own level, which the card and the sheet print
+// beside this.
 function describeCharacterClasses(c) {
-  return (c.classes ?? []).join(' / ');
+  const entries = classEntriesOf(c);
+  if (!entries.length) return '';
+  if (entries.length === 1) return entries[0].name;
+  return entries.map(e => `${e.name} ${e.level}`).join(' / ');
 }
 
 function renderHomeScreen() {

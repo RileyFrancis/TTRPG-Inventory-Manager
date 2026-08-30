@@ -75,7 +75,8 @@ tools/              Standalone dev helpers (not part of the app)
 | `auth.js` | Firebase sign-in, the login modal, the Settings account row |
 | `cloud-save.js` | Mirrors the save file to `users/<uid>/save` while signed in |
 | `character-tabs.js` | Per-character tabs above the inventory + sheet/inventory switch |
-| `characters.js` | The account's roster of characters, and the home screen |
+| `characters.js` | The account's roster of characters, the class-levels model, and the home screen |
+| `character-setup.js` | The Character Setup modal: name, species, background, and the class rows |
 | `character-sheet.js` | Page one of the 2024 sheet: abilities, skills, combat stats |
 | `sheet-layout.js` | The sheet's sections as widgets: the split tree, drag-to-tile, seams |
 | `class-features.js` | The class registry, and the sheet's Class Features section |
@@ -102,6 +103,7 @@ that owns the element wins.
 | `sidebar.css` | The right panel: browse list, folders, details, context and sort menus |
 | `modals.css` | Modal chrome, and the shape editor inside the item editor |
 | `character.css` | The character tabs, and page one of the 2024 character sheet |
+| `character-setup.css` | The sheet's gear button, and the class rows in the setup modal |
 | `sheet-layout.css` | The sheet's split containers, resize seams, and drop feedback |
 | `class-features.css` | The feature cards, corner badges, and the Markdown inside a description — for Class Features *and* Species Traits |
 | `sheet-prose.css` | The written sections: the bar, the editor, and the rendered prose |
@@ -119,10 +121,13 @@ that owns the element wins.
 ### State model (`src/js/state.js`)
 
 ```
-state.character   { id, name, level, race, classes[], abilities{str…cha}, strength,
-                    background, subclass, xp, size, ac, speed, hp{…}, hitDice{…},
-                    deathSaves{…}, inspiration, saveProf{}, skillProf{},
-                    armorTraining{}, weaponProf, toolProf }   (the working copy)
+state.character   { id, name, race, abilities{str…cha}, background, xp, size, ac,
+                    speed, hp{…}, hitDice{…}, deathSaves{…}, inspiration,
+                    saveProf{}, skillProf{}, armorTraining{}, weaponProf,
+                    toolProf,
+                    classLevels[{ name, level, subclass }],  (the classes, authoritative)
+                    classes[], level, subclass, strength }   (mirrors of the two above)
+                                                          (the whole thing: the working copy)
 state.characters  { [charId]: { character, instances, equipped, equipLayout, db } }
 state.activeCharacterId  charId                     (which slot the working copy is)
 state.screen      'app' | 'home'                    (the roster page is in front of the app)
@@ -328,6 +333,64 @@ and a wizard on Fridays and both are theirs. So the save file holds a **roster**
   which is not always one of yours: a GM editing a player's Strength from the
   header edits the working copy and the party roster, never their own slot.
 
+### Multiclassing and Character Setup
+
+A character's classes are **`classLevels`**: an ordered list of
+`{ name, level, subclass }`, one entry per class, each carrying its own level and
+its own subclass. A Warlock 5 / Bard 2 is two entries, and the character is level
+7. The model lives in `src/js/characters.js`; the editor is
+`src/js/character-setup.js`.
+
+- **The three fields that came before it are kept as mirrors** — `classes` (the
+  names), `level` (the sum, capped at 20) and `subclass` (the first one set) —
+  written only by `normalizeCharacterMeta()`, exactly as `strength` mirrors
+  `abilities.str` and for the same two reasons. Every existing reader keeps
+  working untouched (the home cards, the party panel, the proficiency bonus, the
+  species traits), and a party member on an older client still renders a sensible
+  line instead of `[object Object]`. One writer, so the two cannot drift:
+  **writing a bare `level` on a character who has classes does nothing**, just as
+  writing a bare `strength` does nothing.
+- **`classEntriesOf(c)` is the one way to read a character's classes.** A
+  character that has been through `normalizeCharacterMeta()` hands its list
+  straight back; anything that has not — a roster entry from an older client,
+  carrying only names and one level — is folded on the way out, so no caller has
+  to know which kind it was given.
+- **The migration guesses only for a multiclass.** The old model had one level
+  every listed class was read at, so a "Fighter, Rogue" at 5 says nothing about
+  how those five levels were spent. The first class is given what is left after
+  one level each for the rest, so the *total* — which the proficiency bonus and
+  the species traits are worked out from — comes through exactly right. A single
+  class, which is nearly every character, is migrated with no guessing at all.
+- **The proficiency bonus is worked out from the total, not per class.** That is
+  right by the rules, and it is why the sum has to be a real field rather than
+  something each reader adds up for itself.
+
+**The modal.** One dialog, four jobs: the header's Edit Character, a roster
+card's Edit, New Character, and the gear at the top right of the character sheet.
+`charModalTargetId` names the slot to edit; a null target is the character *on
+screen*, which is not always one of yours.
+
+- **The class rows are why this left the sheet.** A multiclass is a list, and a
+  list that grows as classes are added does not belong across the top of a page
+  that has to stay readable. So the sheet keeps the readout and the gear opens
+  the editor. Species and background came with it: they answer the same question
+  ("who is this?"), and splitting that answer across two editors is how two
+  editors come to disagree.
+- `charModalClasses` is a **working copy**, written to the character only on
+  Save — Cancel has to mean something, and the target may be a slot that is not
+  on screen.
+- **Rows are built once and written into, never rebuilt on a keystroke** — the
+  rule the sheet follows for its ~80 inputs, for the same reason: a rebuild
+  mid-word takes the focus out of the box. Only a *removal* rebuilds the list,
+  because every index below the gap shifts.
+- The total under the rows is derived and never typed. With **no** classes there
+  is nothing to sum, so a plain Level box appears in its place — a character can
+  be levelled without this app knowing what they are, and that is the only time
+  `level` is written directly.
+- Class and subclass are free text with a `<datalist>` hint, as they always
+  were. The class list is shared by every row; each row mints its **own** subclass
+  list, because those differ by class.
+
 ### The character sheet
 
 Page one of the 2024 sheet, in `src/js/character-sheet.js`, shown in place of the
@@ -342,6 +405,15 @@ grid when a tab's *Character Sheet* is picked. It reads and writes the same
   inputs. A derived box that can be edited will disagree with itself; a typed box
   the app guesses at will fight homebrew. `.stat-tile.derived` is the visual half
   of the same promise.
+- **What a character *is* is not edited here.** Their classes and the level
+  taken in each, their subclasses, species and background are edited in the
+  **Character Setup** modal behind the gear at the top right — see *Multiclassing
+  and Character Setup* below. A multiclass is a list rather than a field, and a
+  list that grows as classes are added does not belong across the top of a page
+  that has to stay readable. The sheet keeps the *readout*: the identity line
+  under the name (`describeSheetIdentity()`), which is the whole of what the gear
+  edits, said in one line. XP stays a box, because it is not part of what a
+  character is — it is a number that changes at the table, like HP.
 - **`abilities.str` is the character's Strength, and the grid's.** The inventory
   has always sized itself from `state.character.strength`, so that field stays —
   as a *mirror*, written only by `normalizeCharacterMeta()`. One writer, so the
@@ -540,15 +612,18 @@ an unreadable file leaves the registry empty rather than throwing.
 - A feature's `id` is stable and never derived from position. (An item's id
   *is* its CSV row number, and that has bitten this project before — see the
   coin purse.) Order within a level is the order written.
-- **Classes are matched by name, not id**, because `classes` is a free-text
-  field the player types. A name that matches nothing is not an error — it is a
-  class the app has not been taught yet, and the section says so by name rather
-  than going blank. Ids are accepted too, so a stored id survives a rename.
-- **Levels are the character's total, not per class.** The app tracks one
-  `level`, so a multiclassed character sees every listed class's features up to
-  that level. Wrong by the rules, right for what this app knows;
-  `characterClassLevel()` is the single place that has to learn better when
-  per-class levels exist.
+- **Classes are matched by name, not id**, because a class entry's `name` is a
+  free-text field the player types. A name that matches nothing is not an error —
+  it is a class the app has not been taught yet, and the section says so by name
+  rather than going blank. Ids are accepted too, so a stored id survives a
+  rename.
+- **Every class is read at its own level.** The section iterates
+  `classEntriesOf(character)`, and each entry carries the level taken in that
+  class: a Warlock 5 / Bard 2 sees the Warlock list up to 5 and the Bard list up
+  to 2. `characterClassLevel()` is where that lands — the seam this section
+  always said would learn about per-class levels. The character's *total* level
+  (the sum) is still what the proficiency bonus and the species traits are
+  worked out from, which is right by the rules.
 - `classFeaturesFor()` returns the **complete** list sorted by level → class →
   written order, each row carrying an `owned` flag. The level gate decides
   `owned`; the *section* decides what to draw. Keeping those apart is what makes
@@ -557,15 +632,16 @@ an unreadable file leaves the registry empty rather than throwing.
   (`showClass`) — one class does not need saying on every card.
 - **Subclasses nest under the class** (`subclasses[]`, sanitized by
   `sanitizeSubclassList()` — the same shape as a class minus its own
-  `subclasses`). The character carries one free-text `subclass` field, matched
-  by `findSubclassByName(classDef, name)` against the subclasses of each class
-  they hold. A match folds that subclass's features into the same list
-  (`classFeaturesFor()`), gated by the same total `level`, sorted after the
-  base features at a shared level (`sub` key), and tagged with the subclass
-  name on every card — single class or not. The Subclass **field** is still
-  gated by `data-unlocked-by="subclass"`, so it appears only once an owned
-  feature unlocks it; its `<datalist>` is filled by `populateSubclassOptions()`
-  from the known subclasses of the character's classes, as a hint only.
+  `subclasses`). **Each class entry carries its own free-text `subclass`**,
+  matched by `findSubclassByName(classDef, name)` against the subclasses of that
+  class. A match folds that subclass's features into the same list
+  (`classFeaturesFor()`), gated by *that class's* level, sorted after the base
+  features at a shared level (`sub` key), and tagged with the subclass name on
+  every card — single class or not. The Subclass **field** is a row in the
+  Character Setup modal, shown only once that class's own level has unlocked it
+  (`classUnlockKeys()` — see *Unlocks* below); each row mints its own
+  `<datalist>`, filled by `fillDatalist()` from that class's subclasses, as a
+  hint only.
 - **`source`** is a short book label ("PHB") on a class and, separately, on
   each subclass. `classSourceSummary()` renders the known ones as a quiet
   `.feature-sources` caption above the cards; nothing carrying a source means
@@ -604,28 +680,37 @@ an unreadable file leaves the registry empty rather than throwing.
     the regex has to exist by then. markdown.js declares only functions and
     constants, so it is safe that early.
 
-**Unlocks — sheet parts that arrive with a feature.** A feature may name parts
-of the sheet it brings with it (`"unlocks": ["subclass"]`). The sheet marks
-those parts `data-unlocked-by="subclass"`, and they stay hidden until an *owned*
-feature names them. Today the only one is the Subclass field, which means
-nothing on a level-1 character.
+**Unlocks — parts of the app that arrive with a feature.** A feature may name
+parts it brings with it (`"unlocks": ["subclass"]`). Markup marks those parts
+`data-unlocked-by="subclass"`, and they stay hidden until an *owned* feature
+names them. The only key in use is the Subclass field, which means nothing on a
+level-1 character.
 
 - The key is a plain string shared between the JSON and the markup, never a
   selector or an element id, so the data never has to know how the sheet is
-  built. A part can move between sections, or be drawn by something else
-  entirely, and `data/classes.json` is unaffected.
-- **A class the app does not know disables the whole mechanism**
-  (`featureUnlocksAreAuthoritative`). If someone plays a Bard this app has no
-  idea what a Bard gets or when, so hiding their Subclass field would be an
-  invention — and one that reads as the app having eaten a box they were using.
-  Unlocks only speak when *every* class listed is one we can reason about.
-- `applyFeatureUnlocks()` runs from `renderClassFeatures()`, so it follows a
-  level or class edit without its own trigger. It toggles `.hidden` and never
-  touches the value: hiding a box must not clear what is in it.
+  built. That proved itself: the Subclass field moved off the sheet and into the
+  Character Setup modal without `data/classes.json` changing a character.
+- **The subclass key is asked per class, not of the character**
+  (`classUnlockKeys(classDef, subclass, level)`), because a Warlock 5 / Bard 2
+  has a patron and no Bard college. The Character Setup modal gates each class
+  row's Subclass field with it, at that class's own level.
+- **A class the app does not know shows the field.** `classUnlockKeys()` returns
+  `null` rather than an empty set for a class it has never heard of, and the
+  caller must show. If someone plays a Bloodhunter this app has no idea what one
+  gets or when, so hiding their Subclass field would be an invention — and one
+  that reads as the app having eaten a box they were using.
+- `applyFeatureUnlocks()` / `featureUnlocksAreAuthoritative()` are the same
+  question asked of the *character* — the right one for a part of the sheet that
+  belongs to no class in particular, unioned with the species' keys. It has no
+  targets today, and is what a species **Lineage** field will arrive through. It
+  runs from `renderClassFeatures()`, so it follows a level or class edit without
+  its own trigger, and toggles `.hidden` without ever touching a value: hiding a
+  box must not clear what is in it.
 
 **The section.** `renderClassFeatures()` is called from
-`renderCharacterSheet()`, since it is driven by `classes` and `level` and those
-are edited there — it needs no trigger of its own.
+`renderCharacterSheet()`, since it is driven by `classLevels` and `level`, and
+every path that edits those ends in a sheet render — it needs no trigger of its
+own.
 
 - **One card per row, always the section's full width.** A run of cards read top
   to bottom is a list of what you have in level order, which is what the section

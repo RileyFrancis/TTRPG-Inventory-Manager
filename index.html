@@ -38,6 +38,7 @@
   <link rel="stylesheet" href="src/css/sidebar.css">
   <link rel="stylesheet" href="src/css/modals.css">
   <link rel="stylesheet" href="src/css/character.css">
+  <link rel="stylesheet" href="src/css/character-setup.css">
   <link rel="stylesheet" href="src/css/sheet-layout.css">
   <link rel="stylesheet" href="src/css/class-features.css">
   <link rel="stylesheet" href="src/css/sheet-prose.css">
@@ -184,30 +185,26 @@
                SHEET_WIDGET_IDS is read from the store below, and every drag and
                hit test is scoped to the tree, so being out here is the whole
                mechanism. -->
+          <!-- What a character *is* — their classes and the level taken in
+               each, their subclasses, species and background — is edited in the
+               Character Setup modal behind the gear, not in boxes here. A
+               multiclass is a list rather than a field, and a list of rows does
+               not belong across the top of a sheet that has to stay readable.
+               The identity line under the name is the readout of all of it.
+
+               XP stays, because it is not part of what a character is: it is a
+               number that changes at the table, alongside HP and inspiration. -->
           <section class="sheet-widget pinned" data-widget="identity">
             <div class="widget-body">
               <div class="sheet-head">
+                <button id="sheet-setup-btn" class="sheet-setup-btn"
+                        title="Edit classes, levels, subclasses, species and background"
+                        aria-label="Character setup"><span class="ico ico-setting"></span></button>
                 <input type="text" id="sheet-name" class="sheet-name-input" maxlength="40"
                        data-sheet="name" data-kind="text" placeholder="Character name"
                        aria-label="Character name">
                 <div id="sheet-identity" class="sheet-identity"></div>
                 <div class="sheet-id-grid">
-                  <label class="sheet-field"><span>Class</span>
-                    <input type="text" data-sheet="classes" data-kind="classlist"
-                           maxlength="60" placeholder="Fighter, Rogue"></label>
-                  <label class="sheet-field narrow"><span>Level</span>
-                    <input type="number" data-sheet="level" data-kind="int" min="1" max="20"></label>
-                  <!-- Hidden until a class feature that names "subclass" is
-                       owned — see `unlocks` in data/classes.json. A level-1
-                       character has no subclass to write in. -->
-                  <label class="sheet-field" data-unlocked-by="subclass"><span>Subclass</span>
-                    <input type="text" data-sheet="subclass" data-kind="text" maxlength="40"
-                           list="subclass-options">
-                    <datalist id="subclass-options"><!-- filled by populateSubclassOptions() --></datalist></label>
-                  <label class="sheet-field"><span>Species</span>
-                    <input type="text" data-sheet="race" data-kind="text" maxlength="30"></label>
-                  <label class="sheet-field"><span>Background</span>
-                    <input type="text" data-sheet="background" data-kind="text" maxlength="40"></label>
                   <label class="sheet-field narrow"><span>XP</span>
                     <input type="number" data-sheet="xp" data-kind="int" min="0"></label>
                 </div>
@@ -593,6 +590,14 @@
 <div id="modal-backdrop" class="hidden"></div>
 
 <!-- ===== CHARACTER MODAL ===== -->
+<!-- One dialog, four jobs: the header's Edit Character, a roster card's Edit,
+     New Character, and the gear on the character sheet. Everything a character
+     *is* rather than everything they are carrying.
+
+     The class rows are built by src/js/character-setup.js from the character's
+     `classLevels` — one row per class, each with its own level and its own
+     subclass, so a Warlock 5 / Bard 2 is two rows and the total below adds up
+     to 7. -->
 <div id="character-modal" class="modal hidden">
   <div class="modal-box">
     <h2 id="character-modal-title">Character Setup</h2>
@@ -602,8 +607,10 @@
     </label>
     <div class="form-two-col">
       <label class="field">
-        <span>Level</span>
-        <input type="number" id="char-level-input" min="1" max="20" value="1">
+        <span>Species</span>
+        <input type="text" id="char-race-input" maxlength="30" placeholder="e.g. Half-Elf"
+               list="species-options">
+        <datalist id="species-options"><!-- filled by fillDatalist() --></datalist>
       </label>
       <label class="field">
         <span>Strength Score</span>
@@ -611,14 +618,28 @@
       </label>
     </div>
     <label class="field">
-      <span>Species</span>
-      <input type="text" id="char-race-input" maxlength="30" placeholder="e.g. Half-Elf">
+      <span>Background</span>
+      <input type="text" id="char-background-input" maxlength="40" placeholder="e.g. Soldier">
     </label>
-    <label class="field">
-      <span>Class(es)</span>
-      <input type="text" id="char-class-input" maxlength="60" placeholder="e.g. Fighter, Rogue">
-    </label>
-    <p class="modal-note">Separate multiple classes with a comma.</p>
+
+    <!-- Class rows. `#char-class-rows` is filled by renderCharClassRows(); the
+         one class datalist is shared by every row, since every row offers the
+         same list of classes. Each row mints its own subclass datalist, because
+         those differ by class. -->
+    <div class="class-editor">
+      <div class="class-editor-head">
+        <span class="class-editor-title">Classes</span>
+        <span id="char-total-level" class="class-editor-total"></span>
+      </div>
+      <div id="char-class-rows"></div>
+      <datalist id="class-options"><!-- filled by fillDatalist() --></datalist>
+      <button id="char-add-class-btn" class="btn-sm"><span class="ico ico-plus lead"></span>Add Class</button>
+      <label class="field narrow class-editor-level hidden" id="char-level-field">
+        <span>Level</span>
+        <input type="number" id="char-level-input" min="1" max="20" value="1">
+      </label>
+    </div>
+
     <p class="modal-note">
       Normal capacity: <strong id="modal-capacity-normal">150 slots</strong><br>
       Total grid size: <strong id="modal-capacity-total">450 slots</strong> (3 zones of 15 × STR)
@@ -1263,6 +1284,9 @@
      normalizeDescription() while parsing data/species.json, which happens at
      load time, not at render. -->
 <script src="src/js/species-traits.js"></script>
+<!-- After the two registries: the setup modal offers a class, a subclass and a
+     species by name, so it wants both of them defined. -->
+<script src="src/js/character-setup.js"></script>
 <script src="src/js/sheet-prose.js"></script>
 <script src="src/js/sheet-layout.js"></script>
 <script src="src/js/equipment.js"></script>

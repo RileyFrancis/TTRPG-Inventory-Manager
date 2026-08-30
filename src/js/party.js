@@ -407,7 +407,7 @@ function switchViewToOwn() {
     // GM — back to no-selection state; show placeholder. Deliberately not one
     // of their own characters: commitActiveCharacter() refuses to write this
     // working copy anywhere, so their roster is untouched by running a table.
-    state.character = { id: null, name: 'Game Master', strength: 10, level: 1, race: '', classes: [] };
+    state.character = { id: null, name: 'Game Master', strength: 10, level: 1, race: '', classLevels: [] };
     state.instances = {};
     state.db = {};
     DEFAULT_ITEMS.forEach(t => { state.db[t.id] = t; });
@@ -577,11 +577,12 @@ function updatePartyPanel() {
   });
 }
 
-// "Level 4 Half-Elf Fighter / Rogue", skipping whatever is missing. Empty when
-// the character carries none of it.
+// "Level 7 · Tiefling · Warlock 5 / Bard 2", skipping whatever is missing. Empty
+// when the character carries none of it. The level is the character's own —
+// their total — and each class says its own only when there is more than one.
 function describePartyCharacter(c) {
   if (!c) return '';
-  const classes = Array.isArray(c.classes) ? c.classes.filter(Boolean).join(' / ') : '';
+  const classes = describeCharacterClasses(c);
   const parts = [];
   if (c.level) parts.push('Level ' + c.level);
   if (c.race) parts.push(c.race);

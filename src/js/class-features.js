@@ -3,8 +3,9 @@
 // =============================================================================
 'use strict';
 
-// The sheet reads `state.character.classes` (names, as typed) and `level`, and
-// shows what those classes hand out. Three things live here: the **registry**
+// The sheet reads `state.character.classLevels` — one `{ name, level, subclass }`
+// entry per class — and shows what those classes hand out. Three things live
+// here: the **registry**
 // (where a class definition comes from), the **section** that draws it, and the
 // **unlocks** a feature can carry — parts of the sheet that stay hidden until
 // the feature that grants them is owned.
@@ -23,24 +24,27 @@
 // the same shape `state.db` has, where `DEFAULT_ITEMS` are re-hydrated each boot
 // and only the customs are saved.
 //
-// **Classes are matched by name, not by id**, because `classes` is a free-text
-// field the player types ("Fighter, Rogue"). A name that matches nothing is not
-// an error — it is a class this app has not been taught yet, and the section
-// says so rather than going blank.
+// **Classes are matched by name, not by id**, because a class entry's `name` is
+// a free-text field the player types. A name that matches nothing is not an
+// error — it is a class this app has not been taught yet, and the section says
+// so rather than going blank.
 //
-// **Levels are the character's total, not per-class.** The app tracks one
-// `level`, so a multiclassed character is shown every listed class's features
-// up to that level. That is wrong by the rules and right for what this app
-// knows; when per-class levels exist, `characterClassLevel()` is the one place
-// that has to learn about them.
+// **Every class is read at its own level.** A Warlock 5 / Bard 2 sees the
+// Warlock list up to 5 and the Bard list up to 2, because each entry carries the
+// level it was taken to — see `classEntriesOf()` and the model in
+// characters.js. `characterClassLevel()` is where that lands, exactly as this
+// header used to promise it would. The character's *total* level (the sum) is
+// still what the proficiency bonus and the species traits are worked out from,
+// which is right by the rules.
 //
 // **Subclasses are a class in miniature** — `data/classes.json` nests them
-// under `subclasses: [{ id, name, source, features }]`. The character has one
-// free-text `subclass` field (like `classes`), matched against the subclasses
-// of whichever class they hold; a match folds that subclass's features into
-// the same list, gated by the same total level and tagged with the subclass
-// name. `data-unlocked-by="subclass"` already hides the field itself until an
-// owned feature grants it.
+// under `subclasses: [{ id, name, source, features }]`. Each class entry carries
+// its own free-text `subclass`, matched against the subclasses of that class; a
+// match folds those features into the same list, gated by that class's level and
+// tagged with the subclass name. The field itself is offered in the Character
+// Setup modal only once that class's own level has unlocked it —
+// `classUnlockKeys()` is that test, and it is per class, so a Warlock 5 is asked
+// for a patron while the Bard 2 beside it is not.
 //
 // **`source`** is a short book label ("PHB") carried by a class and,
 // separately, by each subclass. The section shows it as a quiet caption above
@@ -217,24 +221,42 @@ function findSubclassByName(classDef, name) {
     s => s.name.toLowerCase() === key || s.id === key) ?? null;
 }
 
-// The level a character counts as, for a given class. One place, so per-class
-// levels have somewhere to land later — see the file header.
-function characterClassLevel(character, _classDef) {
+// The level a character counts as **for one particular class** — the entry's own
+// level, not the character's total. This is the place the file header always
+// said per-class levels would land, and they have: a Warlock 5 / Bard 2 reads
+// the Warlock list at 5 and the Bard list at 2.
+//
+// The fallback is the character's total level, and it is for a class we were
+// handed but cannot find an entry for — party data mid-edit, or a caller passing
+// a class the character does not actually hold.
+function characterClassLevel(character, classDef) {
+  const entry = classEntriesOf(character).find(e => matchesClass(classDef, e.name));
+  if (entry) return entry.level;
   return Math.max(1, Math.min(20, parseInt(character?.level, 10) || 1));
+}
+
+// Whether a typed name is this class — the same loose test `findClassByName()`
+// makes, asked the other way round.
+function matchesClass(classDef, name) {
+  if (!classDef) return false;
+  const key = String(name ?? '').trim().toLowerCase();
+  return key === classDef.name.toLowerCase() || key === classDef.id;
 }
 
 // Everything the character's classes offer, in the order the section shows it:
 // by level, then by class, then as written. `owned` is what the level gate
 // decides — the list is always complete, and the *section* chooses what to draw.
 function classFeaturesFor(character) {
-  const names = character?.classes ?? [];
-  const multi = names.length > 1;
+  const entries = classEntriesOf(character);
+  const multi = entries.length > 1;
   const rows = [];
 
-  names.forEach(name => {
-    const def = findClassByName(name);
+  entries.forEach(entry => {
+    const def = findClassByName(entry.name);
     if (!def) return;
-    const level = characterClassLevel(character, def);
+    // **The entry's own level**, so each half of a multiclass is read at the
+    // level it was actually taken to.
+    const level = entry.level;
 
     def.features.forEach((f, i) => rows.push({
       ...f,
@@ -248,7 +270,8 @@ function classFeaturesFor(character) {
     // The chosen subclass's own features, if this class recognises what the
     // character typed. They interleave with the base features by level but
     // sort after them at a shared level, and always carry the subclass name.
-    const subclass = findSubclassByName(def, character?.subclass);
+    // The subclass is the *entry's* — each class picks its own.
+    const subclass = findSubclassByName(def, entry.subclass);
     if (subclass) {
       subclass.features.forEach((f, i) => rows.push({
         ...f,
@@ -273,21 +296,29 @@ function classFeaturesFor(character) {
 // The names typed that this app has never heard of. Not an error — the section
 // says so, and it is the honest answer until custom classes exist.
 function unknownClassNames(character) {
-  return (character?.classes ?? []).filter(n => !findClassByName(n));
+  return classEntriesOf(character).map(e => e.name).filter(n => !findClassByName(n));
 }
 
 // =============================================================================
 // UNLOCKS — sheet parts that arrive with a feature
 // =============================================================================
 // A feature may name parts of the sheet it brings with it (`"unlocks":
-// ["subclass"]`). The sheet marks those parts `data-unlocked-by="subclass"`,
-// and they stay hidden until some *owned* feature names them. Today that is the
-// Subclass field, which is meaningless on a level-1 character.
+// ["subclass"]`). Markup marks those parts `data-unlocked-by="subclass"`, and
+// they stay hidden until some *owned* feature names them.
 //
 // The key is a plain string shared between the JSON and the markup, rather than
 // a selector or an element id, so the data never has to know how the sheet is
 // built — a part can move, or be drawn by something else entirely, and the
-// class file is unaffected.
+// class file is unaffected. `"subclass"` proved that: the field it gates moved
+// off the sheet and into the Character Setup modal without `data/classes.json`
+// changing a character.
+//
+// **The only key in use is asked per class, not of the character.** A Warlock 5
+// / Bard 2 has a patron and no Bard college, so the modal gates each class row's
+// Subclass field with `classUnlockKeys()` — that class, at that class's level.
+// The character-wide question below is the right one for a part of the *sheet*,
+// which belongs to nobody's class in particular; it has no targets today, and is
+// what a species Lineage field will arrive through.
 function unlockedSheetKeys(character) {
   const keys = new Set();
   classFeaturesFor(character).forEach(row => {
@@ -302,8 +333,26 @@ function unlockedSheetKeys(character) {
 // eaten a box they were using. Unlocks only speak when every class listed is
 // one we can actually reason about.
 function featureUnlocksAreAuthoritative(character) {
-  const names = character?.classes ?? [];
-  return names.length > 0 && names.every(n => !!findClassByName(n));
+  const entries = classEntriesOf(character);
+  return entries.length > 0 && entries.every(e => !!findClassByName(e.name));
+}
+
+// The unlock keys **one class alone** hands out at a given level, with a given
+// subclass. `unlockedSheetKeys()` above is the character-wide question; this is
+// the same question asked of a single class, which is what the Character Setup
+// modal needs — a Warlock 5 has a subclass to name and a Bard 2 does not, and
+// the two rows of one multiclass must be able to disagree.
+//
+// A class this app has never heard of returns `null`, not an empty set: as
+// everywhere else, not knowing is not the same as knowing there is nothing, and
+// the caller must show the field rather than hide one that should be there.
+function classUnlockKeys(classDef, subclassName, level) {
+  if (!classDef) return null;
+  const keys = new Set();
+  const collect = f => { if (f.level <= level) f.unlocks.forEach(k => keys.add(k)); };
+  classDef.features.forEach(collect);
+  findSubclassByName(classDef, subclassName)?.features.forEach(collect);
+  return keys;
 }
 
 // **Both registries feed one key space.** A species trait may unlock a part of
@@ -325,6 +374,8 @@ function applyFeatureUnlocks() {
     speciesUnlockKeys(state.character).forEach(k => keys.add(k));
   }
 
+  // Scoped to the sheet, which is where a character-wide part would live. The
+  // setup modal's class rows are gated per class instead, and never from here.
   document.querySelectorAll('#character-sheet [data-unlocked-by]').forEach(el => {
     const key = el.dataset.unlockedBy;
     el.classList.toggle('hidden', !!keys && !keys.has(key));
@@ -373,8 +424,10 @@ let classFeaturesSig = null;
 function classFeaturesSignature() {
   const c = state.character || {};
   return [
-    (c.classes || []).join('␟'),
-    c.subclass || '', c.level ?? '', c.race || '',
+    // Name, level and subclass of every class — the whole of what the section
+    // is drawn from, so a level moved from one class to another rebuilds it.
+    classEntriesOf(c).map(e => `${e.name}:${e.level}:${e.subclass}`).join('␟'),
+    c.level ?? '', c.race || '',
     showLockedFeatures ? '1' : '0',
   ].join('‖');
 }
@@ -391,8 +444,6 @@ function renderClassFeatures() {
   const sig = classFeaturesSignature();
   if (sig === classFeaturesSig) return;
   classFeaturesSig = sig;
-
-  populateSubclassOptions(state.character);
 
   const rows = classFeaturesFor(state.character);
   const locked = rows.filter(r => !r.owned).length;
@@ -533,10 +584,10 @@ function featureCard(row, opts = {}) {
 }
 
 function featureEmptyState(character) {
-  const names = character?.classes ?? [];
+  const names = classEntriesOf(character).map(e => e.name);
   return featureNote(names.length
     ? `No features known for ${names.map(n => `“${n}”`).join(', ')}.`
-    : 'Set a class in the Identity section to see its features.');
+    : 'Add a class in Character Setup to see its features.');
 }
 
 function featureNote(text) {
@@ -551,11 +602,11 @@ function featureNote(text) {
 // skipped entirely when nothing does.
 function classSourceSummary(character) {
   const parts = [];
-  (character?.classes ?? []).forEach(name => {
-    const def = findClassByName(name);
+  classEntriesOf(character).forEach(entry => {
+    const def = findClassByName(entry.name);
     if (!def) return;
     if (def.source) parts.push(`${def.name} — ${def.source}`);
-    const subclass = findSubclassByName(def, character?.subclass);
+    const subclass = findSubclassByName(def, entry.subclass);
     if (subclass?.source) parts.push(`${subclass.name} — ${subclass.source}`);
   });
   return parts.join(' · ');
@@ -568,17 +619,11 @@ function featureSourceNote(text) {
   return p;
 }
 
-// Feeds the Subclass field's datalist with the subclasses of whatever classes
-// the character holds — a hint, not a constraint: the field stays free text,
-// exactly as the Class field is.
-function populateSubclassOptions(character) {
-  const dl = document.getElementById('subclass-options');
+// Fills a `<datalist>` with names — the Character Setup modal's class and
+// subclass hints. A hint, never a constraint: both fields stay free text, so a
+// class or subclass this app has not been taught can still be typed in.
+function fillDatalist(dl, names) {
   if (!dl) return;
-  const names = [];
-  (character?.classes ?? []).forEach(name => {
-    const def = findClassByName(name);
-    (def?.subclasses ?? []).forEach(s => names.push(s.name));
-  });
   dl.textContent = '';
   [...new Set(names)].forEach(n => {
     const opt = document.createElement('option');
