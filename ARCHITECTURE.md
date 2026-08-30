@@ -189,10 +189,14 @@ reference to check against. `tools/shape-editor.html` draws a shape visually and
 prints the `shape` string to paste in.
 
 `data/classes.json` and `data/species.json` are the class and species
-registries — `{ id, name, features: [...] }` and `{ id, name, traits: [...] }` —
-read at load the same blocking way. Both are **content, not code**: adding a
-class or a species should never mean a code change, and both files are already
-the shape a user-authored one will take.
+registries — `{ id, name, source?, features: [...], subclasses?: [...] }` and
+`{ id, name, traits: [...] }` — read at load the same blocking way. Both are
+**content, not code**: adding a class or a species should never mean a code
+change, and both files are already the shape a user-authored one will take. A
+class nests its subclasses (`{ id, name, source?, features: [...] }`); the
+character's one free-text `subclass` field is matched against them and a match
+folds that subclass's features into the Class Features list. `source` is a
+short book label shown as a caption above the cards.
 
 The character sheet's written sections (Backstory, Appearance) are Markdown, and
 **raw HTML in them is allowed on purpose**. `src/js/markdown.js` is the only

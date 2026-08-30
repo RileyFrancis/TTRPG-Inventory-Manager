@@ -201,7 +201,9 @@
                        owned — see `unlocks` in data/classes.json. A level-1
                        character has no subclass to write in. -->
                   <label class="sheet-field" data-unlocked-by="subclass"><span>Subclass</span>
-                    <input type="text" data-sheet="subclass" data-kind="text" maxlength="40"></label>
+                    <input type="text" data-sheet="subclass" data-kind="text" maxlength="40"
+                           list="subclass-options">
+                    <datalist id="subclass-options"><!-- filled by populateSubclassOptions() --></datalist></label>
                   <label class="sheet-field"><span>Species</span>
                     <input type="text" data-sheet="race" data-kind="text" maxlength="30"></label>
                   <label class="sheet-field"><span>Background</span>

@@ -280,3 +280,15 @@
   font-style: italic;
   color: var(--text-dim);
 }
+
+/* A citation under the cards naming each class and subclass's source book.
+   Not italic like `.feature-note` — it is information, not an apology for an
+   absence. Sits a touch closer to the last card than the flex gap would give,
+   reading as a footnote to the list rather than another item in it. */
+.feature-sources {
+  margin: -8px 0 0;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--text-dim);
+}

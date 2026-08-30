@@ -524,7 +524,8 @@ data only, no behaviour — so the editor that eventually writes one has nothing
 new to learn.
 
 ```
-{ id, name, features: [{ id, name, level, description, unlocks? }] }
+{ id, name, source?, features: [{ id, name, level, description, unlocks? }],
+  subclasses?: [{ id, name, source?, features: [ …same as above… ] }] }
 ```
 
 **The registry is the seam custom classes come through.** Nothing outside
@@ -554,6 +555,21 @@ an unreadable file leaves the registry empty rather than throwing.
   the show/hide toggle a filter over one list rather than two code paths.
 - The class name is tagged onto a card only when there is more than one class
   (`showClass`) — one class does not need saying on every card.
+- **Subclasses nest under the class** (`subclasses[]`, sanitized by
+  `sanitizeSubclassList()` — the same shape as a class minus its own
+  `subclasses`). The character carries one free-text `subclass` field, matched
+  by `findSubclassByName(classDef, name)` against the subclasses of each class
+  they hold. A match folds that subclass's features into the same list
+  (`classFeaturesFor()`), gated by the same total `level`, sorted after the
+  base features at a shared level (`sub` key), and tagged with the subclass
+  name on every card — single class or not. The Subclass **field** is still
+  gated by `data-unlocked-by="subclass"`, so it appears only once an owned
+  feature unlocks it; its `<datalist>` is filled by `populateSubclassOptions()`
+  from the known subclasses of the character's classes, as a hint only.
+- **`source`** is a short book label ("PHB") on a class and, separately, on
+  each subclass. `classSourceSummary()` renders the known ones as a quiet
+  `.feature-sources` caption above the cards; nothing carrying a source means
+  no caption. `cleanSource()` trims and caps it.
 - Descriptions are terse summaries of the mechanic, written for this app. Do not
   paste rulebook text in.
 - **A description is Markdown**, rendered by `markdown.js` through the same

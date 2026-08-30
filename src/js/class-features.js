@@ -33,6 +33,18 @@
 // up to that level. That is wrong by the rules and right for what this app
 // knows; when per-class levels exist, `characterClassLevel()` is the one place
 // that has to learn about them.
+//
+// **Subclasses are a class in miniature** — `data/classes.json` nests them
+// under `subclasses: [{ id, name, source, features }]`. The character has one
+// free-text `subclass` field (like `classes`), matched against the subclasses
+// of whichever class they hold; a match folds that subclass's features into
+// the same list, gated by the same total level and tagged with the subclass
+// name. `data-unlocked-by="subclass"` already hides the field itself until an
+// owned feature grants it.
+//
+// **`source`** is a short book label ("PHB") carried by a class and,
+// separately, by each subclass. The section shows it as a quiet caption above
+// the cards; absent, it says nothing.
 
 // =============================================================================
 // LOADING THE CLASSES
@@ -74,8 +86,36 @@ function sanitizeClassList(raw) {
     const features = (Array.isArray(c.features) ? c.features : [])
       .map(f => sanitizeFeature(f))
       .filter(Boolean);
-    return features.length ? { id, name, features } : null;
+    return features.length
+      ? { id, name, source: cleanSource(c.source),
+          subclasses: sanitizeSubclassList(c.subclasses), features }
+      : null;
   }).filter(Boolean);
+}
+
+// A subclass is a class in miniature: an id, a name, its own `source`, and a
+// list of features gated by the character's total level exactly as the class's
+// own are. It carries no `subclasses` of its own. One with no usable features
+// is dropped, like a class.
+function sanitizeSubclassList(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw.map(s => {
+    const id = String(s?.id ?? '').trim();
+    const name = String(s?.name ?? '').trim();
+    if (!id || !name) return null;
+    const features = (Array.isArray(s.features) ? s.features : [])
+      .map(f => sanitizeFeature(f))
+      .filter(Boolean);
+    return features.length
+      ? { id, name, source: cleanSource(s.source), features }
+      : null;
+  }).filter(Boolean);
+}
+
+// Source material — a short label like "PHB", free text and trimmed. Absent
+// reads as "" and the section simply says nothing about where a class is from.
+function cleanSource(raw) {
+  return String(raw ?? '').trim().slice(0, 40);
 }
 
 function sanitizeFeature(f) {
@@ -166,6 +206,17 @@ function findClassByName(name) {
   return allClasses().find(c => c.name.toLowerCase() === key || c.id === key) ?? null;
 }
 
+// A character has one free-text `subclass` field, like `classes` — matched
+// against the subclasses of whichever class they hold. Loose match on name or
+// id, as everywhere else. A name matching nothing is not an error: the app has
+// simply not been taught that subclass, and its features do not appear.
+function findSubclassByName(classDef, name) {
+  const key = String(name ?? '').trim().toLowerCase();
+  if (!key || !classDef) return null;
+  return (classDef.subclasses ?? []).find(
+    s => s.name.toLowerCase() === key || s.id === key) ?? null;
+}
+
 // The level a character counts as, for a given class. One place, so per-class
 // levels have somewhere to land later — see the file header.
 function characterClassLevel(character, _classDef) {
@@ -184,18 +235,37 @@ function classFeaturesFor(character) {
     const def = findClassByName(name);
     if (!def) return;
     const level = characterClassLevel(character, def);
+
     def.features.forEach((f, i) => rows.push({
       ...f,
       className: def.name,
       showClass: multi,     // one class needs no label on every card
+      sub: 0,               // base features sort before the subclass's
       order: i,
       owned: f.level <= level,
     }));
+
+    // The chosen subclass's own features, if this class recognises what the
+    // character typed. They interleave with the base features by level but
+    // sort after them at a shared level, and always carry the subclass name.
+    const subclass = findSubclassByName(def, character?.subclass);
+    if (subclass) {
+      subclass.features.forEach((f, i) => rows.push({
+        ...f,
+        className: def.name,
+        subclassName: subclass.name,
+        showClass: multi,
+        sub: 1,
+        order: i,
+        owned: f.level <= level,
+      }));
+    }
   });
 
   rows.sort((a, b) =>
     a.level - b.level ||
     a.className.localeCompare(b.className) ||
+    a.sub - b.sub ||
     a.order - b.order);
   return rows;
 }
@@ -298,6 +368,7 @@ function renderClassFeatures() {
   if (!box) return;
 
   applyFeatureUnlocks();
+  populateSubclassOptions(state.character);
 
   const rows = classFeaturesFor(state.character);
   const locked = rows.filter(r => !r.owned).length;
@@ -327,6 +398,10 @@ function renderClassFeatures() {
 
   // Every feature is locked and the reader has chosen not to see them.
   if (!box.children.length) box.appendChild(featureNote('Nothing unlocked at this level yet.'));
+
+  // A quiet citation under the cards — class and subclass book(s).
+  const sources = classSourceSummary(state.character);
+  if (sources) box.appendChild(featureSourceNote(sources));
 
   const unknown = unknownClassNames(state.character);
   if (unknown.length) {
@@ -379,10 +454,16 @@ function featureCard(row, opts = {}) {
   nameBtn.setAttribute('aria-expanded', String(expanded));
   name.appendChild(nameBtn);
 
-  if (row.showClass) {
+  // The small right-aligned tag: the class name when multiclassed (one class
+  // needs no label on every card), and the subclass name whenever a feature
+  // comes from one — that earns saying, single class or not.
+  const tagText = row.subclassName
+    ? (row.showClass ? `${row.className} · ${row.subclassName}` : row.subclassName)
+    : (row.showClass ? row.className : '');
+  if (tagText) {
     const tag = document.createElement('span');
     tag.className = 'feature-class';
-    tag.textContent = row.className;
+    tag.textContent = tagText;
     name.appendChild(tag);
   }
 
@@ -421,6 +502,47 @@ function featureNote(text) {
   p.className = 'feature-note';
   p.textContent = text;
   return p;
+}
+
+// A quiet caption above the cards naming where each known class — and its
+// chosen subclass — comes from. Built only from what carries a `source`, and
+// skipped entirely when nothing does.
+function classSourceSummary(character) {
+  const parts = [];
+  (character?.classes ?? []).forEach(name => {
+    const def = findClassByName(name);
+    if (!def) return;
+    if (def.source) parts.push(`${def.name} — ${def.source}`);
+    const subclass = findSubclassByName(def, character?.subclass);
+    if (subclass?.source) parts.push(`${subclass.name} — ${subclass.source}`);
+  });
+  return parts.join(' · ');
+}
+
+function featureSourceNote(text) {
+  const p = document.createElement('p');
+  p.className = 'feature-sources';
+  p.textContent = text;
+  return p;
+}
+
+// Feeds the Subclass field's datalist with the subclasses of whatever classes
+// the character holds — a hint, not a constraint: the field stays free text,
+// exactly as the Class field is.
+function populateSubclassOptions(character) {
+  const dl = document.getElementById('subclass-options');
+  if (!dl) return;
+  const names = [];
+  (character?.classes ?? []).forEach(name => {
+    const def = findClassByName(name);
+    (def?.subclasses ?? []).forEach(s => names.push(s.name));
+  });
+  dl.textContent = '';
+  [...new Set(names)].forEach(n => {
+    const opt = document.createElement('option');
+    opt.value = n;
+    dl.appendChild(opt);
+  });
 }
 
 document.getElementById('feature-toggle-locked').addEventListener('click', () => {

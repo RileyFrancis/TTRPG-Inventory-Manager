@@ -1,48 +1,10 @@
 {
-  "_comment": [
-    "The classes the app knows, and what each one hands out. Read by",
-    "src/js/class-features.js, which is the only file that may touch this.",
-    "",
-    "A class is { id, name, features[] }; a feature is",
-    "{ id, level, name, description, unlocks? }.",
-    "",
-    "  id          stable, and never derived from position. A default item's id",
-    "              is its CSV row number and that has bitten this project before",
-    "              (see the coin purse) - so ids here are written, not counted.",
-    "  level       the character level the feature arrives at.",
-    "  unlocks     optional. Names one or more parts of the character sheet that",
-    "              stay hidden until this feature is owned. The sheet marks them",
-    "              with data-unlocked-by=\"<key>\"; today the only key is",
-    "              'subclass', on the Subclass field in the Identity section.",
-    "",
-    "  description Markdown, rendered exactly as a character's backstory is:",
-    "              **bold**, *italic*, `- ` bullet / `1. ` numbered lists,",
-    "              headings, > quotes, [links](url). A single newline is a hard",
-    "              line break. Pipe tables are NOT parsed - write a plain",
-    "              <table> in raw HTML, which is passed through and sanitised.",
-    "              Behaviour (script, on*=, javascript:) is always stripped.",
-    "",
-    "              JSON has no multi-line string, so description also accepts an",
-    "              ARRAY, which is how anything longer than a sentence should be",
-    "              written. Each array entry is a block; a blank string between",
-    "              entries is not needed - blocks are joined with a blank line",
-    "              automatically, EXCEPT that consecutive list-item entries stay",
-    "              in one list. A nested array is one block whose lines are kept",
-    "              together with hard breaks between them - use it for a <table>",
-    "              or a stanza. See the Barbarian's Rage for a worked example.",
-    "",
-    "Order inside a level is the order written here. Descriptions are terse",
-    "summaries of the mechanic written for this app - do not paste rulebook",
-    "text in.",
-    "",
-    "This file is the shape a user-authored class will take, so keep it data",
-    "only: anything that needs logic belongs in class-features.js."
-  ],
   "version": 1,
   "classes": [
     {
       "id": "barbarian",
       "name": "Barbarian",
+      "source": "PHB",
       "features": [
         {
           "id": "barbarian-rage",
@@ -217,7 +179,40 @@
         }
       ],
       "subclasses": [
-
+        {
+          "id": "barbarian-potb",
+          "name": "Path of the Berserker",
+          "source": "PHB",
+          "features": [
+            {
+              "id": "barbarian-potb-frenzy",
+              "level": 3,
+              "name": "Path of the Berserker: Frenzy",
+              "description": "If you use Reckless Attack while your Rage is active, you deal extra damage to the first target you hit on your turn with a Strength-based attack. To determine the extra damage, roll a number of d6s equal to your Rage Damage bonus, and add them together. The damage has the same type as the weapon or Unarmed Strike used for the attack."
+            },
+            {
+              "id": "barbarian-potb-mindless-rage",
+              "level": 6,
+              "name": "Path of the Berserker: Mindless Rage",
+              "description": "You have Immunity to the Charmed and Frightened conditions while your Rage is active. If you’re Charmed or Frightened when you enter your Rage, the condition ends on you."
+            },
+            {
+              "id": "barbarian-potb-retaliation",
+              "level": 10,
+              "name": "Path of the Berserker: Retaliation",
+              "description": "When you take damage from a creature that is within 5 feet of you, you can take a Reaction to make one melee attack against that creature, using a weapon or an Unarmed Strike."
+            },
+            {
+              "id": "barbarian-potb-intimidating-presence",
+              "level": 14,
+              "name": "Path of the Berserker: Intimidating Presence",
+              "description": [
+                "As a Bonus Action, you can strike terror into others with your menacing presence and primal power. When you do so, each creature of your choice in a 30-foot Emanation originating from you must make a Wisdom saving throw (DC 8 plus your Strength modifier and Proficiency Bonus). On a failed save, a creature has the Frightened condition for 1 minute. At the end of each of the Frightened creature’s turns, the creature repeats the save, ending the effect on itself on a success.",
+                "Once you use this feature, you can’t use it again until you finish a Long Rest unless you expend a use of your Rage (no action required) to restore your use of it."
+              ]
+            }
+          ]
+        }
       ]
     },
     {
