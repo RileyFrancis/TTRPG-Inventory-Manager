@@ -121,8 +121,9 @@ that owns the element wins.
 ### State model (`src/js/state.js`)
 
 ```
-state.character   { id, name, race, abilities{str…cha}, background, xp, size, ac,
-                    speed, hp{…}, hitDice{…}, deathSaves{…}, inspiration,
+state.character   { id, name, race, abilities{str…cha}, background, alignment,
+                    xp, size, ac, speed,
+                    hp{…}, hitDice{…}, deathSaves{…}, inspiration,
                     saveProf{}, skillProf{}, armorTraining{}, weaponProf,
                     toolProf,
                     classLevels[{ name, level, subclass }],  (the classes, authoritative)
@@ -373,9 +374,9 @@ screen*, which is not always one of yours.
 - **The class rows are why this left the sheet.** A multiclass is a list, and a
   list that grows as classes are added does not belong across the top of a page
   that has to stay readable. So the sheet keeps the readout and the gear opens
-  the editor. Species and background came with it: they answer the same question
-  ("who is this?"), and splitting that answer across two editors is how two
-  editors come to disagree.
+  the editor. Species, background and alignment came with it: they answer the
+  same question ("who is this?"), and splitting that answer across two editors is
+  how two editors come to disagree.
 - `charModalClasses` is a **working copy**, written to the character only on
   Save — Cancel has to mean something, and the target may be a slot that is not
   on screen.
@@ -387,9 +388,11 @@ screen*, which is not always one of yours.
   is nothing to sum, so a plain Level box appears in its place — a character can
   be levelled without this app knowing what they are, and that is the only time
   `level` is written directly.
-- Class and subclass are free text with a `<datalist>` hint, as they always
-  were. The class list is shared by every row; each row mints its **own** subclass
-  list, because those differ by class.
+- Class, subclass, species and alignment are free text with a `<datalist>`
+  hint, never a constraint — `ALIGNMENTS` offers the nine, and a table running
+  "Unaligned" or its own scheme can still type one. The class list is shared by
+  every row; each row mints its **own** subclass list, because those differ by
+  class.
 
 ### The character sheet
 
@@ -406,14 +409,32 @@ grid when a tab's *Character Sheet* is picked. It reads and writes the same
   the app guesses at will fight homebrew. `.stat-tile.derived` is the visual half
   of the same promise.
 - **What a character *is* is not edited here.** Their classes and the level
-  taken in each, their subclasses, species and background are edited in the
-  **Character Setup** modal behind the gear at the top right — see *Multiclassing
-  and Character Setup* below. A multiclass is a list rather than a field, and a
-  list that grows as classes are added does not belong across the top of a page
-  that has to stay readable. The sheet keeps the *readout*: the identity line
-  under the name (`describeSheetIdentity()`), which is the whole of what the gear
-  edits, said in one line. XP stays a box, because it is not part of what a
-  character is — it is a number that changes at the table, like HP.
+  taken in each, their subclasses, species, background and alignment are edited
+  in the **Character Setup** modal behind the gear at the top right — see
+  *Multiclassing and Character Setup* below. A multiclass is a list rather than a
+  field, and a list that grows as classes are added does not belong across the
+  top of a page that has to stay readable. XP stays a box, because it is not part
+  of what a character is — it is a number that changes at the table, like HP.
+- **The identity block is the readout of all of it** (`renderSheetIdentity()`):
+  a row of facts under the name, each **named above and answered below** —
+  Class, Species, Background, Alignment, Level, in the order the 2024 sheet
+  prints them. It was one run-on line, which is fine as the party panel's
+  subtitle and wrong as the sheet's own heading: nothing in "Level 7 · Tiefling ·
+  Warlock 5 / Bard 2 · Soldier" says which word is the species and which the
+  background, so a reader has to already know the answer to read it. A label
+  over each value says it once and costs a line.
+  - **No box, no border, no rule** — these are not fields any more, they are what
+    the character is, printed. Chrome around them would make them look editable,
+    which is exactly what the gear took away.
+  - Each fact is only as wide as its content and the gap does the separating, so
+    the row reads as a run of captions rather than a table. It wraps whole facts
+    on a narrow sheet, never a label away from its value.
+  - **Every fact is drawn whether it is set or not**, with an em dash for a
+    blank. A column that vanished would shuffle the rest along and leave the
+    reader working out which one went; a dash holds its place.
+  - A class's own level is printed **only in a multiclass** ("Warlock 5 (Fiend
+    Patron) / Bard 2"). With one class it would only say again what the Level
+    column already says.
 - **`abilities.str` is the character's Strength, and the grid's.** The inventory
   has always sized itself from `state.character.strength`, so that field stays —
   as a *mirror*, written only by `normalizeCharacterMeta()`. One writer, so the

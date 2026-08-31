@@ -617,10 +617,18 @@
         <input type="number" id="char-str-input" min="1" max="30" value="10">
       </label>
     </div>
-    <label class="field">
-      <span>Background</span>
-      <input type="text" id="char-background-input" maxlength="40" placeholder="e.g. Soldier">
-    </label>
+    <div class="form-two-col">
+      <label class="field">
+        <span>Background</span>
+        <input type="text" id="char-background-input" maxlength="40" placeholder="e.g. Soldier">
+      </label>
+      <label class="field">
+        <span>Alignment</span>
+        <input type="text" id="char-alignment-input" maxlength="30" placeholder="e.g. Chaotic Good"
+               list="alignment-options">
+        <datalist id="alignment-options"><!-- filled by fillDatalist() --></datalist>
+      </label>
+    </div>
 
     <!-- Class rows. `#char-class-rows` is filled by renderCharClassRows(); the
          one class datalist is shared by every row, since every row offers the

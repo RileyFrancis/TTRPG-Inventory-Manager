@@ -125,13 +125,42 @@
   border-bottom-color: var(--accent);
 }
 
+/* ── The identity block ──────────────────────────────────────────────────────
+   A row of facts under the name, each named above and answered below: class,
+   species, background, alignment, level. Built by renderSheetIdentity().
+
+   **No box, no border, no rule.** These are not fields — they are what the
+   character is, printed. Chrome around them would make them look editable,
+   which is the thing the gear took away.
+
+   Each fact is only as wide as it needs to be and the gap does the separating,
+   so the row reads as a run of small captions rather than a table. It wraps
+   whole facts on a narrow sheet, never a label away from its value. */
 .sheet-identity {
-  margin-bottom: 12px;
-  font-size: 11px;
-  letter-spacing: 0.1em;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 26px;
+  margin-bottom: 14px;
+}
+
+.identity-fact { display: flex; flex-direction: column; gap: 2px; }
+
+.identity-key {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--text-dim);
 }
+
+.identity-val {
+  font-size: 13px;
+  line-height: 1.25;
+  color: var(--text);
+}
+/* An unset fact keeps its place with an em dash — a column that vanished would
+   shuffle the rest along and leave the reader working out which one went. */
+.identity-val.empty { color: var(--text-dim); }
 
 .sheet-id-grid {
   display: grid;

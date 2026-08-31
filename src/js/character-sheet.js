@@ -65,6 +65,16 @@ const PROF_NONE = 0, PROF_PROFICIENT = 1, PROF_EXPERTISE = 2;
 const PROF_TITLES = ['Not proficient', 'Proficient', 'Expertise'];
 
 const SIZES = ['Tiny', 'Small', 'Medium', 'Large', 'Huge', 'Gargantuan'];
+
+// The nine, in the order the rules print them — law to chaos across, good to
+// evil down. A *hint* for the setup modal's datalist, never a constraint: the
+// field is free text like class and species, so "Unaligned", "Lawful Hungry" or
+// a table's own scheme all still fit.
+const ALIGNMENTS = [
+  'Lawful Good',    'Neutral Good',    'Chaotic Good',
+  'Lawful Neutral', 'True Neutral',    'Chaotic Neutral',
+  'Lawful Evil',    'Neutral Evil',    'Chaotic Evil',
+];
 const HIT_DICE = ['d6', 'd8', 'd10', 'd12'];
 
 // Everything the sheet adds to a character, with its defaults. Read by
@@ -72,7 +82,7 @@ const HIT_DICE = ['d6', 'd8', 'd10', 'd12'];
 // than the sheet having to cope with half of them missing.
 function defaultSheetFields() {
   return {
-    background: '', subclass: '', xp: 0, size: 'Medium',
+    background: '', alignment: '', subclass: '', xp: 0, size: 'Medium',
     ac: 10, speed: 30,
     hp: { current: 0, max: 0, temp: 0 },
     hitDice: { die: 'd8', max: 1, spent: 0 },
@@ -295,11 +305,9 @@ function renderCharacterSheet() {
   document.getElementById('sheet-initiative').textContent = formatMod(initiativeBonus());
   document.getElementById('sheet-passive').textContent    = passivePerception();
 
-  // The identity line under the name. It is now the *whole* readout of what the
-  // gear edits — those boxes have left the sheet — so it says more than the
-  // party panel's one-liner: each class's own level and subclass, and the
-  // background.
-  document.getElementById('sheet-identity').textContent = describeSheetIdentity(c) || 'Adventurer';
+  // The identity block under the name — the whole readout of what the gear
+  // edits, since those boxes have left the sheet.
+  renderSheetIdentity(c);
 
   // Nothing on someone else's sheet is editable, and a gear that opens a dialog
   // whose Save would write to a character that is not yours is worse than no
@@ -321,22 +329,58 @@ function renderCharacterSheet() {
   renderSheetProse();
 }
 
-// "Level 7 · Tiefling · Warlock 5 (The Fiend) / Bard 2 · Soldier", skipping
-// whatever is missing. A class's own level is said only when there is more than
-// one — a single class is already at the level printed at the front of the line.
-function describeSheetIdentity(c) {
+// The identity block: a row of facts, each **named above and answered below**,
+// running left to right in the order the 2024 sheet prints them — class,
+// species, background, alignment, and the level last.
+//
+// It was one run-on line ("Level 7 · Tiefling · Warlock 5 / Bard 2 · Soldier"),
+// which is fine as a party-panel subtitle and wrong as the sheet's own heading:
+// nothing there says which word is the species and which the background, so a
+// reader has to already know the answer to read it. A label over each value
+// says it once and costs a line.
+//
+// **No box and no rule.** These are not fields any more — they are what the
+// character *is*, printed. Chrome around them would make them look editable,
+// which is exactly the thing the gear took away.
+//
+// Every fact is drawn whether it is set or not, with an em dash for a blank.
+// A missing column would shuffle the rest along and leave the reader working out
+// which one went; a dash says "nothing here yet" and holds its place.
+function renderSheetIdentity(c) {
+  const box = document.getElementById('sheet-identity');
   const entries = classEntriesOf(c);
+
+  // A class's own level is said only when there is more than one — a single
+  // class is already at the level in the Level column.
   const classes = entries.map(e => {
     const level = entries.length > 1 ? ` ${e.level}` : '';
     return e.subclass ? `${e.name}${level} (${e.subclass})` : `${e.name}${level}`;
   }).join(' / ');
 
-  const parts = [];
-  if (c.level) parts.push('Level ' + c.level);
-  if (c.race) parts.push(c.race);
-  if (classes) parts.push(classes);
-  if (c.background) parts.push(c.background);
-  return parts.join(' · ');
+  box.textContent = '';
+  [
+    [entries.length > 1 ? 'Classes' : 'Class', classes],
+    ['Species',    c.race],
+    ['Background', c.background],
+    ['Alignment',  c.alignment],
+    ['Level',      c.level],
+  ].forEach(([label, value]) => box.appendChild(identityFact(label, value)));
+}
+
+function identityFact(label, value) {
+  const fact = document.createElement('div');
+  fact.className = 'identity-fact';
+
+  const key = document.createElement('span');
+  key.className = 'identity-key';
+  key.textContent = label;
+
+  const val = document.createElement('span');
+  val.className = 'identity-val' + (value ? '' : ' empty');
+  val.textContent = value || '—';
+
+  fact.append(key, val);
+  return fact;
 }
 
 function renderProfDot(el, kind) {

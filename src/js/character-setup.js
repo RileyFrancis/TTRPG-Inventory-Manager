@@ -6,15 +6,16 @@
 // One dialog, four jobs: the header's Edit Character, a roster card's Edit, New
 // Character on the home screen, and the gear at the top right of the character
 // sheet. It edits the things that describe a character rather than the things
-// that happen to one — name, species, background, and the classes they have
-// taken levels in. Strength is here too, because the inventory grid is sized
-// from it and this has always been where it is set.
+// that happen to one — name, species, background, alignment, and the classes
+// they have taken levels in. Strength is here too, because the inventory grid is
+// sized from it and this has always been where it is set.
 //
 // **The class rows are why this left the sheet.** A multiclass is a *list* —
 // Warlock 5 / Bard 2, each with its own subclass — and a list of rows that grows
 // as you add classes does not belong across the top of a page that has to stay
-// readable. So the sheet keeps the readout (the identity line under the name)
-// and the editing happens here.
+// readable. So the sheet keeps the readout (the identity block under the name,
+// which names each of these facts above its answer) and the editing happens
+// here.
 //
 // `charModalTargetId` names the slot in the roster to edit. A null target is the
 // character *on screen*, which is not always one of yours — a GM editing a
@@ -51,6 +52,7 @@ function openCharModal(targetId = null, { isNew = false } = {}) {
   document.getElementById('char-str-input').value        = c.strength;
   document.getElementById('char-race-input').value       = c.race ?? '';
   document.getElementById('char-background-input').value = c.background ?? '';
+  document.getElementById('char-alignment-input').value  = c.alignment ?? '';
   document.getElementById('char-level-input').value      = c.level ?? 1;
   document.getElementById('save-char-btn').textContent   = charModalIsNew ? 'Create' : 'Save';
 
@@ -62,6 +64,7 @@ function openCharModal(targetId = null, { isNew = false } = {}) {
   // species will arrive through the registries, and this is where they show up.
   fillDatalist(document.getElementById('class-options'), allClasses().map(d => d.name));
   fillDatalist(document.getElementById('species-options'), allSpecies().map(d => d.name));
+  fillDatalist(document.getElementById('alignment-options'), ALIGNMENTS);
 
   renderCharClassRows();
   updateCharModalNote();
@@ -84,6 +87,7 @@ function readCharModalFields(current) {
     name: document.getElementById('char-name-input').value.trim() || 'Unnamed Hero',
     race: document.getElementById('char-race-input').value.trim(),
     background: document.getElementById('char-background-input').value.trim(),
+    alignment: document.getElementById('char-alignment-input').value.trim(),
     classLevels: charModalClasses,
     level: Number.isFinite(level) ? level : (current?.level ?? 1),
     abilities: { ...(current?.abilities ?? {}), str: Number.isFinite(str) ? str : 10 },
