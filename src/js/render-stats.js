@@ -64,7 +64,7 @@ function updateWeightDisplay() {
   heavyMarkerEl.style.left = (enc / barMax * 100) + '%';
   heavyMarkerEl.style.display = barMax === heavy ? '' : 'none';
 
-  // Header
+  // Header — the name only. Strength is read off the sheet and shown by the
+  // limits above rather than printed again as a number.
   document.getElementById('char-name-display').textContent = state.character.name;
-  document.getElementById('char-str-display').textContent  = `STR ${str}`;
 }

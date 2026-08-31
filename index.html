@@ -96,10 +96,16 @@
          nobody selected, and the way back to your characters must never be. -->
     <button id="home-btn" class="btn-sm icon-only" title="Your characters"
             aria-label="Your characters"><span class="ico ico-home"></span></button>
+    <!-- Whose sheet this is, and nothing else. Strength left because the
+         character sheet owns the six ability scores and the grid has always
+         sized itself from `abilities.str` — a second readout in the header was
+         one more place for it to be out of date, and the weight bar beside it
+         already says what that Strength buys in carrying capacity. Edit
+         Character left with it: the gear on the sheet opens the same dialog,
+         for your own character and — since a GM is never read-only — for a
+         player's too. -->
     <div id="char-summary">
       <span id="char-name-display">Unnamed Hero</span>
-      <span id="char-str-display">STR 10</span>
-      <button id="edit-character-btn" class="btn-sm">Edit Character</button>
     </div>
     <div id="weight-bar-wrap">
       <div id="weight-bar-track">
@@ -590,9 +596,12 @@
 <div id="modal-backdrop" class="hidden"></div>
 
 <!-- ===== CHARACTER MODAL ===== -->
-<!-- One dialog, four jobs: the header's Edit Character, a roster card's Edit,
-     New Character, and the gear on the character sheet. Everything a character
-     *is* rather than everything they are carrying.
+<!-- One dialog, three jobs: the gear on the character sheet, a roster card's
+     Edit, and New Character. Everything a character *is* rather than everything
+     they are carrying — and nothing the character sheet already owns, which is
+     why there is no Strength box here. The six ability scores are the sheet's,
+     they all start at 10, and the grid reads Strength off `abilities.str`
+     wherever it is set.
 
      The class rows are built by src/js/character-setup.js from the character's
      `classLevels` — one row per class, each with its own level and its own
@@ -605,18 +614,12 @@
       <span>Name</span>
       <input type="text" id="char-name-input" maxlength="40" value="Unnamed Hero">
     </label>
-    <div class="form-two-col">
-      <label class="field">
-        <span>Species</span>
-        <input type="text" id="char-race-input" maxlength="30" placeholder="e.g. Half-Elf"
-               list="species-options">
-        <datalist id="species-options"><!-- filled by fillDatalist() --></datalist>
-      </label>
-      <label class="field">
-        <span>Strength Score</span>
-        <input type="number" id="char-str-input" min="1" max="30" value="10">
-      </label>
-    </div>
+    <label class="field">
+      <span>Species</span>
+      <input type="text" id="char-race-input" maxlength="30" placeholder="e.g. Half-Elf"
+             list="species-options">
+      <datalist id="species-options"><!-- filled by fillDatalist() --></datalist>
+    </label>
     <div class="form-two-col">
       <label class="field">
         <span>Background</span>
@@ -648,10 +651,6 @@
       </label>
     </div>
 
-    <p class="modal-note">
-      Normal capacity: <strong id="modal-capacity-normal">150 slots</strong><br>
-      Total grid size: <strong id="modal-capacity-total">450 slots</strong> (3 zones of 15 × STR)
-    </p>
     <div class="modal-footer">
       <button id="save-char-btn" class="btn-primary">Save</button>
       <button class="cancel-btn btn-sm">Cancel</button>

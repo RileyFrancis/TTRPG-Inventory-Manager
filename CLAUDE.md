@@ -329,10 +329,10 @@ and a wizard on Fridays and both are theirs. So the save file holds a **roster**
   `maybeOpenHomeAtBoot()` guesses from `dnd_inventory_last_signin` (this
   browser's own flag, written by auth.js) rather than painting the inventory and
   yanking it away a moment later.
-- One modal serves three jobs — the header's Edit Character, a card's Edit, and
-  New Character. A **null** `charModalTargetId` means *the character on screen*,
-  which is not always one of yours: a GM editing a player's Strength from the
-  header edits the working copy and the party roster, never their own slot.
+- One modal serves three jobs — the sheet's gear, a card's Edit, and New
+  Character. A **null** `charModalTargetId` means *the character on screen*,
+  which is not always one of yours: a GM editing a player from the gear edits the
+  working copy and the party roster, never their own slot.
 
 ### Multiclassing and Character Setup
 
@@ -366,10 +366,18 @@ its own subclass. A Warlock 5 / Bard 2 is two entries, and the character is leve
   right by the rules, and it is why the sum has to be a real field rather than
   something each reader adds up for itself.
 
-**The modal.** One dialog, four jobs: the header's Edit Character, a roster
-card's Edit, New Character, and the gear at the top right of the character sheet.
+**The modal.** One dialog, three jobs: the gear at the top right of the
+character sheet, a roster card's Edit, and New Character.
 `charModalTargetId` names the slot to edit; a null target is the character *on
 screen*, which is not always one of yours.
+
+- **The header has no Edit Character button and no STR readout.** The sheet owns
+  the six ability scores, and the grid has always sized itself from
+  `abilities.str` through the `strength` mirror — so a number in the header was
+  one more place for it to go stale, and the weight bar beside it already says
+  what that Strength buys. The gear replaces the button for both cases the button
+  covered: your own character, and — since `isReadOnly()` is false for a GM — a
+  player's.
 
 - **The class rows are why this left the sheet.** A multiclass is a list, and a
   list that grows as classes are added does not belong across the top of a page
@@ -440,11 +448,17 @@ grid when a tab's *Character Sheet* is picked. It reads and writes the same
   as a *mirror*, written only by `normalizeCharacterMeta()`. One writer, so the
   two cannot drift, and a save or a party member from before the sheet still
   lands the right way up (`normalizeAbilities` takes the old `strength` as the
-  fallback for `str`, so nobody silently becomes a 10). Editing Strength on the
-  sheet resizes the grid exactly as the character modal does.
-- The character modal's Strength box therefore writes **into** `abilities`, not
-  beside it — `readCharModalFields(current)` merges. Writing a bare `strength`
-  would be ignored, because `abilities` wins.
+  fallback for `str`, so nobody silently becomes a 10). Editing Strength here
+  resizes the grid, through `commitSheetEdit()`.
+- **This is the only place a score is typed.** The header's STR readout and the
+  Character Setup modal's Strength box are both gone — they were from before the
+  sheet existed, and each was a second editor for a value this section owns. The
+  six scores **all start at 10**, so a character created from the roster is a
+  sound level-1 with a 30-row grid until someone opens the sheet.
+  `readCharModalFields()` therefore returns **no `abilities` key at all**: every
+  caller merges it over the character being edited, so omitting it is what
+  carries the existing scores through, and on New Character
+  `normalizeAbilities()` fills all six with 10.
 - Skill proficiency is **three-state** (none / proficient / expertise); saves are
   two. 2024 keeps expertise, and a rogue with a plain tick is simply wrong.
 - **One group per ability, not three lists.** Everything on that half of the

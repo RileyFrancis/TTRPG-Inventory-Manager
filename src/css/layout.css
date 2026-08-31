@@ -47,13 +47,6 @@
   color: var(--accent);
   text-shadow: 0 1px 0 var(--emboss-hi);
 }
-#char-str-display {
-  font-weight: 600;
-  color: var(--text-dim);
-  padding-left: 12px;
-  border-left: 1px solid var(--border);
-}
-
 /* Weight bar */
 #weight-bar-wrap {
   flex: 1;

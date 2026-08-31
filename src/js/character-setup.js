@@ -3,12 +3,18 @@
 // =============================================================================
 'use strict';
 
-// One dialog, four jobs: the header's Edit Character, a roster card's Edit, New
-// Character on the home screen, and the gear at the top right of the character
-// sheet. It edits the things that describe a character rather than the things
-// that happen to one — name, species, background, alignment, and the classes
-// they have taken levels in. Strength is here too, because the inventory grid is
-// sized from it and this has always been where it is set.
+// One dialog, three jobs: the gear at the top right of the character sheet, a
+// roster card's Edit, and New Character on the home screen. It edits the things
+// that describe a character rather than the things that happen to one — name,
+// species, background, alignment, and the classes they have taken levels in.
+//
+// **Nothing the character sheet already owns.** Strength used to be here, from
+// before the sheet existed, and it was the last thing in this dialog with a
+// second editor somewhere else. The six ability scores are the sheet's; they all
+// start at 10, which is what a character has until someone sets them; and the
+// grid reads Strength off `abilities.str` through the `strength` mirror wherever
+// that happens. So a character can be created here and be a perfectly sound
+// level-1 with a 30-row grid, and the sheet is the one place a score is typed.
 //
 // **The class rows are why this left the sheet.** A multiclass is a *list* —
 // Warlock 5 / Bard 2, each with its own subclass — and a list of rows that grows
@@ -19,8 +25,10 @@
 //
 // `charModalTargetId` names the slot in the roster to edit. A null target is the
 // character *on screen*, which is not always one of yours — a GM editing a
-// player's Strength from the header is editing the working copy and the party
-// roster, never their own slot.
+// player from the sheet's gear is editing the working copy and the party roster,
+// never their own slot. That path survives the header's Edit Character button
+// being taken away because `isReadOnly()` is false for a GM, so the gear is
+// theirs to use on whoever they are looking at.
 
 let charModalTargetId = null;
 let charModalIsNew = false;
@@ -49,7 +57,6 @@ function openCharModal(targetId = null, { isNew = false } = {}) {
   document.getElementById('character-modal-title').textContent =
     charModalIsNew ? 'New Character' : 'Character Setup';
   document.getElementById('char-name-input').value       = charModalIsNew ? '' : c.name;
-  document.getElementById('char-str-input').value        = c.strength;
   document.getElementById('char-race-input').value       = c.race ?? '';
   document.getElementById('char-background-input').value = c.background ?? '';
   document.getElementById('char-alignment-input').value  = c.alignment ?? '';
@@ -67,21 +74,21 @@ function openCharModal(targetId = null, { isNew = false } = {}) {
   fillDatalist(document.getElementById('alignment-options'), ALIGNMENTS);
 
   renderCharClassRows();
-  updateCharModalNote();
   showModal('character-modal');
   setTimeout(() => document.getElementById('char-name-input').focus(), 0);
 }
 
-// `current` is the character being edited, because Strength is now one of six
-// abilities: it has to be written *into* the existing set rather than beside it,
-// or normalizeCharacterMeta would take the untouched `abilities.str` and the box
-// the user just typed in would appear to do nothing.
+// **`abilities` is deliberately not in what comes back.** Every caller merges
+// this over the character it is editing, so leaving the key out is what carries
+// the existing six scores through untouched — and on New Character, where there
+// is nothing to carry through, `normalizeAbilities()` fills all six with 10.
+// Sending `abilities` from here is what would need justifying, not omitting it.
 //
-// `level` is the same shape of trap and is handled the same way: with classes it
-// is a mirror of their sum and writing it does nothing, so it is only sent for a
-// character who has none — which is the only time the box is on screen.
+// `level` is the one field that has to be careful: with classes it is a mirror
+// of their sum and writing it does nothing, so it is only sent for a character
+// who has none — which is the only time the box is on screen. `current` is what
+// it falls back to when the box was never filled in.
 function readCharModalFields(current) {
-  const str = parseInt(document.getElementById('char-str-input').value, 10);
   const level = parseInt(document.getElementById('char-level-input').value, 10);
   return {
     name: document.getElementById('char-name-input').value.trim() || 'Unnamed Hero',
@@ -90,16 +97,8 @@ function readCharModalFields(current) {
     alignment: document.getElementById('char-alignment-input').value.trim(),
     classLevels: charModalClasses,
     level: Number.isFinite(level) ? level : (current?.level ?? 1),
-    abilities: { ...(current?.abilities ?? {}), str: Number.isFinite(str) ? str : 10 },
   };
 }
-
-function updateCharModalNote() {
-  const str = parseInt(document.getElementById('char-str-input').value) || 10;
-  document.getElementById('modal-capacity-normal').textContent = str * 15 + ' slots';
-  document.getElementById('modal-capacity-total').textContent  = str * 45 + ' slots';
-}
-document.getElementById('char-str-input').addEventListener('input', updateCharModalNote);
 
 document.getElementById('save-char-btn').addEventListener('click', () => {
   const current = charModalIsNew ? null
@@ -117,15 +116,13 @@ document.getElementById('save-char-btn').addEventListener('click', () => {
     // A card on the home screen — the slot, which may not be the one on screen.
     updateCharacterMeta(charModalTargetId, fields);
   } else {
-    // The header's Edit Character, or the sheet's gear: whoever is on screen,
-    // yours or a player's.
+    // The sheet's gear: whoever is on screen, yours or a player's.
     applyMetaToLiveCharacter(fields);
   }
   charModalTargetId = null;
   charModalIsNew = false;
 });
 
-document.getElementById('edit-character-btn').addEventListener('click', () => openCharModal());
 document.getElementById('sheet-setup-btn').addEventListener('click', () => openCharModal());
 
 // =============================================================================
