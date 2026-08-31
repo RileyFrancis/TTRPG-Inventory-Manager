@@ -4,11 +4,51 @@
 'use strict';
 
 // =============================================================================
+// THE DEFERRED RESIZE
+// =============================================================================
+// **Strength typed on the character sheet does not resize the grid until the
+// reader goes back to the inventory.** A number box is edited a keystroke at a
+// time, and on the way from 8 to 16 it passes through 1: three rows, and
+// `rebuildGrid()` would drop nearly the whole inventory into Needs Placement.
+// That is not undone by finishing the number — `unplaceInstance()` clears
+// `row`/`col`, so the items stay unplaced and the reader has to lay the whole
+// pack out again for a digit they typed in passing. An empty box is the same
+// hazard: it reads as 0, which is now a legal score and a grid of no rows.
+//
+// So the sheet marks the grid dirty (`commitSheetEdit`) and the resize happens
+// once, on the number the reader settled on, when they go and look at it
+// (`syncCharacterViewUI`).
+//
+// **Nothing is left inconsistent in the meantime.** `state.grid` and the
+// instances placed in it still agree with each other exactly as before — the
+// grid is simply still sized for the previous Strength. The one field that has
+// run ahead is `state.character.strength`, and the only thing reading it
+// meanwhile is the header's weight readout, which is a set of numbers rather
+// than a set of cells and is right to preview where the edit is going.
+//
+// A save taken before the reader returns keeps each item's `row`/`col`, and the
+// `rebuildGrid()` in `init()` settles it on the next load — once, on a finished
+// number, which is the whole point.
+let gridSizeDirty = false;
+
+function markGridSizeDirty() { gridSizeDirty = true; }
+
+function rebuildGridIfSizeDirty() {
+  if (!gridSizeDirty) return;
+  rebuildGrid();   // clears the flag by way of initGrid()
+}
+
+// =============================================================================
 // GRID LOGIC
 // =============================================================================
 function initGrid() {
   const rows = gridRows();
   state.grid = Array.from({ length: rows }, () => Array(GRID_COLS).fill(null));
+  // This *is* the pending resize, whatever asked for it — a view switch, a boot,
+  // a character swap, a party sync. Clearing the flag here rather than in
+  // `rebuildGridIfSizeDirty()` alone is what stops any of those other paths
+  // leaving a stale flag behind to fire a second, identical rebuild later.
+  gridSizeDirty = false;
 }
 
 // Does `shape` fit at (gridRow, gridCol) in one particular grid? `canPlace`

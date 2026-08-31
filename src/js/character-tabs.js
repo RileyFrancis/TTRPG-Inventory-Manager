@@ -184,6 +184,11 @@ function hasViewedCharacter() {
 function syncCharacterViewUI() {
   const showSheet = state.view === 'sheet' && hasViewedCharacter();
   document.getElementById('inventory-panel').classList.toggle('sheet-view', showSheet);
+  // Arriving at the inventory is where a Strength typed on the sheet finally
+  // resizes the grid — see the deferred resize in grid.js. This is the single
+  // entry point for "what are we looking at changed", so it is the one place
+  // that can know, and it costs nothing when nothing was edited.
+  if (!showSheet) rebuildGridIfSizeDirty();
   if (showSheet) renderCharacterSheet();
   renderCharacterTabs();
   // The left panel's tabs follow the same selection: a GM with nobody picked has

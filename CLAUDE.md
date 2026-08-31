@@ -151,7 +151,8 @@ state.dragging    { instanceId, anchorRow, anchorCol, origRow, origCol, origRota
 
 ### Grid geometry
 
-- 15 columns fixed (`GRID_COLS`), rows = `strength × 3` (three equal zones)
+- 15 columns fixed (`GRID_COLS`), rows = `strength × 3` (three equal zones).
+  Strength is 0–30, so a grid of no rows at all is a legal state
 - Cell size = 44 px (`CELL` constant)
 - Zone 0–(str-1): Normal carry; zone str–(2·str-1): Encumbered; zone 2·str–(3·str-1): Heavily Encumbered
 - `state.grid` is the authoritative occupancy map; placed-item `<div>`s are purely visual and are rebuilt by `renderAllItems()`
@@ -164,6 +165,26 @@ state.dragging    { instanceId, anchorRow, anchorCol, origRow, origCol, origRota
   keeps a position off the end of the grid, occupies no cell, and is drawn
   where `#inventory-grid`'s `overflow: hidden` clips it — invisible and
   unclickable, while `totalCarriedWeight()` goes on charging for it.
+- **A Strength typed on the sheet resizes the grid only when the reader goes
+  back to the inventory** (`markGridSizeDirty()` / `rebuildGridIfSizeDirty()` in
+  `grid.js`, marked from `commitSheetEdit()` and settled by
+  `syncCharacterViewUI()`). A number box is edited a keystroke at a time, so the
+  way from 8 to 16 runs through an empty box (0 rows) and then 1 (three rows) —
+  and rebuilding on each would empty the pack onto the Needs Placement list.
+  **That is not undone by finishing the number**, because the ejection cleared
+  every `row` / `col` on the way past. So the resize waits for the number the
+  reader settled on.
+  - Nothing is inconsistent while it waits: `state.grid` and the instances in it
+    still agree, the grid is just still sized for the previous Strength. Only
+    `state.character.strength` has run ahead, and its one live reader is the
+    header's weight readout — numbers, not cells, and right to preview the edit.
+  - The flag is cleared in **`initGrid()`**, not only in
+    `rebuildGridIfSizeDirty()`, so a rebuild from any other cause (a boot, a
+    character swap, a party sync) also satisfies the pending resize rather than
+    leaving a stale flag to fire a second identical rebuild.
+  - A save taken before the reader returns keeps each item's `row` / `col`, and
+    the `rebuildGrid()` in `init()` settles it on the next load — once, on a
+    finished number.
 
 ### Item shapes
 
@@ -449,7 +470,8 @@ grid when a tab's *Character Sheet* is picked. It reads and writes the same
   two cannot drift, and a save or a party member from before the sheet still
   lands the right way up (`normalizeAbilities` takes the old `strength` as the
   fallback for `str`, so nobody silently becomes a 10). Editing Strength here
-  resizes the grid, through `commitSheetEdit()`.
+  resizes the grid, through `commitSheetEdit()` — though not until the reader
+  goes back to the inventory; see *the deferred resize* under Grid geometry.
 - **This is the only place a score is typed.** The header's STR readout and the
   Character Setup modal's Strength box are both gone — they were from before the
   sheet existed, and each was a second editor for a value this section owns. The
@@ -459,6 +481,12 @@ grid when a tab's *Character Sheet* is picked. It reads and writes the same
   caller merges it over the character being edited, so omitting it is what
   carries the existing scores through, and on New Character
   `normalizeAbilities()` fills all six with 10.
+- **Scores run 0–30** (`clampScore`). Zero is a real score — a creature drained
+  to 0 Strength is incapacitated — so it is allowed rather than floored to 1, and
+  a grid of no rows is the honest reading of it. `updateWeightDisplay()` floors
+  its divisor at 1 for exactly that case: at Strength 0 all three thresholds are
+  0, and every ratio would be `0/0`, which the browser drops as an invalid
+  length, leaving the weight bar silently showing its last width.
 - Skill proficiency is **three-state** (none / proficient / expertise); saves are
   two. 2024 keeps expertise, and a rogue with a plain tick is simply wrong.
 - **One group per ability, not three lists.** Everything on that half of the

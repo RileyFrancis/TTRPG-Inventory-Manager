@@ -46,8 +46,11 @@ function updateWeightDisplay() {
     statusEl.textContent = ''; statusEl.className = '';
   }
 
-  // Dynamic bar max: expands from normal → enc → heavy as thresholds are crossed
-  const barMax = carried > enc ? heavy : (carried > normal ? enc : normal);
+  // Dynamic bar max: expands from normal → enc → heavy as thresholds are crossed.
+  // Floored at 1 because a Strength of 0 is a legal score and makes all three
+  // thresholds 0 — without it every ratio below is 0/0, and a NaN length is
+  // dropped by the browser, leaving the bar silently showing its last width.
+  const barMax = Math.max(1, carried > enc ? heavy : (carried > normal ? enc : normal));
   const pct    = Math.min(carried / barMax, 1) * 100;
 
   const fillEl = document.getElementById('weight-bar-fill');

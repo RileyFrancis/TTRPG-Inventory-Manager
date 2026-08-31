@@ -111,7 +111,10 @@ function normalizeAbilities(raw, strengthFallback) {
   return out;
 }
 
-function clampScore(n) { return Math.max(1, Math.min(30, n)); }
+// 0 to 30. Zero is a real score — a creature drained to 0 Strength is
+// incapacitated, and the rules say so — and an inventory of no rows is the
+// honest reading of it, so it is allowed rather than floored to 1.
+function clampScore(n) { return Math.max(0, Math.min(30, n)); }
 
 // In printed order, so a group lists its skills the way the sheet always has.
 function skillsOfAbility(abilityId) {
@@ -201,7 +204,7 @@ function abilityGroup(a) {
   const score = document.createElement('input');
   score.type = 'number';
   score.className = 'ability-score';
-  score.min = 1; score.max = 30;
+  score.min = 0; score.max = 30;
   score.dataset.sheet = `abilities.${a.id}`;
   score.dataset.kind = 'int';
   score.setAttribute('aria-label', a.label + ' score');
@@ -476,12 +479,16 @@ sheetEl.addEventListener('click', e => {
 });
 
 // What has to happen after any edit. Strength is the one field with a
-// consequence outside the sheet: the inventory grid is sized from it, so
-// changing it here resizes the grid exactly as the character modal does.
+// consequence outside the sheet: the inventory grid is sized from it.
+//
+// It is marked rather than rebuilt. A score is typed a digit at a time, and
+// rebuilding on each one would empty the pack onto the Needs Placement list
+// while the reader is still mid-number — see the deferred resize in grid.js.
+// `syncCharacterViewUI()` settles it when they go back to the inventory.
 function commitSheetEdit(path) {
   if (path === 'abilities.str') {
     state.character.strength = state.character.abilities.str;
-    rebuildGrid();
+    markGridSizeDirty();
   }
   // Unconditional: this is what writes the name and Strength in the header, so
   // renaming a character on the sheet has to run it too — not only a change
