@@ -95,7 +95,7 @@ that owns the element wins.
 
 | File | Contents |
 |------|----------|
-| `tokens.css` | Both palettes, `--cell` / `--cols`, and the map of this set |
+| `tokens.css` | Both palettes, the three type faces, `--cell` / `--cols`, and the map of this set |
 | `base.css` | Reset, body, the grain overlay, type, form controls, buttons, `.hidden` |
 | `icons.css` | The `img/icon` PNGs as `.ico` glyphs, masked over `currentColor` |
 | `layout.css` | The app shell: header, weight bar, main split, panel resizing |
@@ -1127,6 +1127,42 @@ describes the *catalogue*, not the character, so it has its own localStorage key
   already-sorted list, so items keep the chosen order inside their folders.
 - The weight a mode sorts on is the figure the card *prints* (`itemSortWeight`,
   a stackable item's per-unit weight), so the order matches what the reader sees.
+
+### Typography
+
+Three faces, three tokens, all in `tokens.css`:
+
+| Token | Face | Where |
+|-------|------|-------|
+| `--font-title` | **Bradley Gratis** | Names and page headings — nothing else |
+| `--font-display` | Cinzel, falling back to Palatino | The small-caps chrome, 9–14px |
+| `--font-body` | Segoe UI / system | Everything read as text |
+
+- **Bradley Gratis is served from the repo** (`fonts/bradley-gratis/`, one
+  `@font-face` in `tokens.css` beside the token that names it), like every other
+  asset here. It is Phinney's 1895 Bradley digitized by Justin Callaghan and
+  **dedicated to the public domain**, so it can be embedded and served freely.
+  19KB, and `font-display: swap` so a header paints in the fallback rather than
+  sitting invisible while it arrives.
+- **The split between `--font-title` and `--font-display` is the whole point.**
+  The title face is ornate art nouveau: it is magnificent at 19px and up and
+  turns to mush at the 9–14px uppercase, letter-spaced sizes the rest of the app
+  runs at. So it is spent only on things that are *named*: the character's name
+  (header and sheet), a roster card's name, the roster page's own heading, the
+  site name, a dialog's title. Everything else — section headings, tab labels,
+  folder names, feature names, buttons — stays on `--font-display`, which is what
+  that token has always been for.
+- **The rules that use it ask for `font-weight: 400`.** There is one weight in
+  the file, so at 700 the browser synthesizes a bold by smearing the outlines
+  sideways, which on strokes this ornate reads as a printing fault. Each of those
+  headers was also given a couple of extra pixels, because the face runs small
+  for its size next to Cinzel.
+- **It has no `/`, `—` or `·`.** Those fall through to the next family in the
+  stack, so nothing set in it should depend on them lining up. Today nothing
+  does — the identity block's separators are all `--font-body`.
+- **Its capital T reads as a C** at the sizes used here, which is why the site
+  name renders "CCRPG Manager". The letterform's bracket serifs curl in and close
+  the top. Known, and the fix if it grates is one token on `.home-banner-title`.
 
 ### Theming
 
