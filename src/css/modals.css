@@ -43,9 +43,8 @@
 
 .modal-box h2 {
   position: relative; /* anchors the fleuron to the heading, not the box */
-  font-family: var(--font-title);
-  font-size: 19px;
-  font-weight: 400;
+  font-size: 17px;
+  font-weight: 700;
   letter-spacing: 0.05em;
   margin-bottom: 18px;
   padding-bottom: 11px;

@@ -43,47 +43,11 @@
    Add a color as a token in BOTH blocks, never inline.
    ============================================================ */
 
-/* =============================================================================
-   THE TITLE FACE
-   =============================================================================
-   Bradley Gratis — Joseph Warren Phinney's 1895 Bradley, digitized by Justin
-   Callaghan and dedicated to the public domain (fonts/bradley-gratis/). Served
-   from the repo rather than a CDN, like every other asset here.
-
-   **It is a title face, not a UI face, and the two tokens are that distinction.**
-   `--font-title` is for names and page headings — the character's name, the
-   roster's own heading, the site name, a dialog's title. `--font-display` stays
-   what it has always been for everything else: the small-caps chrome that runs
-   from 9 to 14px, uppercased and letter-spaced, where an ornate 1895 art-nouveau
-   face turns to mush.
-
-   `swap`, so a header paints in the fallback immediately rather than sitting
-   invisible while the TTF arrives.
-
-   One weight only. The rules that use it therefore ask for `font-weight: 400`:
-   at 700 the browser synthesizes a bold by smearing the outlines sideways, and
-   on a face with strokes this ornate that reads as a printing fault. The face is
-   already heavy enough to lead a page on its own.
-
-   It carries no `/`, `—` or `·`. Those fall through to the next family in the
-   stack, which is why the stack matters and why nothing set in it should depend
-   on them lining up. */
-@font-face {
-  font-family: 'Bradley Gratis';
-  src: url('../../fonts/bradley-gratis/Bradley Gratis.ttf') format('truetype');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
 :root {
   --cell: 44px;
   --cols: 15;
 
   /* ─── Typography ─── */
-  /* The three faces. `--font-title` is the ornate one and is spent sparingly:
-     names and page headings only — see the @font-face note above. */
-  --font-title: 'Bradley Gratis', 'Cinzel', 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
   --font-display: 'Cinzel', 'Trajan Pro', 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
   --font-body: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', sans-serif;
 

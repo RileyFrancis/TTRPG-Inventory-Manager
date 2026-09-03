@@ -110,9 +110,9 @@
 .sheet-name-input {
   width: 100%;
   padding: 2px 0;
-  font-family: var(--font-title);
-  font-size: 29px;
-  font-weight: 400;
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--accent);
   background: transparent;
