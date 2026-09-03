@@ -38,9 +38,10 @@ function shopVisibleToMe(shop) {
   if (shop.audience === 'all') return true;
   const chosen = shop.players ?? {};
   if (chosen[state.party.playerId]) return true;
-  // Rejoining the party mints a fresh player id, so a shop revealed before a
-  // reload would go dark on the player it was meant for. The name the GM ticked
-  // is the half of that choice that survives, so it is stored alongside.
+  // Roster keys are account uids now, so a rejoin lands on the same key and this
+  // fallback no longer carries the live case — see the identity note in
+  // party.js. It is kept for reveals written against the old session ids, where
+  // the name the GM ticked is the only half of the choice that survived.
   const names = shop.playerNames ?? {};
   return Object.keys(chosen).some(pid => chosen[pid] && names[pid] && names[pid] === state.party.playerName);
 }

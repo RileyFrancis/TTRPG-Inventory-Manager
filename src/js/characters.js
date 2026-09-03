@@ -265,6 +265,10 @@ function activateCharacter(id) {
   state.activeCharacterId = id;
   loadActiveCharacterIntoLive();
   renderLiveCharacter();
+  // Swapping characters while seated at a table is changing who sits in that
+  // seat, so the campaign remembers the new one. The republish rides on the
+  // sync below, which the roster entry needs anyway.
+  noteActiveCharacterForCampaign();
   debouncedSync();           // saves, and republishes to the party roster
 }
 
@@ -408,13 +412,19 @@ function describeCharacterClasses(c) {
 function renderHomeScreen() {
   if (state.screen !== 'home') return;
 
+  // The campaigns above the roster. Same page, two questions — which table, and
+  // then which character — so they are drawn from the one call rather than
+  // leaving each caller to remember both.
+  renderCampaignSection();
+
   const note = document.getElementById('home-note');
   if (canSelectCharacter()) {
     note.classList.add('hidden');
   } else {
-    note.textContent = 'You are running this party as Game Master, so no character of ' +
-                       'your own is in play. Your roster is still yours to edit — pick a ' +
-                       'player from the character tabs to look at theirs.';
+    note.textContent = 'You are running ' + campaignDisplayName(state.party.code) +
+                       ' as Game Master, so no character of your own is in play. Your ' +
+                       'roster is still yours to edit — pick a player from the character ' +
+                       'tabs to look at theirs.';
     note.classList.remove('hidden');
   }
 

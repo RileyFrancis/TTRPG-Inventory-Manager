@@ -177,29 +177,11 @@
   flex-shrink: 0;
 }
 
-/* ─── PARTY — MODAL ──────────────────────────────────────── */
-.party-modal-tabs {
-  display: flex;
-  border-radius: 5px;
-  overflow: hidden;
-  border: 1px solid var(--border2);
-  margin-bottom: 16px;
-}
-
-.party-role-btn {
-  flex: 1;
-  padding: 8px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-dim);
-  border-right: 1px solid var(--border2);
-  transition: background 0.15s, color 0.15s;
-}
-
-.party-role-btn:last-child { border-right: none; }
-.party-role-btn.active { background: var(--accent); color: var(--on-accent); }
-.party-role-btn:not(.active):hover { background: var(--border); color: var(--text); }
-
+/* The Party modal itself is gone — getting into a game is the campaign modal's
+   job now, in campaigns.css, so the sidebar and the home screen cannot offer two
+   different doors. This one class outlived it: the login modal's submit button
+   wears it, and a full-width primary button in a narrow dialog is what it always
+   described rather than anything about parties. */
 .party-action-btn { width: 100%; margin-bottom: 4px; }
 
 /* ─── PARTY — READ-ONLY MODE ─────────────────────────────── */

@@ -52,6 +52,7 @@
   <link rel="stylesheet" href="src/css/appearance.css">
   <link rel="stylesheet" href="src/css/auth.css">
   <link rel="stylesheet" href="src/css/home.css">
+  <link rel="stylesheet" href="src/css/campaigns.css">
 </head>
 <body>
 
@@ -501,11 +502,12 @@
       <!-- Party Tab -->
       <div id="tab-party" class="tab-pane">
         <div id="party-no-session">
-          <p class="party-idle-msg">Not in a party yet.</p>
-          <button id="open-party-modal-btn" class="btn-primary">Join or Create Party</button>
+          <p class="party-idle-msg">Not in a campaign yet.</p>
+          <button id="open-party-modal-btn" class="btn-primary">Join or Create Campaign</button>
         </div>
         <div id="party-session" class="hidden">
           <div id="party-info-bar">
+            <div id="party-campaign-name" class="hidden"></div>
             <div id="party-code-row">
               <span class="party-label">Party Code</span>
               <strong id="party-code-text"></strong>
@@ -518,7 +520,10 @@
           <div id="party-gm-hint" class="hidden party-hint">Select a player below to view their inventory.</div>
           <div id="party-player-list"></div>
           <div id="party-actions">
-            <button id="leave-party-btn" class="btn-sm danger">Leave Party</button>
+            <!-- "Session", not "Party": the campaign card's menu has a Leave Campaign of
+                 its own, and two buttons both reading Leave that do different things is
+                 exactly the confusion this section exists to remove. -->
+            <button id="leave-party-btn" class="btn-sm danger">Leave Session</button>
           </div>
         </div>
       </div>
@@ -543,7 +548,21 @@
     <button id="home-settings-btn" class="btn-sm icon-only" title="Settings" aria-label="Settings"><span class="ico ico-d20"></span></button>
   </div>
   <div class="home-inner">
+
+    <!-- ===== CAMPAIGNS =====
+         Above the roster because it is the larger question: which table comes
+         before which character. See src/js/campaigns.js. -->
     <div class="home-header">
+      <h1>Campaigns</h1>
+      <div class="home-header-actions">
+        <button id="campaign-new-btn" class="btn-primary"><span class="ico ico-plus lead"></span>New Campaign</button>
+        <button id="campaign-join-btn" class="btn-sm">Join with Code</button>
+      </div>
+    </div>
+    <p id="campaign-note" class="home-note hidden"></p>
+    <div id="campaign-card-grid"><!-- rendered by renderCampaignSection() --></div>
+
+    <div class="home-header home-header-later">
       <h1>Your Characters</h1>
       <div class="home-header-actions">
         <button id="home-new-char-btn" class="btn-primary"><span class="ico ico-plus lead"></span>New Character</button>
@@ -559,6 +578,15 @@
 <div id="char-card-menu" class="hidden">
   <button id="char-card-edit">Edit Character</button>
   <button id="char-card-delete" class="danger">Delete Character</button>
+</div>
+
+<!-- ===== CAMPAIGN CARD ⋯ MENU =====
+     Rename is the GM's only; Leave reads "Delete Campaign" for them, since a
+     campaign with nobody running it is a dead record. See campaigns.js. -->
+<div id="campaign-card-menu" class="hidden">
+  <button id="campaign-card-rename">Rename Campaign</button>
+  <button id="campaign-card-copy">Copy Code</button>
+  <button id="campaign-card-leave" class="danger">Leave Campaign</button>
 </div>
 
 <!-- ===== DRAG GHOST ===== -->
@@ -858,32 +886,43 @@
 </div>
 
 <!-- ===== PARTY MODAL ===== -->
-<div id="party-modal" class="modal hidden">
+<!-- ===== CAMPAIGN MODAL =====
+     One dialog, two jobs: creating a table and joining one. See campaigns.js —
+     it is also the only door in, so the home screen and the sidebar's Party tab
+     cannot offer two different ideas of how you get into a game. -->
+<div id="campaign-modal" class="modal hidden">
   <div class="modal-box narrow">
-    <h2>Party</h2>
-    <div class="party-modal-tabs">
-      <button class="party-role-btn active" data-role="player">Player</button>
-      <button class="party-role-btn" data-role="gm">Game Master</button>
+    <h2>Campaign</h2>
+    <div class="campaign-modal-tabs">
+      <button class="campaign-mode-btn active" data-mode="create">Create</button>
+      <button class="campaign-mode-btn" data-mode="join">Join</button>
     </div>
 
-    <div id="party-player-fields">
+    <div id="campaign-create-fields">
       <label class="field">
-        <span>Your Name</span>
-        <input type="text" id="party-player-name" maxlength="30" placeholder="Enter your name">
+        <span>Campaign Name</span>
+        <input type="text" id="campaign-name-input" maxlength="40" placeholder="e.g. The Sunless Citadel">
       </label>
-      <label class="field">
-        <span>Party Code</span>
-        <input type="text" id="party-join-code" maxlength="6" placeholder="e.g. X7K2QP">
-      </label>
-      <button id="party-join-btn" class="btn-primary party-action-btn">Join Party</button>
+      <p class="modal-note">You run this table as Game Master. A six-letter code is minted
+        when you create it — share that with your players, and the campaign remembers
+        each of them from then on.</p>
     </div>
 
-    <div id="party-gm-fields" class="hidden">
-      <p class="modal-note">As Game Master, you host the session and can view and edit all players' inventories. Share the party code with your players after creating.</p>
-      <button id="party-create-btn" class="btn-primary party-action-btn">Create Party</button>
+    <div id="campaign-join-fields" class="hidden">
+      <label class="field">
+        <span>Campaign Code</span>
+        <input type="text" id="campaign-code-input" maxlength="6" placeholder="e.g. X7K2QP" autocomplete="off">
+      </label>
+      <label class="field">
+        <span>Your Character</span>
+        <select id="campaign-character-select"><!-- filled by fillCampaignCharacterSelect() --></select>
+      </label>
+      <p class="modal-note">The campaign remembers this character, so opening it later
+        picks them up where you left off. You can change who plays here at any time.</p>
     </div>
 
     <div class="modal-footer">
+      <button id="campaign-confirm-btn" class="btn-primary">Create Campaign</button>
       <button class="cancel-btn btn-sm">Cancel</button>
     </div>
   </div>
@@ -1280,6 +1319,9 @@
 <script src="src/js/cloud-save.js"></script>
 <script src="src/js/character-tabs.js"></script>
 <script src="src/js/characters.js"></script>
+<!-- After characters.js: the campaign section renders into the same home screen,
+     and a campaign's remembered character is one of that roster's slots. -->
+<script src="src/js/campaigns.js"></script>
 <script src="src/js/character-sheet.js"></script>
 <!-- Before class-features.js, which reads MD_LIST_RE while parsing
      data/classes.json — and that parse happens at load time, not at render.

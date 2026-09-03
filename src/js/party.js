@@ -8,6 +8,7 @@
 // =============================================================================
 let firebaseDb = null;
 let partyPlayersRef = null;
+let partyMetaRef = null;
 let firebaseInitError = null; // kept so the party buttons can say what went wrong
 
 // Our own node in the party — the player entry, or the GM's. Held because it
@@ -82,8 +83,53 @@ function generatePartyCode() {
   return code;
 }
 
-function generatePlayerId() {
-  return 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+// =============================================================================
+// IDENTITY — why a roster entry is keyed by the account
+// =============================================================================
+// A player's node under `parties/<code>/players` is keyed by their **account
+// uid**. That one decision is what makes a campaign a campaign, and it is the
+// whole of the duplicate-player fix.
+//
+// It used to be a fresh random id minted on every join. Nothing was wrong with
+// the id — it was the *lifetime* that was wrong. A session id names a
+// connection, and a roster is not a list of connections, it is a list of
+// people. So closing the tab and coming back wrote a *second* node, and the GM
+// watched one player become two: one greyed out forever, one live, both equally
+// real as far as the roster could tell. There was no cleanup to write, either,
+// because nothing distinguished that ghost from a player who had genuinely
+// stepped away for a minute.
+//
+// Keyed by the account there is nowhere for a duplicate to be. Rejoining lands
+// on the node you already had: `connected` flips back to true, and the
+// character, the shop reveals aimed at you and the GM's current selection all
+// still point at the same place. It is also what lets the roster be *read* as
+// the campaign's membership — a list that outlives every session in it.
+//
+// The GM is the exception, and deliberately: their node is `parties/<code>/gm`,
+// one node rather than a keyed collection, so it has never had this problem.
+// Their uid is recorded in it, and in `meta.gmUid`, so a campaign remembers who
+// runs it.
+function ownPlayerId() {
+  return state.auth.user?.uid ?? null;
+}
+
+// Entries written before roster keys were accounts. They carry a `p_`-prefixed
+// key and nothing that identifies the person behind them but the name they
+// typed, so that name is all a sweep can match on — which is exactly why the
+// scheme had to change. Best-effort: a leftover the sweep misses is still one
+// Kick away, and this is the last release in which one can be created.
+function isLegacyPlayerKey(id) {
+  return typeof id === 'string' && id.startsWith('p_');
+}
+
+async function sweepLegacySelfEntries(code, name) {
+  try {
+    const snap = await firebaseDb.ref(`parties/${code}/players`).get();
+    const players = snap.val() ?? {};
+    const stale = Object.entries(players).filter(([id, p]) => isLegacyPlayerKey(id) && p && p.name === name);
+    await Promise.all(stale.map(([id]) =>
+      firebaseDb.ref(`parties/${code}/players/${id}`).remove().catch(() => {})));
+  } catch { /* the sweep is a courtesy; a failure must not block the join */ }
 }
 
 function getCustomDb() {
@@ -106,92 +152,166 @@ function getSerializableInstances() {
   );
 }
 
-async function createParty() {
-  if (!firebaseDb) {
-    alert(partyUnavailableMessage());
-    return;
-  }
-  const code = generatePartyCode();
-  try {
-    const gmRef = firebaseDb.ref(`parties/${code}/gm`);
-    await gmRef.set({ name: 'Game Master', connected: true });
-    gmRef.onDisconnect().update({ connected: false });
-    partySelfRef = gmRef;
-  } catch (e) {
-    alert('Failed to create party: ' + e.message);
-    return;
-  }
+// =============================================================================
+// ENTERING A CAMPAIGN
+// =============================================================================
+// Three doors into the same room, and each is the *only* thing that differs
+// between them: minting the record (`createCampaign`), sitting back down in the
+// GM's chair (`enterCampaignAsGM`), and taking a seat at the table
+// (`enterCampaignAsPlayer`). Everything after the write is shared, in
+// `beginPartySession()`, so the three can never drift into three slightly
+// different ideas of what being in a party means.
+//
+// Each returns the campaign code on success and `null` on failure, having said
+// why. campaigns.js is the caller, and files the bookmark from that answer.
 
+// The live session state, set once the write has landed. `role` and `playerId`
+// are the two halves of "who am I here": a GM's node is `gm`, a player's is
+// their account uid.
+function beginPartySession({ code, role, playerId, playerName, campaignName }) {
   state.party.active = true;
   state.party.code = code;
-  state.party.role = 'gm';
-  state.party.playerId = 'gm';
-  state.party.playerName = 'Game Master';
+  state.party.role = role;
+  state.party.playerId = playerId;
+  state.party.playerName = playerName;
+  state.party.campaignName = campaignName ?? null;
   state.party.viewingPlayerId = null;
   state.party.players = {};
 
   subscribeToParty(code);
-  hideModal('party-modal');
+  hideModal('campaign-modal');
   updatePartyUI();
   switchTab('party');
 }
 
-async function joinParty(code, playerName) {
-  if (!firebaseDb) {
-    alert(partyUnavailableMessage());
-    return;
-  }
-  const upperCode = code.trim().toUpperCase();
-  if (upperCode.length !== 6) { alert('Party code must be 6 characters.'); return; }
+// A party's `meta` is what the roster is not: the campaign's own name, who runs
+// it, and when it was made. It is written once and read by anyone holding the
+// code, which is how a player's home screen can name a campaign it has only
+// ever been given six letters for.
+function campaignMeta(name, uid, gmName) {
+  return { name, gmUid: uid ?? null, gmName: gmName || 'Game Master', createdAt: Date.now() };
+}
 
-  let snap;
+async function createCampaign(name) {
+  if (!firebaseDb) { alert(partyUnavailableMessage()); return null; }
+  const uid = ownPlayerId();
+  if (!uid) { alert('Creating a campaign needs an account, so your table knows who is running it.'); return null; }
+
+  const code = generatePartyCode();
+  const gmName = accountDisplayName() || 'Game Master';
   try {
-    snap = await firebaseDb.ref(`parties/${upperCode}`).get();
+    await firebaseDb.ref(`parties/${code}`).update({
+      meta: campaignMeta(name, uid, gmName),
+      gm: { name: gmName, uid, connected: true },
+    });
+    attachSelfRef(firebaseDb.ref(`parties/${code}/gm`));
   } catch (e) {
-    alert('Failed to connect: ' + e.message);
-    return;
-  }
-  if (!snap.exists()) {
-    alert('Party not found. Check the code and try again.');
-    return;
+    alert('Failed to create the campaign: ' + e.message);
+    return null;
   }
 
-  const playerId = generatePlayerId();
+  beginPartySession({ code, role: 'gm', playerId: 'gm', playerName: gmName, campaignName: name });
+  return code;
+}
+
+// The GM coming back to a campaign they already run. Deliberately an `update`
+// on the node rather than a `set`: the node is the same one they left, and
+// anything a later version parks beside `connected` survives the return.
+async function enterCampaignAsGM(code, meta) {
+  if (!firebaseDb) { alert(partyUnavailableMessage()); return null; }
+  const uid = ownPlayerId();
+  const gmName = accountDisplayName() || 'Game Master';
   try {
-    const playerRef = firebaseDb.ref(`parties/${upperCode}/players/${playerId}`);
-    await playerRef.set({
+    const gmRef = firebaseDb.ref(`parties/${code}/gm`);
+    await gmRef.update({ name: gmName, uid, connected: true });
+    attachSelfRef(gmRef);
+  } catch (e) {
+    alert('Could not rejoin as Game Master: ' + e.message);
+    return null;
+  }
+
+  beginPartySession({ code, role: 'gm', playerId: 'gm', playerName: gmName, campaignName: meta?.name ?? null });
+  return code;
+}
+
+// A player taking their seat. `update` for the same reason, and here it also
+// carries the point of the whole change: on a rejoin this lands on the node
+// they already had rather than making a second one beside it.
+async function enterCampaignAsPlayer(code, playerName, meta) {
+  if (!firebaseDb) { alert(partyUnavailableMessage()); return null; }
+  const uid = ownPlayerId();
+  if (!uid) { alert('Joining a campaign needs an account, so your group can tell who is who.'); return null; }
+
+  try {
+    const playerRef = firebaseDb.ref(`parties/${code}/players/${uid}`);
+    await playerRef.update({
+      uid,
       name: playerName,
       connected: true,
+      characterId: state.character.id ?? null,
       character: state.character,
       instances: getSerializableInstances(),
       customDb: getCustomDb(),
       equipped: state.equipped,
-      _writtenBy: playerId,
+      _writtenBy: uid,
     });
-    playerRef.onDisconnect().update({ connected: false });
-    partySelfRef = playerRef;
+    attachSelfRef(playerRef);
     sawSelfInRoster = true; // we just wrote it — a later absence is a removal
   } catch (e) {
-    alert('Failed to join party: ' + e.message);
-    return;
+    alert('Failed to join the campaign: ' + e.message);
+    return null;
   }
 
-  state.party.active = true;
-  state.party.code = upperCode;
-  state.party.role = 'player';
-  state.party.playerId = playerId;
-  state.party.playerName = playerName;
-  state.party.viewingPlayerId = null;
-  state.party.players = {};
+  sweepLegacySelfEntries(code, playerName); // fire and forget; see the note above
 
-  subscribeToParty(upperCode);
-  hideModal('party-modal');
-  updatePartyUI();
-  switchTab('party');
+  beginPartySession({ code, role: 'player', playerId: uid, playerName, campaignName: meta?.name ?? null });
+  return code;
+}
+
+// Our own node, plus the onDisconnect that marks us offline when the tab goes.
+// One place, because the handler must be *cancelled* on a deliberate leave and
+// the ref is the only thing that can cancel it.
+function attachSelfRef(ref) {
+  ref.onDisconnect().update({ connected: false });
+  partySelfRef = ref;
+}
+
+// What a code actually points at, or null. The campaign's own record is what
+// tells a joiner whether they are walking in as its GM or as a player, which is
+// a question a local bookmark must never be trusted to answer: a bookmark is
+// this browser's memory, and the party is the fact.
+async function fetchCampaignMeta(code) {
+  if (!firebaseDb) return null;
+  try {
+    const snap = await firebaseDb.ref(`parties/${code}`).get();
+    if (!snap.exists()) return null;
+    const val = snap.val() ?? {};
+    // A party made before campaigns had names has no `meta`. It is still a
+    // perfectly good party, so it is described from what it does have.
+    return val.meta ?? { name: '', gmUid: val.gm?.uid ?? null, gmName: val.gm?.name ?? 'Game Master', createdAt: 0 };
+  } catch (e) {
+    alert('Failed to connect: ' + e.message);
+    return null;
+  }
 }
 
 function subscribeToParty(code) {
   subscribeToShops(code); // the party's shops ride along with its roster
+
+  // The campaign's own record. A GM renaming it, or a first join that only had
+  // the code to go on, both arrive here — and the bookmark on the home screen
+  // is refreshed from it, so a campaign card is never a stale copy of a name
+  // somebody else has since changed.
+  if (partyMetaRef) partyMetaRef.off();
+  partyMetaRef = firebaseDb.ref(`parties/${code}/meta`);
+  partyMetaRef.on('value', snap => {
+    const meta = snap.val();
+    if (!meta) return;
+    state.party.campaignName = meta.name ?? null;
+    noteCampaignMeta(code, meta);
+    updatePartyUI();
+  });
+
   if (partyPlayersRef) partyPlayersRef.off();
   partyPlayersRef = firebaseDb.ref(`parties/${code}/players`);
 
@@ -224,6 +344,7 @@ function subscribeToParty(code) {
       }
     }
 
+    noteCampaignRoster(state.party.code, players);
     updatePartyPanel();
   });
 }
@@ -231,6 +352,7 @@ function subscribeToParty(code) {
 function leaveParty() {
   if (!state.party.active) return;
   if (partyPlayersRef) { partyPlayersRef.off(); partyPlayersRef = null; }
+  if (partyMetaRef) { partyMetaRef.off(); partyMetaRef = null; }
   unsubscribeFromShops();
 
   // Cancel the onDisconnect before dropping the ref, or closing the tab later
@@ -245,8 +367,8 @@ function leaveParty() {
   if (state.party.viewingPlayerId !== null) restoreOwnState();
 
   state.party = {
-    active: false, code: null, role: null, playerId: null,
-    playerName: null, viewingPlayerId: null, ownState: null, players: {},
+    active: false, code: null, role: null, playerId: null, playerName: null,
+    campaignName: null, viewingPlayerId: null, ownState: null, players: {},
   };
 
   // A GM's working copy is the placeholder, not a character — their own
@@ -259,34 +381,51 @@ function leaveParty() {
 
   updatePartyUI();
   switchTab('browse');
+  renderHomeScreen(); // the campaign card is a Resume again
 }
+
+// Leaving *the session* is not leaving *the campaign*. Closing the tab, or
+// pressing Leave Party, ends the connection and nothing else — the roster entry
+// stays, which is exactly what a campaign is for. Resigning from the campaign
+// for good is `leaveCampaign()` in campaigns.js, and it is a separate, deliberate
+// act because it throws away the seat rather than stepping out of it.
+
 
 // Kicked by the GM. Nothing local is lost — the roster entry was a copy — so
 // this is a leave with an explanation.
+//
+// It now drops the campaign bookmark too, and has to: the roster entry *is* the
+// membership, so a card left on the home screen would be an invitation back into
+// a campaign you have been removed from, and clicking it would quietly write the
+// seat back. A removal has to reach both halves of the same fact.
 function handleRemovedFromParty() {
   const code = state.party.code;
   const selfId = state.party.playerId;
   const ref = firebaseDb && code && selfId
     ? firebaseDb.ref(`parties/${code}/players/${selfId}`) : null;
+  const name = campaignDisplayName(code);
 
   leaveParty();
+  forgetCampaign(code);
 
   // A sync already in flight when the GM removed us would land afterwards and
   // recreate the entry — `update()` on a missing path writes it back. Sweeping
   // our own node once we have stopped syncing clears any such straggler.
   if (ref) ref.remove().catch(() => { /* already gone, or no longer permitted */ });
 
-  alert(`You have been removed from party ${code} by the Game Master.\n\n` +
-        'Your character and everything in your inventory are untouched.');
+  alert(`You have been removed from ${name} by the Game Master.\n\n` +
+        'Your character and everything in your inventory are untouched. ' +
+        'Rejoining needs the campaign code again.');
 }
 
 // GM only. Removing the entry is the whole operation: their client sees itself
 // gone from the roster and leaves. Their own save is theirs and is not touched.
 async function kickPlayer(playerId, displayName) {
   if (!firebaseDb || !state.party.active || state.party.role !== 'gm') return;
-  if (!confirm(`Remove ${displayName} from the party?\n\n` +
-               'They will be dropped from this session. Their own character and ' +
-               'inventory are not affected, and they can rejoin with the party code.')) return;
+  if (!confirm(`Remove ${displayName} from the campaign?\n\n` +
+               'They lose their seat, not their character: their own inventory is ' +
+               'untouched, but the campaign stops remembering them and rejoining ' +
+               'needs the code again.')) return;
 
   if (state.party.viewingPlayerId === playerId) switchViewToOwn();
 
@@ -442,18 +581,6 @@ function computeCarriedWeightFor(instances, customDb) {
 // =============================================================================
 // PARTY — UI
 // =============================================================================
-function openPartyModal() {
-  document.querySelectorAll('.party-role-btn').forEach(b => b.classList.toggle('active', b.dataset.role === 'player'));
-  document.getElementById('party-player-fields').classList.remove('hidden');
-  document.getElementById('party-gm-fields').classList.add('hidden');
-  // The account's name is the one the rest of the group will recognise; the
-  // character's is the fallback from before there were accounts.
-  document.getElementById('party-player-name').value =
-    (isSignedIn() && accountDisplayName()) || state.character.name || '';
-  document.getElementById('party-join-code').value = '';
-  showModal('party-modal');
-}
-
 function updatePartyUI() {
   const inParty = state.party.active;
 
@@ -465,6 +592,12 @@ function updatePartyUI() {
 
   if (inParty) {
     document.getElementById('party-code-text').textContent = state.party.code;
+    // The campaign's name, when it has one. A party made before campaigns
+    // existed has only its code, and the row is simply left off rather than
+    // standing empty above it.
+    const nameEl = document.getElementById('party-campaign-name');
+    nameEl.textContent = state.party.campaignName ?? '';
+    nameEl.classList.toggle('hidden', !state.party.campaignName);
     const roleEl = document.getElementById('party-role-badge');
     roleEl.textContent = state.party.role === 'gm' ? 'Game Master' : 'Player';
     roleEl.className = 'party-role-badge ' + state.party.role;
@@ -625,34 +758,19 @@ function updateViewingBanner() {
 // Party play is the one part of the app that is other people's data, so it is
 // the one part that asks for an account. Everything else stays open — the
 // inventory itself never gates.
-const PARTY_AUTH_REASON = 'Party play needs an account, so your group can tell who is who.';
+//
+// There is one door now: the campaign modal in campaigns.js. The Party tab's
+// button and the header's party button both open it, so the sidebar and the
+// home screen can never offer two different ideas of how you get into a game.
+const PARTY_AUTH_REASON = 'Campaigns need an account, so your group can tell who is who.';
 
 document.getElementById('party-btn').addEventListener('click', () => {
   if (state.party.active) switchTab('party');
-  else requireAuth(PARTY_AUTH_REASON, openPartyModal);
+  else requireAuth(PARTY_AUTH_REASON, () => openCampaignModal('join'));
 });
 
 document.getElementById('open-party-modal-btn').addEventListener('click', () => {
-  requireAuth(PARTY_AUTH_REASON, openPartyModal);
-});
-
-document.querySelectorAll('.party-role-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.party-role-btn').forEach(b => b.classList.toggle('active', b === btn));
-    const isGM = btn.dataset.role === 'gm';
-    document.getElementById('party-player-fields').classList.toggle('hidden', isGM);
-    document.getElementById('party-gm-fields').classList.toggle('hidden', !isGM);
-  });
-});
-
-document.getElementById('party-create-btn').addEventListener('click', createParty);
-
-document.getElementById('party-join-btn').addEventListener('click', () => {
-  const name = document.getElementById('party-player-name').value.trim();
-  const code = document.getElementById('party-join-code').value.trim();
-  if (!name) { alert('Please enter your name.'); return; }
-  if (!code) { alert('Please enter the party code.'); return; }
-  joinParty(code, name);
+  requireAuth(PARTY_AUTH_REASON, () => openCampaignModal('join'));
 });
 
 document.getElementById('copy-code-btn').addEventListener('click', () => {
@@ -661,8 +779,13 @@ document.getElementById('copy-code-btn').addEventListener('click', () => {
   });
 });
 
+// Ends the *session*, not the membership — so it says so, because the two read
+// identically from a button labelled "Leave" and only one of them is undoable
+// by clicking a card. Giving up the seat is Leave Campaign, on the home screen.
 document.getElementById('leave-party-btn').addEventListener('click', () => {
-  if (confirm('Leave the party?')) leaveParty();
+  if (confirm('Leave this session?\n\n' +
+              'You keep your seat in the campaign — it is on your home screen, and ' +
+              'opening it puts you straight back in.')) leaveParty();
 });
 
 document.getElementById('return-to-own-btn').addEventListener('click', switchViewToOwn);

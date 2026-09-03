@@ -14,6 +14,11 @@ const state = {
   // The account's roster: { [charId]: { character, instances, equipped, equipLayout, db } }
   characters: {},
   activeCharacterId: null,
+  // The campaigns this account plays in, keyed by party code. A *bookmark*, not
+  // the campaign itself — the campaign lives under `parties/<code>` in Firebase
+  // and is shared by everyone at the table. This is the half that says "I have a
+  // seat there, and this character sits in it". campaigns.js owns it.
+  campaigns: {},          // { [code]: { code, name, role, characterId, gmName, memberCount, lastPlayed } }
   // Which page is up. The home screen is a page in front of the app, not a
   // panel inside it — UI position, never saved.
   screen: 'app',      // 'app' | 'home'
@@ -69,11 +74,12 @@ const state = {
     active: false,
     code: null,
     role: null,           // 'gm' | 'player'
-    playerId: null,       // our session ID
+    playerId: null,       // our account uid, or 'gm' — see party.js on identity
     playerName: null,
+    campaignName: null,   // the campaign's own name, from parties/<code>/meta
     viewingPlayerId: null, // which player's inventory we're viewing (null = own for player, none for GM)
     ownState: null,       // saved own state when player views another's inventory
-    players: {},          // Firebase cache: { [id]: { name, connected, character, instances, customDb } }
+    players: {},          // Firebase cache: { [uid]: { name, connected, character, instances, customDb } }
   },
 };
 

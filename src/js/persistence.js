@@ -80,14 +80,21 @@ document.getElementById('stash-delete-all-btn').addEventListener('click', () => 
 });
 
 // Everything that belongs to the account rather than to this browser: the whole
-// roster of characters, and which of them is in play. One builder, so the
-// localStorage copy and the cloud copy can never drift apart — cloud-save.js
-// stores the JSON of exactly this.
+// roster of characters, which of them is in play, and the campaigns this account
+// has a seat in. One builder, so the localStorage copy and the cloud copy can
+// never drift apart — cloud-save.js stores the JSON of exactly this.
 //
 // The character on screen is the working copy of one slot, so it is flushed back
 // into the roster first; `commitActiveCharacter()` declines when what is on
 // screen is somebody else's sheet or the GM's placeholder.
-const SAVE_VERSION = 2;
+//
+// **Version 3 adds `campaigns`.** It is an account fact rather than a browser
+// one — your seat at a table follows you to whatever machine you sign in on,
+// which is the whole reason it rides here rather than in a key of its own beside
+// the theme and the folders. A version-2 save simply has none, and reads as an
+// account that has not joined a campaign yet; that is why the bump needs no
+// migration and why `normalizeSavePayload()` is left alone.
+const SAVE_VERSION = 3;
 
 function buildSavePayload() {
   commitActiveCharacter();
@@ -95,6 +102,7 @@ function buildSavePayload() {
     version: SAVE_VERSION,
     activeCharacterId: state.activeCharacterId,
     characters: state.characters,
+    campaigns: state.campaigns,
   };
 }
 
@@ -107,6 +115,7 @@ function applySavePayload(data) {
   const norm = normalizeSavePayload(data);
   state.characters = norm.characters;
   state.activeCharacterId = norm.activeCharacterId;
+  state.campaigns = normalizeCampaigns(data.campaigns);
   ensureCharacter();              // also loads the active slot into live state
   loadActiveCharacterIntoLive();
 }

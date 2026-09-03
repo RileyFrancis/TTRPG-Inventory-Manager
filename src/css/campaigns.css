@@ -1,0 +1,138 @@
+/* ============================================================
+   campaigns.css — the home screen's Campaigns section, its cards and its modal
+
+   Loaded after home.css, and leaning on it hard on purpose: a campaign card
+   *is* a `.char-card` with two extra pieces, so it inherits the panel, the
+   border, the hover lift, the ⋯ button, the key/value rows and the footer
+   rather than restating them. The home screen has two sections asking two
+   questions — which table, then which character — and they must read as one
+   page, which they cannot do if each has its own idea of what a card is.
+   ============================================================ */
+
+/* ─── THE SECTION ────────────────────────────────────────── */
+#campaign-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+/* The second heading on the page needs air above it that the first does not —
+   the first sits under the banner, this one sits under a grid of cards. The
+   badge on an in-session card hangs 8px below its box, so this clears that too. */
+.home-header-later { margin-top: 44px; }
+
+/* ─── THE CARDS ──────────────────────────────────────────── */
+/* Enough of a tint to tell the two grids apart at a glance without making a
+   campaign card a different species of object. */
+.campaign-card {
+  background: color-mix(in srgb, var(--accent) 4%, var(--panel));
+}
+
+/* Which side of the table you sit on is the first thing you need off this card,
+   so it takes the line the character card spends on a level. Not a pill: a
+   badge would compete with the Active/In-session marker at the card's foot. */
+.campaign-card-role {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+.campaign-card-role.gm { color: var(--accent); }
+
+/* The code is read aloud and typed in by other people, so it is set apart from
+   the prose around it: tracked out, accented, and with the digits on a fixed
+   width so a column of codes lines up.
+
+   Its row carries its own class rather than being reached for by position —
+   `:first-of-type` counts element types, not classes, so a positional selector
+   here would silently address the card's name instead. */
+.campaign-code-row .char-card-val {
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+
+/* ─── THE ⋯ MENU ─────────────────────────────────────────── */
+/* Same object as the character cards' menu — see home.css — so it is styled by
+   the same rules rather than a copy that would drift. */
+#campaign-card-menu {
+  position: fixed;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+  padding: 3px;
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  box-shadow: var(--shadow-deep), inset 0 0 0 1px var(--emboss-hi);
+}
+#campaign-card-menu button {
+  padding: 7px 12px;
+  text-align: left;
+  border-radius: 2px;
+  font-size: 12px;
+  transition: background 0.1s, color 0.1s;
+}
+#campaign-card-menu button:hover {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+#campaign-card-menu button.danger { color: var(--danger); }
+#campaign-card-menu button.danger:hover {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  color: var(--danger);
+}
+
+/* ─── THE MODAL ──────────────────────────────────────────── */
+/* Create / Join, in the shape the party modal's role tabs already had — the
+   gesture is unchanged, only what it chooses between. */
+.campaign-modal-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.campaign-mode-btn {
+  flex: 1;
+  padding: 8px 10px;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  background: var(--field);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.campaign-mode-btn:hover { color: var(--accent); border-color: var(--accent-soft); }
+.campaign-mode-btn.active {
+  color: var(--on-accent);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+#campaign-code-input {
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  font-weight: 700;
+}
+
+/* ─── THE PARTY PANEL'S CAMPAIGN NAME ────────────────────── */
+/* Above the code in the sidebar's info bar: the name is what the table calls
+   itself, and the code is only how you get in. */
+#party-campaign-name {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  overflow-wrap: anywhere;
+}

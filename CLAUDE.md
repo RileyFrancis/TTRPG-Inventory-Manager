@@ -72,6 +72,7 @@ tools/              Standalone dev helpers (not part of the app)
 | `panels.js` | Side-panel resize handles, collapse, and reopen buttons |
 | `firebase-config.js` | Parses `.env` → `FIREBASE_CONFIG` (`null` when absent) |
 | `party.js` | Firebase party sync + party UI |
+| `campaigns.js` | Campaigns: the bookmark model, entering and leaving, the home section |
 | `auth.js` | Firebase sign-in, the login modal, the Settings account row |
 | `cloud-save.js` | Mirrors the save file to `users/<uid>/save` while signed in |
 | `character-tabs.js` | Per-character tabs above the inventory + sheet/inventory switch |
@@ -107,7 +108,8 @@ that owns the element wins.
 | `sheet-layout.css` | The sheet's split containers, resize seams, and drop feedback |
 | `class-features.css` | The feature cards, corner badges, and the Markdown inside a description — for Class Features *and* Species Traits |
 | `sheet-prose.css` | The written sections: the bar, the editor, and the rendered prose |
-| `party.css` | Party header badge, the sidebar Party tab, party modal, kick |
+| `party.css` | Party header badge, the sidebar Party tab, kick |
+| `campaigns.css` | The home screen's Campaigns section, its cards, and the campaign modal |
 | `equipment.css` | The equip rack, the left-panel tabs, the layout editor |
 | `shop.css` | The GM shop editor, the player shopfront, and their modals |
 | `tooltip.css` | The hover tooltip |
@@ -131,6 +133,8 @@ state.character   { id, name, race, abilities{str…cha}, background, alignment,
                                                           (the whole thing: the working copy)
 state.characters  { [charId]: { character, instances, equipped, equipLayout, db } }
 state.activeCharacterId  charId                     (which slot the working copy is)
+state.campaigns   { [code]: { code, name, role, characterId, gmName,
+                              memberCount, lastPlayed } }   (bookmarks, in the save)
 state.screen      'app' | 'home'                    (the roster page is in front of the app)
 state.grid        2D array [row][col] → instanceId | null
 state.instances   { [instanceId]: { id, templateId, rotation, row, col, stackCount } }
@@ -210,11 +214,115 @@ data.
   unpositioned, the handle's `z-index` does nothing and the inventory panel eats
   the clicks on half of it.
 
+### Campaigns
+
+A party used to be a *session*: six letters, alive while somebody held them, and
+forgotten the moment everyone closed their tab. A **campaign** is the *table* —
+it has a name, it has a Game Master, it remembers who plays in it and which
+character each of them brings, and it is still there next Tuesday. The model is
+`src/js/campaigns.js`; the live session under it is still `party.js`.
+
+**It is not a bigger party. It is the same party with one thing fixed.**
+
+> A roster entry is keyed by the player's **account uid**, not by a per-join
+> session id.
+
+That single change is the whole of the duplicate-player fix, and everything else
+here falls out of it. The old `generatePlayerId()` minted a fresh `p_…` key on
+every join. Nothing was wrong with the id — it was the **lifetime** that was
+wrong: a session id names a *connection*, and a roster is not a list of
+connections, it is a list of *people*. So closing the tab and coming back wrote a
+second node, and the GM watched one player become two — one greyed out forever,
+one live, both equally real as far as the roster could tell. There was no cleanup
+to write, either, because nothing distinguished that ghost from a player who had
+genuinely stepped away for a minute.
+
+Keyed by the account there is **nowhere for a duplicate to be**. A rejoin lands
+on the node you already had: `connected` flips back to true, and the character,
+the shop reveals aimed at you and the GM's current selection all still point at
+the same place. It is also what lets the roster be *read* as membership — a list
+that outlives every session in it, which is what makes a campaign possible at
+all. `ownPlayerId()` is the one way to ask.
+
+- **The GM is the exception, deliberately.** Their node is `parties/<code>/gm` —
+  one node rather than a keyed collection — so it never had this problem. Their
+  uid is recorded in it and in `meta.gmUid`, which is how a campaign remembers
+  who runs it.
+- It also retires the shop-reveal caveat: `shop.players` is keyed by the same
+  ids, so a reveal no longer goes dark on a player who reloaded.
+  `shop.playerNames` stays as a fallback for reveals written under the old keys.
+- **Legacy `p_…` entries** are swept on join by `sweepLegacySelfEntries()`,
+  matched on the typed name — which is all such an entry carries that identifies
+  anyone, and precisely why the scheme had to change. Best-effort: a leftover it
+  misses is still one Kick away, and this is the last release that can make one.
+
+**Two halves, and neither is a copy of the other.**
+
+```
+parties/<code>/          in Firebase — the campaign. Shared, authoritative.
+  meta      { name, gmUid, gmName, createdAt }
+  gm        { name, uid, connected }
+  players   { [uid]: { name, uid, characterId, connected, character, … } }
+  shops     …
+
+state.campaigns[code]    in the save file — this account's *bookmark*.
+  { code, name, role, characterId, gmName, memberCount, lastPlayed }
+```
+
+- The bookmark answers only what the home screen must know **before** it has
+  spoken to Firebase: that you have a seat somewhere, roughly what it looks like,
+  and which character sits in it. Everything cached in it is refreshed from the
+  party itself once connected (`noteCampaignMeta` / `noteCampaignRoster`, driven
+  by party.js's two subscriptions).
+- **Nothing reads the bookmark to decide anything that matters.**
+  `enterCampaign()` asks the *party* whether you are its GM (`meta.gmUid`) rather
+  than believing the `role` written locally — a bookmark is this browser's
+  memory, the party is the fact, and a GM signing in on a new machine must still
+  land in the right chair.
+- Neither refresh calls `debouncedSync()`. They fire on every roster snapshot,
+  and a save apiece to cache a head count would be a great deal of writing for a
+  number nobody is waiting on; the next real edit carries them.
+- It rides in the **save payload** (v3) rather than a Firebase index of its own,
+  so it follows the account across browsers for free — cloud-save.js already
+  mirrors exactly this — and needs no second set of database rules. The cost is
+  that a campaign is not discoverable until you have typed its code once, which
+  is the same as it ever was.
+
+**Leaving the session is not leaving the campaign.** Closing the tab, or pressing
+Leave Party, ends the connection and nothing else — the roster entry stays, which
+is the entire point. `leaveCampaign()` is the separate, deliberate act that gives
+up the seat, and for a **GM it deletes the campaign outright**: a record with
+nobody running it is dead, so pretending otherwise would leave players holding a
+code into nothing. A kick reaches both halves of the same fact — the entry goes
+*and* `handleRemovedFromParty()` drops the bookmark, or the card left behind
+would be an invitation back into a table you have been removed from.
+
+**The section sits above Your Characters** on the home screen, because it is the
+larger question: which table comes before which character, and a player arriving
+for a session is reaching for the campaign. A campaign card is literally a
+`.char-card` with two extra pieces, so the two grids read as one page rather than
+as two ideas of what a card is. Clicking one enters it — switching to the
+remembered character *first*, so the roster entry is right the first time rather
+than published wrong and corrected.
+
+**One door in.** The campaign modal (create / join, in the shape the party
+modal's role tabs already had) is opened from the home screen *and* from the
+sidebar's Party tab, so the two can never offer different ideas of how you get
+into a game. Everything still goes through `requireAuth()`: the buttons stay
+live when signed out and ask for the account when pressed, rather than being
+disabled beside a note pointing at a door that cannot be opened.
+
+**Known gap.** A party created before this — one with no `meta.gmUid` — reads as
+having no GM, so its original GM would rejoin as a player. Those parties were
+session-scoped and unbookmarkable, so nothing can click into one; they die with
+the session they were made in.
+
 ### Party membership
 
-The roster under `parties/<code>/players` is the membership list, and the GM is
-the only one who can shorten it — a **Kick** button on each entry in the Party
-panel.
+The roster under `parties/<code>/players` is the membership list — see
+*Campaigns* above for why it is keyed by account and therefore outlives a
+session — and the GM is the only one who can shorten it: a **Kick** button on
+each entry in the Party panel.
 
 - **Removing the entry is the whole operation.** There is no "you were kicked"
   flag to write, read and clean up: a player's client sees itself gone from the
@@ -256,9 +364,11 @@ shared pile of stock — a sword bought by one player is gone for the rest.
   moving a shop between paths on reveal — the audience list has the same
   caveat. If the rules ever gate `parties/<code>`, add `shops` to them.
 - Reveal is stored as `revealed` + `audience` (`'all' | 'select'`) + a
-  `players` map. That map is keyed by player id, and **a rejoin mints a new
-  one** — so `playerNames` is written beside it and matched as a fallback,
-  otherwise a shop revealed before a reload goes dark on the player it was for.
+  `players` map, keyed by player id. That id is now the account uid and survives
+  a rejoin (see *Campaigns*), so the live case needs nothing extra. `playerNames`
+  is kept beside it and matched as a fallback for reveals written under the old
+  per-session ids, where the name the GM ticked is the only half of the choice
+  that survived.
 - Stock arrives two ways — the picker modal and a card **dragged out of Browse**
   — and both go through `addItemsToShop()`. An item already on the shelf gains
   one to its count rather than a second line. The drag is the folder-header
@@ -341,7 +451,9 @@ and a wizard on Fridays and both are theirs. So the save file holds a **roster**
   the app with no character to be.
 - The home screen is a page in front of the app (`state.screen`, a fixed overlay
   under the modal backdrop), not a panel inside it — picking a character is what
-  happens before there is an inventory to look at. `renderHomeScreen()` returns
+  happens before there is an inventory to look at. It carries **two** sections
+  now, campaigns above characters; `renderHomeScreen()` draws both, so no caller
+  has to remember there is more than one. See *Campaigns*. `renderHomeScreen()` returns
   early unless it is showing, so anything that replaces the world can call it
   freely.
 - **A signed-in player starts there.** `handleAuthStateChange` opens it on any
@@ -1056,11 +1168,13 @@ cursor left resting near an edge would scroll forever.
 
 `saveState` / `loadState` use `localStorage` key `dnd_inventory_v1`. Only custom items (not in `DEFAULT_ITEMS`) are saved; default items are always re-hydrated from `data/items.csv` on init. Placed instances are saved in full and re-placed via `rebuildGrid` on load.
 
-The payload is **version 2**: the whole roster, `{ version, activeCharacterId,
-characters }`. Version 1 was a single character at the top level and is still what
-an older browser or an older cloud save holds, so `normalizeSavePayload()` in
-`characters.js` reads both and folds a v1 save into a one-character roster —
-the *only* place that knows there were ever two shapes. The key is unchanged
+The payload is **version 3**: `{ version, activeCharacterId, characters,
+campaigns }`. Version 2 was the same without `campaigns`, and reads as an account
+that has not joined one — so the bump needs no migration. Version 1 was a single
+character at the top level and is still what an older browser or an older cloud
+save holds, so `normalizeSavePayload()` in `characters.js` reads both and folds a
+v1 save into a one-character roster — the *only* place that knows there were ever
+two shapes. The key is unchanged
 (`dnd_inventory_v1`): it names the storage slot, not the payload version, and
 renaming it would orphan every existing save.
 

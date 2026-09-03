@@ -48,6 +48,11 @@ function handleAuthStateChange(user) {
   state.auth.ready = true;
 
   updateAuthUI();
+  // The Campaigns section is gated on having an account, and a sign-in *for*
+  // something (below) returns without reopening the home screen — so it is
+  // refreshed here rather than only where the screen is opened. A no-op unless
+  // the roster page is what is on screen.
+  renderHomeScreen();
   onAuthUserChanged(state.auth.user); // cloud-save.js picks it up from here
 
   // The boot guess about which screen to open, corrected now that Firebase has
