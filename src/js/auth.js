@@ -53,6 +53,7 @@ function handleAuthStateChange(user) {
   // refreshed here rather than only where the screen is opened. A no-op unless
   // the roster page is what is on screen.
   renderHomeScreen();
+  renderChat(); // who may speak just changed, and the pane says so
   onAuthUserChanged(state.auth.user); // cloud-save.js picks it up from here
 
   // The boot guess about which screen to open, corrected now that Firebase has

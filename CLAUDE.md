@@ -86,6 +86,7 @@ tools/              Standalone dev helpers (not part of the app)
 | `sheet-prose.js` | Backstory & Appearance: the editor/preview swap |
 | `equipment.js` | Equip slots, layout editor, equip/unequip |
 | `shop.js` | The left panel's tabs, GM shop editor, player shopfront, paying |
+| `chat.js` | The campaign's chat log, and the sidebar's Chat pane |
 | `tooltip.js` | Hover tooltip |
 | `main.js` | `init()` and the single call to it |
 
@@ -112,6 +113,7 @@ that owns the element wins.
 | `campaigns.css` | The home screen's Campaigns section, its cards, and the campaign modal |
 | `equipment.css` | The equip rack, the left-panel tabs, the layout editor |
 | `shop.css` | The GM shop editor, the player shopfront, and their modals |
+| `chat.css` | The sidebar's Chat pane, its messages and composer, and the Dice placeholder |
 | `tooltip.css` | The hover tooltip |
 | `stash.css` | The stash (items needing placement) and the container tabs |
 | `coins.css` | The multi-denomination cost input and the coin purse |
@@ -316,6 +318,83 @@ disabled beside a note pointing at a door that cannot be opened.
 having no GM, so its original GM would rejoin as a player. Those parties were
 session-scoped and unbookmarkable, so nothing can click into one; they die with
 the session they were made in.
+
+### The sidebar's tabs
+
+The right panel shows the tabs that belong to **what the inventory panel is
+currently showing**, because the two answer one question:
+
+```
+inventory view    Browse · Details · Party
+sheet view        Chat · Dice · Party
+```
+
+Reading an item's stats beside a grid of items is the whole point of the Details
+pane; reading them beside a character sheet is a panel from the wrong app. Party
+is in **both** — who you are playing with is true of either view — which is why
+`SIDEBAR_TAB_VIEW` in `modals.js` is a map with a null in it rather than two flat
+lists.
+
+- **`sidebarView()` is not `state.view`.** A GM who deselects a player keeps
+  `state.view === 'sheet'` while the panel falls back to their placeholder, and
+  reading the raw field there would strand them on Chat and Dice — with no
+  **Browse**, which is the pane they stock shops by dragging out of. It reproduces
+  the `showSheet` test `syncCharacterViewUI()` already uses for `.sheet-view`, so
+  the two halves of the screen cannot disagree about what is being shown.
+- **Asking for a tab is asking for the view it lives in.** A shop entry clicked
+  while reading your character sheet calls `switchTab('details')`, and the honest
+  answer is to show the item — which means going where items are shown. That one
+  line in `switchTab()` is why every existing caller (`render-sidebar.js`,
+  `shop.js`, `leaveParty()`) kept working untouched.
+- `activateSidebarTab()` is the plain DOM half — light one button, show one pane
+  — and `syncSidebarTabs()` calls *it* rather than `switchTab()`, so the two
+  cannot recurse into each other.
+- A view switch must never leave the active tab hidden, so `syncSidebarTabs()`
+  falls back to the first visible one. Driven from `syncCharacterViewUI()`, the
+  same single entry point the character tabs and the left panel use.
+
+### Chat
+
+Talk belongs to the **table**, not to a character — the same argument the shops
+make — so it lives at `parties/<code>/chat` and everyone holding the code reads
+one log. `src/js/chat.js`.
+
+```
+parties/<code>/chat/<pushId>   { uid, name, text, at }
+```
+
+- A **push id**, not a key of our own devising: RTDB's are ordered by server time
+  and unique across clients with no coordination, which is exactly what a
+  transcript needs and the one thing a client-minted id cannot promise. They sort
+  lexicographically into chronological order, and the renderer sorts them
+  explicitly rather than trusting object key order.
+- A **read-through cache** like `state.shops`, refreshed by a subscription that
+  rides along with the roster (`subscribeToChat`, called from
+  `subscribeToParty`). Nothing about it is in the save file — a conversation is
+  not part of a character, and every member holds the same copy.
+- Only `limitToLast(200)` is subscribed. A campaign that has run a year should
+  not cost a year of messages to open a tab.
+- **`name` is stamped on the message, not looked up when it is drawn.** Who said
+  a thing is a fact about the moment it was said, so renaming a character — or
+  leaving the campaign altogether — must not rewrite or blank the history. Same
+  reason a shop entry snapshots its template. It is the *account's* name, because
+  chat is between players and a GM has no character to be named by.
+- **`textContent`, never `innerHTML`, and markdown.js is deliberately not
+  involved.** The sanitizer is for prose that asked to be formatted; a chat line
+  did not, so it is not parsed at all and there is nothing to escape. This is the
+  one pane where another player's typing lands in your browser every few seconds.
+- **Pinned-to-bottom is measured, not assumed.** A message arriving must not yank
+  a reader out of history they scrolled up to read, nor strand them above the
+  newest line when they were following along; sending is always an intent to
+  follow. `onChatTabShown()` renders rather than only scrolling, because the
+  first time the tab is shown the pane has never been drawn at all.
+- The composer deliberately survives `body.party-readonly`: reading another
+  player's sheet is read-only, but talking to them is not.
+- With no campaign — or signed out — the pane says so instead of offering an
+  input that could only talk to itself.
+
+**Dice is a placeholder.** The tab and its pane exist and say plainly that
+rolling is not built yet; there is no dice code.
 
 ### Presence — the green dot
 

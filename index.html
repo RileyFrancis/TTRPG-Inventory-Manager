@@ -43,6 +43,7 @@
   <link rel="stylesheet" href="src/css/class-features.css">
   <link rel="stylesheet" href="src/css/sheet-prose.css">
   <link rel="stylesheet" href="src/css/party.css">
+  <link rel="stylesheet" href="src/css/chat.css">
   <link rel="stylesheet" href="src/css/equipment.css">
   <link rel="stylesheet" href="src/css/shop.css">
   <link rel="stylesheet" href="src/css/tooltip.css">
@@ -414,9 +415,14 @@
 
     <!-- ===== SIDEBAR ===== -->
     <aside id="sidebar">
+      <!-- Browse and Details belong beside a grid of items; Chat and Dice belong
+           beside a character sheet. `syncSidebarTabs()` in modals.js shows one
+           set or the other from `state.view`, and Party is in both. -->
       <div id="sidebar-tabs">
         <button class="tab-btn active" data-tab="browse">Browse</button>
         <button class="tab-btn" data-tab="details">Details</button>
+        <button class="tab-btn hidden" data-tab="chat">Chat</button>
+        <button class="tab-btn hidden" data-tab="dice">Dice</button>
         <button class="tab-btn" data-tab="party">Party</button>
       </div>
 
@@ -496,6 +502,31 @@
             <button id="details-edit-btn" class="btn-sm">Edit</button>
             <button id="details-delete-btn" class="btn-sm danger">Delete</button>
           </div>
+        </div>
+      </div>
+
+      <!-- Chat Tab -->
+      <!-- Talk belongs to the table, so it lives under the campaign and is empty
+           without one. See src/js/chat.js. -->
+      <div id="tab-chat" class="tab-pane">
+        <div id="chat-empty" class="chat-empty hidden"></div>
+        <div id="chat-body" class="hidden">
+          <div id="chat-log"><!-- rendered by renderChat() --></div>
+          <form id="chat-form" autocomplete="off">
+            <textarea id="chat-input" rows="1" maxlength="2000"
+                      placeholder="Say something…"></textarea>
+            <button type="submit" id="chat-send-btn" class="btn-primary btn-sm"
+                    title="Send (Enter)" aria-label="Send">Send</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Dice Tab -->
+      <div id="tab-dice" class="tab-pane">
+        <div class="chat-empty">
+          <p class="party-idle-msg">Dice are not built yet.</p>
+          <p class="modal-note">Rolling, modifiers and a shared log of what the
+            table rolled will live here.</p>
         </div>
       </div>
 
@@ -1339,6 +1370,8 @@
 <script src="src/js/sheet-layout.js"></script>
 <script src="src/js/equipment.js"></script>
 <script src="src/js/shop.js"></script>
+<!-- After party.js: chat rides on the same campaign subscription the roster does. -->
+<script src="src/js/chat.js"></script>
 <script src="src/js/tooltip.js"></script>
 
 <script src="src/js/main.js"></script>

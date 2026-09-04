@@ -6,13 +6,93 @@
 // =============================================================================
 // TABS
 // =============================================================================
+// The sidebar shows the tabs that belong to what the inventory panel is
+// currently showing, because the two answer one question. Reading an item's
+// stats beside a grid of items is the whole point; reading them beside a
+// character sheet is a panel of the wrong app. So:
+//
+//   inventory view   Browse · Details · Party
+//   sheet view       Chat · Dice · Party
+//
+// Party is in **both** — it is who you are playing with, which is true of either
+// view — and it is the reason this is a map rather than two flat lists.
+const SIDEBAR_TAB_VIEW = {
+  browse:  'inventory',
+  details: 'inventory',
+  chat:    'sheet',
+  dice:    'sheet',
+  party:   null, // both
+};
+
+// Which view a tab belongs to, or null for one that belongs to both.
+function sidebarTabView(name) {
+  return SIDEBAR_TAB_VIEW[name] ?? null;
+}
+
+// **What the inventory panel is actually showing**, which is not always
+// `state.view`. A GM who deselects a player keeps `state.view === 'sheet'` while
+// the panel falls back to their placeholder — and reading the raw field there
+// would leave them on Chat and Dice with no Browse, which is the tab they stock
+// their shops by dragging out of. `syncCharacterViewUI()` computes the same
+// thing for `.sheet-view`; this is that answer, asked from here.
+function sidebarView() {
+  return (state.view === 'sheet' && hasViewedCharacter()) ? 'sheet' : 'inventory';
+}
+
+function sidebarTabAvailable(name) {
+  const view = sidebarTabView(name);
+  return view === null || view === sidebarView();
+}
+
+// The plain DOM half: light one button, show one pane. Everything that decides
+// *which* is above it, so this can be called from the sync below without the
+// two recursing into each other.
+function activateSidebarTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === `tab-${name}`));
+  if (name === 'chat') onChatTabShown();
+}
+
+// Show the buttons belonging to the current view, and never leave the active
+// one hidden — switching to the sheet with Details up has to land somewhere.
+// Called from `syncCharacterViewUI()`, the single entry point for "what are we
+// looking at changed".
+function syncSidebarTabs() {
+  let activeStillThere = false;
+  const visible = [];
+
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    const name = btn.dataset.tab;
+    const shown = sidebarTabAvailable(name);
+    btn.classList.toggle('hidden', !shown);
+    if (!shown) return;
+    visible.push(name);
+    if (btn.classList.contains('active')) activeStillThere = true;
+  });
+
+  if (!activeStillThere && visible.length) activateSidebarTab(visible[0]);
+  else if (activeStillThere) {
+    // The pane may still need waking even when the button did not move — coming
+    // back to the sheet with Chat already active is exactly that case.
+    const active = document.querySelector('.tab-btn.active');
+    if (active && active.dataset.tab === 'chat') onChatTabShown();
+  }
+}
+
+// **Asking for a tab is asking for the view it lives in.** A shop entry clicked
+// while reading your character sheet calls `switchTab('details')`, and the
+// honest answer is to show the item — which means going where items are shown,
+// rather than lighting a button the reader cannot see. Every existing caller
+// keeps working untouched because of this line.
+function switchTab(name) {
+  const view = sidebarTabView(name);
+  if (view && view !== sidebarView() && hasViewedCharacter()) setInventoryView(view);
+  activateSidebarTab(name);
+}
+
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => switchTab(btn.dataset.tab));
 });
-function switchTab(name) {
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
-  document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === `tab-${name}`));
-}
 
 // =============================================================================
 // FILTER CONTROLS

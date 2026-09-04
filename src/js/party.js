@@ -444,6 +444,7 @@ async function fetchCampaignMeta(code) {
 
 function subscribeToParty(code) {
   subscribeToShops(code); // the party's shops ride along with its roster
+  subscribeToChat(code);  // and so does its conversation
 
   // The campaign's own record. A GM renaming it, or a first join that only had
   // the code to go on, both arrive here — and the bookmark on the home screen
@@ -502,6 +503,7 @@ function leaveParty() {
   if (partyPlayersRef) { partyPlayersRef.off(); partyPlayersRef = null; }
   if (partyMetaRef) { partyMetaRef.off(); partyMetaRef = null; }
   unsubscribeFromShops();
+  unsubscribeFromChat();
 
   // Marks us offline, then cancels the onDisconnect — see the presence note
   // above. Cancelling alone used to be the whole of this, which is how a

@@ -191,6 +191,9 @@ function syncCharacterViewUI() {
   if (!showSheet) rebuildGridIfSizeDirty();
   if (showSheet) renderCharacterSheet();
   renderCharacterTabs();
+  // The sidebar's tabs answer the same question these do — Browse and Details
+  // belong beside a grid of items, Chat and Dice beside a character sheet.
+  syncSidebarTabs();
   // The left panel's tabs follow the same selection: a GM with nobody picked has
   // no equipment to show, and deselecting must not leave a player's slots up.
   syncLeftPanel();
