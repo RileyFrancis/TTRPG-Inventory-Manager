@@ -44,6 +44,7 @@
   <link rel="stylesheet" href="src/css/sheet-prose.css">
   <link rel="stylesheet" href="src/css/party.css">
   <link rel="stylesheet" href="src/css/chat.css">
+  <link rel="stylesheet" href="src/css/dice.css">
   <link rel="stylesheet" href="src/css/equipment.css">
   <link rel="stylesheet" href="src/css/shop.css">
   <link rel="stylesheet" href="src/css/tooltip.css">
@@ -244,8 +245,9 @@
                 <div class="stat-grid">
                   <label class="stat-tile"><span>Armor Class</span>
                     <input type="number" data-sheet="ac" data-kind="int" min="0" max="40"></label>
-                  <div class="stat-tile derived"><span>Initiative</span>
-                    <strong id="sheet-initiative">+0</strong></div>
+                  <button type="button" class="stat-tile derived roll-tile" data-roll="initiative"
+                          title="Roll initiative"><span>Initiative</span>
+                    <strong id="sheet-initiative">+0</strong></button>
                   <label class="stat-tile"><span>Speed</span>
                     <input type="number" data-sheet="speed" data-kind="int" min="0" max="200"></label>
                   <div class="stat-tile derived"><span>Prof. Bonus</span>
@@ -408,6 +410,13 @@
           <p>Select a player from the <strong>Party</strong> tab to view and edit their inventory.</p>
         </div>
       </div>
+
+      <!-- Your last three rolls, newest at the bottom, fading back in time.
+           It belongs to the middle of the app rather than to the sidebar
+           because the roll is the app's answer, not one panel's — and it is
+           where a flung number lands. `pointer-events: none` throughout: it is
+           a readout, and the stash it may overlap must stay clickable. -->
+      <div id="dice-history" class="hidden"><!-- rendered by renderRollHistory() --></div>
     </div>
 
     <div class="panel-resizer" id="sidebar-resizer" data-side="sidebar"
@@ -522,11 +531,22 @@
       </div>
 
       <!-- Dice Tab -->
+      <!-- The tray: how many, plus what, and one button per face. The faces
+           themselves are built from DICE_FACES in src/js/dice.js — seven
+           hand-written buttons would only be a second place for that list to
+           disagree with itself. -->
       <div id="tab-dice" class="tab-pane">
-        <div class="chat-empty">
-          <p class="party-idle-msg">Dice are not built yet.</p>
-          <p class="modal-note">Rolling, modifiers and a shared log of what the
-            table rolled will live here.</p>
+        <div id="dice-tray">
+          <div id="dice-tray-controls">
+            <label class="dice-num"><span>Dice</span>
+              <input id="dice-count" type="number" min="1" max="20" value="1"></label>
+            <label class="dice-num"><span>Modifier</span>
+              <input id="dice-mod" type="number" min="-30" max="30" value="0"></label>
+            <button id="dice-clear-btn" class="btn-sm" title="Back to one die, no modifier">Reset</button>
+          </div>
+          <div id="dice-faces"><!-- built from DICE_FACES by buildDiceTray() --></div>
+          <p class="dice-note">Skills, saving throws, ability checks and
+            initiative roll from the character sheet — click the modifier.</p>
         </div>
       </div>
 
@@ -645,6 +665,12 @@
 </div>
 
 <!-- ===== CHARACTER TAB MENU ===== -->
+<!-- Where a roll lands before it flies to the corner, and where another
+     player's roll pops over their tab. Both are fixed layers over the app and
+     under the modals, and neither takes a pointer event. See src/js/dice.js. -->
+<div id="dice-stage" class="hidden"><!-- fliers, one per roll in flight --></div>
+<div id="dice-tab-bubbles"><!-- rendered by renderTabBubbles() --></div>
+
 <div id="char-tab-menu" class="hidden">
   <button class="char-view-btn" data-view="sheet">Character Sheet</button>
   <button class="char-view-btn" data-view="inventory">Inventory</button>
@@ -1372,6 +1398,10 @@
 <script src="src/js/shop.js"></script>
 <!-- After party.js: chat rides on the same campaign subscription the roster does. -->
 <script src="src/js/chat.js"></script>
+<!-- After chat.js: a roll is said in the log, and every other player's roll
+     arrives through that same subscription. After character-sheet.js too — the
+     sheet's rows are what a skill or a save is rolled from. -->
+<script src="src/js/dice.js"></script>
 <script src="src/js/tooltip.js"></script>
 
 <script src="src/js/main.js"></script>

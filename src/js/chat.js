@@ -25,6 +25,14 @@
 // a thing is a fact about the moment it was said: renaming a character, or a
 // player leaving the campaign entirely, must not rewrite or blank the history.
 // It is the same reason a shop entry snapshots its template.
+//
+// **A roll is a message too.** `kind: 'roll'` carries a `roll` object beside the
+// ordinary `text`, and this file draws it as a card rather than as a bubble —
+// see `rollMessageBody()`. It is one log rather than two because a roll *is* a
+// thing said at the table, and because everything the log already provides
+// (server ordering, one subscription, a capped tail, a stamped name) is exactly
+// what a roll feed would otherwise have to grow for itself. src/js/dice.js owns
+// the shape of that payload; nothing here works out a number.
 
 // Only the tail is subscribed. A campaign that has run for a year should not
 // cost a year of messages to open a tab, and nobody scrolls past a few hundred.
@@ -61,6 +69,10 @@ function subscribeToChat(code) {
     // push ids are sorted explicitly — they sort lexicographically into
     // chronological order, which is what they are designed for.
     chatMessages = Object.keys(val).sort().map(id => ({ id, ...val[id] }));
+    // A roll arriving is news for the tab strip as well as for the log — see
+    // src/js/dice.js. It rides this subscription rather than one of its own,
+    // which is the whole reason a roll is a chat message in the first place.
+    noteRollFeed(chatMessages);
     renderChat();
   });
 }
@@ -69,6 +81,9 @@ function unsubscribeFromChat() {
   if (partyChatRef) { partyChatRef.off(); partyChatRef = null; }
   chatMessages = [];
   chatPinnedToBottom = true;
+  // Or the next campaign's tail would arrive as a burst of live rolls, popping
+  // a bubble for every one of them.
+  resetRollFeed();
   renderChat();
 }
 
@@ -85,13 +100,17 @@ function chatAuthorName() {
   return accountDisplayName() || state.party.playerName || 'Someone';
 }
 
+// Saying something is always an intent to follow the conversation, however far
+// up the reader had scrolled. A named function rather than the bare flag so
+// dice.js can declare the same intent when it posts a roll, without reaching
+// into this file's state.
+function chatFollowNewest() { chatPinnedToBottom = true; }
+
 async function sendChatMessage(text) {
   const body = text.trim().slice(0, CHAT_MAX_LEN);
   if (!body || !canChat()) return;
 
-  // Sending is always an intent to follow the conversation, however far up the
-  // reader had scrolled.
-  chatPinnedToBottom = true;
+  chatFollowNewest();
 
   try {
     await firebaseDb.ref(`parties/${state.party.code}/chat`).push({
@@ -161,8 +180,11 @@ function renderChat() {
     // resumed, and it is worth saying again.
     const sameSpeaker = m.uid === lastUid && Number(m.at) - lastAt < 300000;
 
+    const isRoll = m.kind === 'roll' && !!m.roll;
+
     const row = document.createElement('div');
-    row.className = 'chat-msg' + (m.uid === me ? ' own' : '') + (sameSpeaker ? ' run-on' : '');
+    row.className = 'chat-msg' + (m.uid === me ? ' own' : '') +
+                    (sameSpeaker ? ' run-on' : '') + (isRoll ? ' roll' : '');
 
     if (!sameSpeaker) {
       const head = document.createElement('div');
@@ -180,14 +202,17 @@ function renderChat() {
       row.appendChild(head);
     }
 
-    // textContent, never innerHTML. Chat is the one place in this app where
-    // another player's typing is drawn in your browser every few seconds, and
-    // markdown.js's sanitizer is for prose that asked to be formatted — a chat
-    // line did not, so it is not parsed at all and there is nothing to escape.
-    const body = document.createElement('div');
-    body.className = 'chat-msg-text';
-    body.textContent = m.text ?? '';
-    row.appendChild(body);
+    // A roll gets a card of its own — the number is the point of it, and a
+    // sentence in a bubble buries the number in the middle of a line. It is
+    // built from the payload, never from the sentence, so a client that draws
+    // it and one that only reads `text` can never disagree about the total.
+    //
+    // Everything else: textContent, never innerHTML. Chat is the one place in
+    // this app where another player's typing is drawn in your browser every few
+    // seconds, and markdown.js's sanitizer is for prose that asked to be
+    // formatted — a chat line did not, so it is not parsed at all and there is
+    // nothing to escape.
+    row.appendChild(isRoll ? rollMessageBody(m) : plainMessageBody(m));
 
     chatLogEl.appendChild(row);
     lastUid = m.uid;
@@ -195,6 +220,52 @@ function renderChat() {
   });
 
   if (wasPinned) scrollChatToBottom();
+}
+
+function plainMessageBody(m) {
+  const body = document.createElement('div');
+  body.className = 'chat-msg-text';
+  body.textContent = m.text ?? '';
+  return body;
+}
+
+// The total large, the label beside it, and what was on the dice underneath —
+// the same three pieces, in the same order, as the number that flew across the
+// screen and the chip it landed in. A roll should be recognisable as the same
+// event in all three places.
+function rollMessageBody(m) {
+  const r = rollFromMessage(m);
+
+  const card = document.createElement('div');
+  card.className = 'chat-roll';
+  const crit = rollCrit(r);
+  if (crit) card.classList.add(crit);
+
+  const die = document.createElement('span');
+  die.className = 'ico ico-d20 chat-roll-die';
+
+  const total = document.createElement('span');
+  total.className = 'chat-roll-total';
+  total.textContent = r.total;
+
+  const text = document.createElement('span');
+  text.className = 'chat-roll-text';
+
+  const label = document.createElement('span');
+  label.className = 'chat-roll-label';
+  label.textContent = r.label;
+
+  const detail = document.createElement('span');
+  detail.className = 'chat-roll-detail';
+  // A natural 20 or a natural 1 is worth saying out loud; every other roll's
+  // detail is only the arithmetic.
+  detail.textContent = crit === 'crit'   ? 'Natural 20 · ' + rollBreakdown(r)
+                     : crit === 'fumble' ? 'Natural 1 · '  + rollBreakdown(r)
+                     : rollBreakdown(r);
+
+  text.append(label, detail);
+  card.append(die, total, text);
+  return card;
 }
 
 // Clock time for today, and the date once it is not today. A transcript read

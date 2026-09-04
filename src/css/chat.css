@@ -135,6 +135,95 @@
   border-right: 2px solid var(--accent);
 }
 
+/* ─── A ROLL, SAID ───────────────────────────────────────── */
+/* A roll is a message, so it hangs on the same side as everything else its
+   speaker said — but it is a *card* rather than a bubble, because the number is
+   the point of it and a sentence buries the number in the middle of a line.
+   The three pieces are the same three, in the same order, as the number that
+   flew across the screen and the chip it landed in: total, label, what was on
+   the dice. A roll should be recognisable as one event in all three places.
+
+   The die glyph is what makes it distinct at a glance in a scrolling log —
+   colour alone would not, and the accent is already everywhere here. */
+.chat-roll {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  /* Wider than a text bubble's 85%: a roll card carries fixed furniture — the
+     die, the total's own column — before the label gets any width at all, and
+     at 85% a two-word label wraps in a sidebar this narrow. */
+  max-width: 94%;
+  padding: 7px 11px 7px 9px;
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+  border-radius: 3px;
+  border-left: 3px solid var(--accent);
+}
+/* The marked edge crosses with the bubble, exactly as an ordinary line's does. */
+.chat-msg.own .chat-roll {
+  border-left: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+  border-right: 3px solid var(--accent);
+}
+
+.chat-roll-die {
+  flex-shrink: 0;
+  font-size: 15px;
+  color: var(--accent);
+  opacity: 0.9;
+}
+
+.chat-roll-total {
+  flex-shrink: 0;
+  min-width: 26px;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  color: var(--accent);
+}
+
+.chat-roll-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.chat-roll-label {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.chat-roll-detail {
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  color: var(--text-dim);
+  overflow-wrap: anywhere;
+}
+
+/* A natural 20 and a natural 1, recoloured whole — and the detail line says
+   which in words, so the colour is never carrying the fact by itself. */
+.chat-roll.crit {
+  background: color-mix(in srgb, var(--enc-ok) 14%, var(--surface));
+  border-color: color-mix(in srgb, var(--enc-ok) 55%, var(--border));
+  border-left-color: var(--enc-ok);
+}
+.chat-msg.own .chat-roll.crit { border-right-color: var(--enc-ok); }
+.chat-roll.crit .chat-roll-total,
+.chat-roll.crit .chat-roll-die { color: var(--enc-ok); }
+
+.chat-roll.fumble {
+  background: color-mix(in srgb, var(--danger) 13%, var(--surface));
+  border-color: color-mix(in srgb, var(--danger) 50%, var(--border));
+  border-left-color: var(--danger);
+}
+.chat-msg.own .chat-roll.fumble { border-right-color: var(--danger); }
+.chat-roll.fumble .chat-roll-total,
+.chat-roll.fumble .chat-roll-die { color: var(--danger); }
+
 /* ─── THE COMPOSER ───────────────────────────────────────── */
 #chat-form {
   flex-shrink: 0;

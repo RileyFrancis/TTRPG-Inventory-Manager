@@ -87,6 +87,7 @@ tools/              Standalone dev helpers (not part of the app)
 | `equipment.js` | Equip slots, layout editor, equip/unequip |
 | `shop.js` | The left panel's tabs, GM shop editor, player shopfront, paying |
 | `chat.js` | The campaign's chat log, and the sidebar's Chat pane |
+| `dice.js` | Rolling: the big number, the corner stack, the tray, the tab bubbles |
 | `tooltip.js` | Hover tooltip |
 | `main.js` | `init()` and the single call to it |
 
@@ -113,7 +114,8 @@ that owns the element wins.
 | `campaigns.css` | The home screen's Campaigns section, its cards, and the campaign modal |
 | `equipment.css` | The equip rack, the left-panel tabs, the layout editor |
 | `shop.css` | The GM shop editor, the player shopfront, and their modals |
-| `chat.css` | The sidebar's Chat pane, its messages and composer, and the Dice placeholder |
+| `chat.css` | The sidebar's Chat pane, its messages and composer, and a roll said in it |
+| `dice.css` | The flying number, the corner stack, the tab bubbles, and the dice tray |
 | `tooltip.css` | The hover tooltip |
 | `stash.css` | The stash (items needing placement) and the container tabs |
 | `coins.css` | The multi-denomination cost input and the coin purse |
@@ -397,13 +399,150 @@ parties/<code>/chat/<pushId>   { uid, name, text, at }
   edge crossing to the right with it — a thick rule on the left of a right-hung
   bubble points back at nothing. The text *inside* stays left-aligned in both
   cases: it is the bubble that moves, and ragged-left prose is harder to read.
+- **A roll is a message too**, `kind: 'roll'`, carrying the numbers beside the
+  sentence — see *Dice* below for why there is no second collection. chat.js
+  draws it as a card rather than a bubble and works only from the payload,
+  never from the sentence; `rollMessageBody()` is the whole of that.
 - The composer deliberately survives `body.party-readonly`: reading another
   player's sheet is read-only, but talking to them is not.
 - With no campaign — or signed out — the pane says so instead of offering an
   input that could only talk to itself.
 
-**Dice is a placeholder.** The tab and its pane exist and say plainly that
-rolling is not built yet; there is no dice code.
+The **Dice** tab is the tray — a count, a modifier and one button per face.
+See *Dice* below.
+
+### Dice
+
+A roll is **one event with three audiences**, and each of them wants a different
+amount of it. `src/js/dice.js`.
+
+```
+you            the number, large, in the middle of the screen — then it flies
+               to the corner and joins your last three
+the table      a line in the chat log, because a roll is a thing said
+everyone else  a speech bubble over your tab, so a roll is noticed without
+               anyone having to be looking at the log
+```
+
+**There is no `parties/<code>/rolls`.** A roll *is* a chat message — one with a
+`kind` of `'roll'` and the numbers carried beside the sentence:
+
+```
+parties/<code>/chat/<pushId>
+  { uid, name, text, at,
+    kind: 'roll',
+    roll: { label, total, faces, count, mod, dice[] } }
+```
+
+That is the whole of the plumbing, and it is the load-bearing decision here. The
+log is already ordered by the server, already subscribed by everyone holding the
+code, already capped at a sane tail, and already stamps the speaker's name on
+each line rather than looking it up when it is drawn. A rolls collection would
+need every one of those properties again — and would still have to be
+interleaved with the conversation to be read in order, because "Marta rolled a
+2" and "we should go back" are the same conversation. So the tab bubbles ride
+the chat subscription too: `noteRollFeed()` is called from it, and nothing in
+dice.js talks to Firebase except `postRollToChat()`.
+
+Which is also why rolling **works with no campaign at all**. The big number and
+the corner stack are local; the two audiences that are other people simply do
+not happen without a table to be at, and `canChat()` — the same gate an ordinary
+line goes through — is what makes that silent rather than an error.
+
+**`text` is written anyway**, as the plain sentence ("🎲 13 Arcana · 1d20 (9) +
+4"). Anything reading the log without knowing what a roll is — an older client, a
+copy-paste, an export written later — gets the sentence rather than a blank
+line. The renderer never reads it: `rollMessageBody()` works from the payload
+alone, so a client that draws the card and one that only shows text can never
+disagree about the total.
+
+**Nothing about a roll is in the save file.** `rollHistory` is session-only, like
+the chat log and for the same reason: what you rolled is not part of a character,
+and nobody wants it restored next Tuesday.
+
+**The flight.** The chip is put into the corner *first* and held invisible
+(`.roll-chip.landing`), and the flier is then aimed at where it actually landed.
+
+> Measuring the real destination is the only way the flight can end exactly on
+> it. A computed guess drifts the moment the panel is resized, the stash
+> appears, or a third chip pushes the stack up.
+
+- The flier is built **at rest** — `translate(-50%, -50%)` and nothing else — so
+  the entrance tumble lives on the *inner* element. That keeps the flier's own
+  transform free for the flight and its bounding box truthful at the moment the
+  flight is measured.
+- `landRoll()` reveals the chip with the same call that removes the flier, so the
+  number is never in two places at once and never in neither.
+- `transitionend` fires per property and never at all if the element is not
+  painted (a background tab), so the **timeout is the one that counts** and the
+  event only ever gets there first.
+- No destination — the corner is behind the home page, or the history was reset
+  mid-flight — and it fades where it stands rather than flying at a rectangle
+  that is not there.
+- The wash behind the number is **`--panel`**, not `--bg`. The label and detail
+  under it are `--text` and `--text-dim`, which are the inks each palette pins
+  its *panels'* lightness against; `--bg` is locked dark in both palettes, so on
+  parchment it laid a dark smudge over the paper and took the detail line with
+  it.
+
+**The corner** (`#dice-history`) is inside `#inventory-panel` because a roll is
+the *app's* answer rather than one panel's, and because the middle is where a
+flung number can be thrown to from anywhere. Newest at the bottom — the
+direction they arrive in, so a new one pushes the older ones up and away rather
+than shunting them down out of the reader's eye. `z-index: 7` clears
+`#gm-placeholder` (5) and the character tabs (6), so a GM sees their rolls too,
+and `pointer-events: none` throughout: it can overlap the stash, and the stash
+stays clickable. Age, not index, drives the fade — `.age-0` … `.age-2` — so the
+stack reads as time without needing a timestamp.
+
+**The bubbles are a fixed layer**, not children of the tabs: `#character-tabs`
+scrolls sideways and clips what overflows it, so a bubble hanging under a tab
+would be sliced off at the strip's own edge. `renderCharacterTabs()` throws its
+buttons away on every roster update, so `renderTabBubbles()` is called from the
+end of it and re-aims from the tabs each time.
+
+- A bubble is **rebuilt on every roster update**, so its two animations are
+  started at the point in their lives it has actually reached: a negative
+  `animation-delay` runs the entrance forward to where it should already be, and
+  the fade is delayed by whatever is left. Without that a presence heartbeat
+  landing mid-life would replay the pop and reset the countdown to leave.
+- The tail points back at the **middle of the tab** (`--tail-x`) even when the
+  bubble has been clamped sideways to stay on screen, so it never points at the
+  wrong player.
+- `seenRollIds` is **null until the first snapshot**. Joining a campaign delivers
+  the whole tail at once and every line in it is history; a bubble per line would
+  be a wall of them for rolls made hours ago. `resetRollFeed()` puts it back to
+  null when the log is torn down, or the next campaign's tail reads as live.
+- A GM has no tab, so a GM's roll has nothing to point at and is dropped. Their
+  rolls are said in the log like everyone else's.
+
+**What can be rolled.** Every target on the sheet says what it is in one
+`data-roll` attribute (`skill:arcana`, `save:dex`, `ability:cha`, `initiative`),
+read by `sheetRollSpec()` and nothing else. The **modifier is never stored on the
+element** — it is asked of the sheet at the moment of the click, so a roll cannot
+be made with a number the sheet has since moved on from.
+
+- A prof row is now **two** buttons: the dot, which changes what the character is
+  proficient in, and the name-plus-modifier, which rolls it. One button doing
+  both could only ever guess which was meant.
+- **Deliberately not gated by `isReadOnly()`.** Rolling writes nothing to the
+  character, and the roll is attributed to the *account* that clicked it rather
+  than to the sheet it was read off — so a GM rolling a player's Perception is
+  both honest and useful.
+- The tray's seven faces are built from `DICE_FACES`, the same argument the
+  sheet's ability groups make. Its count and modifier are read at the moment a
+  face is clicked, so the tray keeps no state of its own to fall out of step
+  with its own boxes.
+- **A crit is a natural 20 or a natural 1 on a single d20, and only there.**
+  Three d20s summed have no such thing, and calling one of them a crit would be
+  a lie the sheet told. It is colour *and* the word in the chat card's detail
+  line, never colour alone.
+
+**The label is what the roll was about, and the number leads it everywhere:**
+"14 Arcana", not "Arcana: 14". The total is the large thing in all three places
+and the label rides beside or beneath it, so a roll is recognisable as the same
+event whether it is crossing the screen, sitting in the corner, or being read
+back in the log.
 
 ### Presence — the green dot
 

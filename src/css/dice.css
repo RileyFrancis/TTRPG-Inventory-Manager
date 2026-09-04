@@ -1,0 +1,384 @@
+/* ============================================================
+   dice.css — a roll, in the three places it is seen
+
+   The big number in the middle of the screen and the flight that carries it to
+   the corner; the stack of your last three rolls it lands in; and the speech
+   bubble another player's roll pops over their tab. The sidebar's Dice tray is
+   here too — it is the other thing you roll *from*.
+
+   Not here: a roll drawn in the chat log, which is chat.css's, because the
+   element belongs to a chat message; and the sheet's rollable rows, which are
+   character.css's for the same reason.
+   ============================================================ */
+
+/* ─── THE STAGE ──────────────────────────────────────────── */
+/* A fixed layer over the whole app and under the modals. It never takes a
+   pointer event: a number crossing the screen must not be able to eat a click
+   on its way past. */
+#dice-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  pointer-events: none;
+}
+
+/* ─── THE FLIER ──────────────────────────────────────────── */
+/* Built *at rest* — centred and nothing more — so its own transform stays free
+   for the flight and its bounding box is truthful at the moment the flight is
+   measured. The entrance is animated on the inner element instead. */
+.roll-flier {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  isolation: isolate; /* keeps the glow below the number, not behind the app */
+  text-align: center;
+  will-change: transform, opacity;
+}
+
+.roll-flier.flying {
+  transition-property: transform, opacity;
+  /* Leans back before it goes, then eases in hard — a thrown thing, not a
+     slide. The duration is set from ROLL_FLIGHT_MS in dice.js. */
+  transition-timing-function: cubic-bezier(0.55, -0.14, 0.2, 1);
+}
+
+/* The corner is not on screen — the home page is in front of it, or the history
+   was cleared mid-flight. Fade where it stands rather than fly at nothing. */
+.roll-flier.gone {
+  transition: opacity 0.26s ease, transform 0.26s ease;
+  transform: translate(-50%, -50%) scale(0.84);
+  opacity: 0;
+}
+
+.roll-flier-inner {
+  position: relative;
+  padding: 26px 46px;
+  animation: roll-arrive 560ms cubic-bezier(0.16, 1.3, 0.36, 1) both;
+}
+
+/* Enough ground for the number to read against, whatever it lands over — the
+   torn paper, the grid, a character sheet. A wash rather than a panel: this is
+   a result passing through, not a dialog.
+
+   It is `--panel`, and that matters more than it looks. The label and the
+   detail below the number are `--text` and `--text-dim`, which are the inks
+   each palette pins its *panels'* lightness against — so a bloom of anything
+   else is a surface those two colours were never chosen for. `--bg` was the
+   obvious first guess and is exactly wrong: the ground is locked dark in both
+   palettes, so on parchment it laid a dark smudge over the paper and took the
+   detail line down with it. */
+.roll-flier-inner::before {
+  content: '';
+  position: absolute;
+  inset: -55%;
+  z-index: -1;
+  /* Three stops rather than two: a near-solid middle for the number to sit on,
+     and a long tail so the edge of the wash is nowhere in particular. Two stops
+     start falling off immediately and leave the digits reading through the
+     busiest part of whatever is behind them. */
+  background: radial-gradient(closest-side,
+    color-mix(in srgb, var(--panel) 94%, transparent) 0%,
+    color-mix(in srgb, var(--panel) 76%, transparent) 42%,
+    transparent 100%);
+}
+
+@keyframes roll-arrive {
+  0%   { transform: scale(0.3) rotate(-16deg); opacity: 0; }
+  55%  { transform: scale(1.14) rotate(4deg);  opacity: 1; }
+  100% { transform: scale(1) rotate(0deg);     opacity: 1; }
+}
+
+.roll-flier-total {
+  font-family: var(--font-display);
+  font-size: clamp(76px, 15vmin, 148px);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--accent);
+  text-shadow: 0 0 34px color-mix(in srgb, var(--accent) 55%, transparent),
+               0 6px 20px var(--emboss-lo);
+}
+
+/* Not uppercased, here or in the chip or the bubble. The label arrives already
+   cased by dice.js — "Arcana", "Dexterity Save" — and a tray roll's label is a
+   formula, which `text-transform` would render as "1D20". Letter-spacing and
+   the display face do the work of making it read as a caption instead. */
+.roll-flier-label {
+  margin-top: 8px;
+  font-family: var(--font-display);
+  font-size: clamp(15px, 2.4vmin, 22px);
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--text);
+}
+
+.roll-flier-detail {
+  margin-top: 5px;
+  font-size: 11px;
+  letter-spacing: 0.07em;
+  color: var(--text-dim);
+}
+
+/* A natural 20 and a natural 1 are the two results worth recognising before
+   the number is read. Colour *and* the word in the chat detail, never colour
+   alone. */
+.roll-flier.crit .roll-flier-total {
+  color: var(--enc-ok);
+  text-shadow: 0 0 40px color-mix(in srgb, var(--enc-ok) 62%, transparent),
+               0 6px 20px var(--emboss-lo);
+}
+.roll-flier.fumble .roll-flier-total {
+  color: var(--danger);
+  text-shadow: 0 0 34px color-mix(in srgb, var(--danger) 50%, transparent),
+               0 6px 20px var(--emboss-lo);
+}
+
+/* ─── THE CORNER ─────────────────────────────────────────── */
+/* Your last three rolls, newest at the bottom — the direction they arrive in,
+   so a new one pushes the older ones up and away rather than shunting them
+   down out of the reader's eye.
+
+   It sits inside #inventory-panel because a roll is the *app's* answer rather
+   than one panel's, and because the middle is where a flung number can be
+   thrown to from anywhere. z-index 7 clears #gm-placeholder (5) and the
+   character tabs (6), so a GM sees their rolls too. `pointer-events: none`
+   throughout: it can overlap the stash, and the stash stays clickable. */
+#dice-history {
+  position: absolute;
+  right: 18px;
+  bottom: 16px;
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+  pointer-events: none;
+}
+
+.roll-chip {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  padding: 5px 11px;
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  /* The marked edge is on the right because the stack hangs off the right —
+     a rule on the far side of a right-hung chip points back at nothing. */
+  border-right: 3px solid var(--accent);
+  border-radius: 4px;
+  box-shadow: var(--shadow-soft);
+  /* They shrink *toward* the corner as they age, rather than away from it. */
+  transform-origin: 100% 100%;
+  transition: opacity 0.32s ease, transform 0.32s ease;
+}
+
+/* Age, not position: the newest is at full strength and each one behind it
+   steps back, so the stack reads as time without needing a timestamp. */
+.roll-chip.age-0 { opacity: 1;    transform: scale(1); }
+.roll-chip.age-1 { opacity: 0.52; transform: scale(0.9); }
+.roll-chip.age-2 { opacity: 0.24; transform: scale(0.82); }
+
+/* Drawn, measured, and held invisible until the flier arrives on top of it —
+   the number is never in two places at once, and never in neither. */
+.roll-chip.landing { opacity: 0; transform: scale(0.72); transition: none; }
+
+.roll-chip-total {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--accent);
+}
+
+.roll-chip-label {
+  font-family: var(--font-display);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roll-chip.crit   { border-right-color: var(--enc-ok); }
+.roll-chip.fumble { border-right-color: var(--danger); }
+.roll-chip.crit   .roll-chip-total { color: var(--enc-ok); }
+.roll-chip.fumble .roll-chip-total { color: var(--danger); }
+
+/* ─── SPEECH BUBBLES OVER THE TABS ───────────────────────── */
+/* A fixed layer rather than children of the tabs: #character-tabs scrolls
+   sideways and clips its overflow, so a bubble hanging under a tab would be
+   sliced off at the strip's own edge. Under the stage, over everything else. */
+#dice-tab-bubbles {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  pointer-events: none;
+}
+
+.tab-bubble {
+  position: absolute;
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 5px 10px;
+  background: var(--panel);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  box-shadow: var(--shadow-deep);
+  white-space: nowrap;
+  /* Pops in, holds, then leaves on its own. The delays are set from JS against
+     the bubble's real age, so a roster update redrawing the strip mid-life puts
+     it back where it was in its life rather than starting it over. */
+  animation: bubble-in 220ms cubic-bezier(0.2, 1.35, 0.4, 1) both,
+             bubble-out 400ms ease both;
+}
+
+/* The tail points back at the middle of the tab even when the bubble has been
+   clamped sideways to stay on screen, so it never points at the wrong player. */
+.tab-bubble::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: var(--tail-x, 50%);
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  background: var(--panel);
+  border-left: 1px solid var(--accent);
+  border-top: 1px solid var(--accent);
+  transform: rotate(45deg);
+}
+
+@keyframes bubble-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.88); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes bubble-out {
+  from { opacity: 1; transform: none; }
+  to   { opacity: 0; transform: translateY(-4px) scale(0.96); }
+}
+
+.tab-bubble-total {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--accent);
+}
+
+.tab-bubble-label {
+  font-family: var(--font-display);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+
+.tab-bubble.crit   { border-color: var(--enc-ok); }
+.tab-bubble.fumble { border-color: var(--danger); }
+.tab-bubble.crit::before   { border-color: var(--enc-ok); }
+.tab-bubble.fumble::before { border-color: var(--danger); }
+.tab-bubble.crit   .tab-bubble-total { color: var(--enc-ok); }
+.tab-bubble.fumble .tab-bubble-total { color: var(--danger); }
+
+/* ─── THE TRAY ───────────────────────────────────────────── */
+#tab-dice { overflow-y: auto; }
+
+#dice-tray {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 12px;
+}
+
+#dice-tray-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.dice-num {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.dice-num > span {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.dice-num input {
+  width: 100%;
+  padding: 5px 6px;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* Six across is too many for a sidebar and four leaves a widow; three rows of
+   two-and-a-bit, sized by the panel, is what `auto-fit` gives for free. */
+#dice-faces {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(62px, 1fr));
+  gap: 8px;
+}
+
+/* The button stays a plain rectangle — the hexagon is the face inside it, so
+   the focus ring is not clipped away with the corners. */
+.die-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 4px;
+}
+.die-btn:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
+
+.die-face {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 1;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 13%, var(--surface));
+  /* A flat-sided hexagon: enough of a die to read as one at this size, and one
+     shape for all seven rather than seven near-identical polygons. */
+  clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+  transition: background 0.13s, color 0.13s, transform 0.09s;
+}
+.die-btn:hover .die-face {
+  background: color-mix(in srgb, var(--accent) 30%, var(--surface));
+  color: var(--text);
+}
+.die-btn:active .die-face { transform: scale(0.94); }
+
+.dice-note {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-dim);
+}
+
+/* ─── REDUCED MOTION ─────────────────────────────────────── */
+/* The number still crosses the screen — that is the feature, and where it went
+   is information. What goes is the tumble, the overshoot and the fading stack
+   moving under it; the flight itself is shortened to a plain, quick move. */
+@media (prefers-reduced-motion: reduce) {
+  .roll-flier-inner { animation: none; }
+  .roll-flier.flying { transition-timing-function: ease; }
+  .roll-chip { transition: opacity 0.15s linear; }
+  .tab-bubble { animation-name: bubble-fade, bubble-out; }
+  @keyframes bubble-fade { from { opacity: 0; } to { opacity: 1; } }
+}

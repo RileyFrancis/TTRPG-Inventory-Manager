@@ -100,6 +100,11 @@ function renderCharacterTabs() {
     if (btn) positionCharacterTabMenu(btn);
     else closeCharacterTabMenu();
   }
+
+  // Another player's roll pops a speech bubble over their tab (src/js/dice.js).
+  // The buttons above were just thrown away and rebuilt, so the bubbles are
+  // re-aimed here rather than being left pointing at elements that are gone.
+  renderTabBubbles();
 }
 
 // =============================================================================

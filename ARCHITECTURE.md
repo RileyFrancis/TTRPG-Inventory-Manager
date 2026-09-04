@@ -81,14 +81,18 @@ In load order.
 | `cloud-save.js` | Mirrors the save file to `users/<uid>/save` while signed in |
 | `character-tabs.js` | Per-character tabs, and the sheet/inventory switch |
 | `characters.js` | The account's roster of characters, and the home screen |
+| `campaigns.js` | Campaigns: the bookmark model, entering and leaving, the home section |
 | `character-sheet.js` | Page one of the 2024 sheet: abilities, skills, combat stats |
 | `class-features.js` | The class registry, and the sheet's Class Features section |
 | `species-traits.js` | The species registry, and the sheet's Species Traits section |
 | `markdown.js` | Markdown to HTML for the written sections, and the sanitizer |
 | `sheet-prose.js` | Backstory & Appearance: the editor/preview swap |
 | `sheet-layout.js` | The sheet's sections as widgets: the split tree, drag-to-tile |
+| `character-setup.js` | The Character Setup modal: name, species, background, class rows |
 | `equipment.js` | Equip slots, layout editor, equip/unequip |
 | `shop.js` | The left panel's tabs, GM shop editor, player shopfront, paying |
+| `chat.js` | The campaign's chat log, and the sidebar's Chat pane |
+| `dice.js` | Rolling: the big number, the corner stack, the tray, the tab bubbles |
 | `tooltip.js` | Hover tooltip |
 | `main.js` | `init()` and the single call to it |
 
@@ -111,6 +115,9 @@ that owns the element wins.
 | `class-features.css` | The feature cards and badges — Class Features and Species Traits both |
 | `sheet-prose.css` | The written sections: the bar, the editor, and the rendered prose |
 | `party.css` | Party header badge, sidebar Party tab, party modal, kick |
+| `campaigns.css` | The home screen's Campaigns section, its cards, and the campaign modal |
+| `chat.css` | The sidebar's Chat pane, its messages and composer, and a roll said in it |
+| `dice.css` | The flying number, the corner stack, the tab bubbles, and the dice tray |
 | `equipment.css` | The equip rack, the left-panel tabs, the layout editor |
 | `shop.css` | The GM shop editor, the player shopfront, and their modals |
 | `tooltip.css` | The hover tooltip |
@@ -146,7 +153,7 @@ Four kinds of state, kept deliberately apart:
 | The character roster — inventories, sheets, custom items | `localStorage`, `dnd_inventory_v1` | Yes, to `users/<uid>/save` |
 | Browser furniture — theme, accent, panel widths, folders, sort order, sheet layout | One `localStorage` key each | Never |
 | Party state — the roster, and everyone's shared view | Firebase, live | It *is* the sync |
-| Shops | Firebase only | Not in the save file at all |
+| Shops, and the table's chat log — a roll included | Firebase only | Not in the save file at all |
 
 That split is the rule to preserve: anything describing *how this browser shows
 the app* stays out of the save file, because a GM paging through the party must

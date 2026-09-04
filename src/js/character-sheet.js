@@ -197,9 +197,17 @@ function abilityGroup(a) {
 
   // The modifier is the figure actually rolled with, so it is the big one; the
   // score sits beside it as the smaller number it is worked out from.
-  const mod = document.createElement('div');
+  //
+  // And now it is literally what is rolled: a button carrying `data-roll`,
+  // which src/js/dice.js reads. The modifier is *not* stored on the element —
+  // dice.js asks the sheet for it at the moment of the click, so a roll can
+  // never be made with a number the sheet has since moved on from.
+  const mod = document.createElement('button');
+  mod.type = 'button';
   mod.className = 'ability-mod';
   mod.id = `sheet-mod-${a.id}`;
+  mod.dataset.roll = `ability:${a.id}`;
+  mod.title = `Roll a ${a.label} check`;
 
   const score = document.createElement('input');
   score.type = 'number';
@@ -228,6 +236,7 @@ function abilityGroup(a) {
     dot: { path: `saveProf.${a.id}`, kind: 'bool' },
     label: 'Saving Throw',
     valueId: `sheet-save-${a.id}`,
+    roll: `save:${a.id}`,
   });
   save.classList.add('save-row');
   rows.appendChild(save);
@@ -236,6 +245,7 @@ function abilityGroup(a) {
     dot: { path: `skillProf.${s.id}`, kind: 'prof' },
     label: s.label,
     valueId: `sheet-skill-${s.id}`,
+    roll: `skill:${s.id}`,
   })));
 
   group.append(name, head, rows);
@@ -244,7 +254,13 @@ function abilityGroup(a) {
 
 // One row of "proficiency dot · name · derived modifier". The dot is a button
 // rather than a checkbox because the skill version cycles through three states.
-function profRow({ dot, label, valueId }) {
+//
+// The name and the value are a **second** button, and the row is the two of
+// them side by side: one changes what the character *is* proficient in, the
+// other rolls it. They had to be separate controls — a single button doing both
+// could only ever guess which was meant — and the name belongs with the value
+// rather than with the dot, because "Arcana +5" is the thing being rolled.
+function profRow({ dot, label, valueId, roll }) {
   const row = document.createElement('div');
   row.className = 'prof-row';
 
@@ -262,7 +278,14 @@ function profRow({ dot, label, valueId }) {
   value.className = 'prof-value';
   value.id = valueId;
 
-  row.append(btn, name, value);
+  const rollBtn = document.createElement('button');
+  rollBtn.type = 'button';
+  rollBtn.className = 'prof-roll';
+  rollBtn.dataset.roll = roll;
+  rollBtn.title = 'Roll ' + label;
+  rollBtn.append(name, value);
+
+  row.append(btn, rollBtn);
   return row;
 }
 
@@ -281,6 +304,8 @@ function renderCharacterSheet() {
   document.getElementById('character-sheet').classList.toggle('sheet-readonly', readOnly);
 
   // Every plain input, by the path it edits.
+  // Note what is *not* here: `[data-roll]`. Rolling writes nothing to the
+  // character, so a read-only sheet still rolls — see the listener in dice.js.
   document.querySelectorAll('#character-sheet [data-sheet]').forEach(el => {
     const kind = el.dataset.kind;
     if (kind === 'bool' || kind === 'prof') {
