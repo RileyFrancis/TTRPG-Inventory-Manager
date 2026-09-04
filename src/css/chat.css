@@ -58,23 +58,33 @@
 .chat-empty .modal-note { margin: 0; }
 
 /* ─── MESSAGES ───────────────────────────────────────────── */
+/* Which side of the panel a line sits on is who said it — the read every chat
+   app trains people in, and quicker than reading a name. The row is a column
+   whose cross-axis alignment picks the edge; because it is not `stretch`, the
+   bubble and the name above it both shrink to their content and hug that side. */
 .chat-msg {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 3px;
   max-width: 100%;
 }
+.chat-msg.own { align-items: flex-end; }
 
 /* A run of lines from one speaker is one turn in the conversation, so the gap
    between them closes up and only the first carries a name. */
 .chat-msg.run-on { margin-top: -6px; }
 
+/* Reversed for your own lines so the *name* is the part against the panel edge
+   either way, and the timestamp always falls on the inside. */
 .chat-msg-head {
   display: flex;
   align-items: baseline;
   gap: 7px;
   flex-wrap: wrap;
+  max-width: 100%;
 }
+.chat-msg.own .chat-msg-head { flex-direction: row-reverse; }
 
 .chat-msg-name {
   font-family: var(--font-display);
@@ -93,13 +103,21 @@
   white-space: nowrap;
 }
 
-/* `pre-wrap` keeps the line breaks a writer typed — Shift+Enter means
-   something, so it has to survive being drawn. `anywhere` so an unbroken URL
-   cannot widen the panel. */
+/* `max-width` is what makes the alignment legible at all: a bubble allowed to
+   fill the panel is on both sides at once. 85% leaves a margin on the far side
+   wide enough to read as deliberate in a sidebar this narrow, while still giving
+   a long message nearly the whole width.
+
+   `pre-wrap` keeps the line breaks a writer typed — Shift+Enter means something,
+   so it has to survive being drawn. `anywhere` so an unbroken URL cannot widen
+   the panel. The text inside stays left-aligned in both cases: it is the
+   *bubble* that moves, and ragged-left prose is harder to read. */
 .chat-msg-text {
+  max-width: 85%;
   padding: 7px 9px;
   font-size: 12px;
   line-height: 1.5;
+  text-align: left;
   color: var(--text);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -109,12 +127,12 @@
   border-left: 2px solid var(--border2);
 }
 
-/* Your own lines lean on the accent rather than sitting on the other side of
-   the panel: the sidebar is too narrow to spend half its width on alignment,
-   and the campaign is small enough that names do the identifying. */
+/* Your own lines take the accent, and the marked edge crosses with them — a
+   thick rule on the left of a right-hung bubble would point back at nothing. */
 .chat-msg.own .chat-msg-text {
   background: color-mix(in srgb, var(--accent) 9%, var(--surface));
-  border-left-color: var(--accent);
+  border-left: 1px solid var(--border);
+  border-right: 2px solid var(--accent);
 }
 
 /* ─── THE COMPOSER ───────────────────────────────────────── */

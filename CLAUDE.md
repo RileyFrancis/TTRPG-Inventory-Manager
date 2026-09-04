@@ -388,6 +388,15 @@ parties/<code>/chat/<pushId>   { uid, name, text, at }
   newest line when they were following along; sending is always an intent to
   follow. `onChatTabShown()` renders rather than only scrolling, because the
   first time the tab is shown the pane has never been drawn at all.
+- **Your own lines hang right, everyone else's hang left** — name, timestamp and
+  bubble together. `.chat-msg` is a column whose cross-axis alignment picks the
+  edge, so both children shrink to their content and hug that side, and
+  `.chat-msg-head` reverses for your own so the *name* is the part against the
+  edge either way. Two things this needs to work: a `max-width` on the bubble,
+  since one allowed to fill the panel is on both sides at once, and the accent
+  edge crossing to the right with it — a thick rule on the left of a right-hung
+  bubble points back at nothing. The text *inside* stays left-aligned in both
+  cases: it is the bubble that moves, and ragged-left prose is harder to read.
 - The composer deliberately survives `body.party-readonly`: reading another
   player's sheet is read-only, but talking to them is not.
 - With no campaign — or signed out — the pane says so instead of offering an
