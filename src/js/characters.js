@@ -421,10 +421,14 @@ function renderHomeScreen() {
   if (canSelectCharacter()) {
     note.classList.add('hidden');
   } else {
+    // A GM's cards are not selectable, so the gesture that closes this page for
+    // everyone else is not available to them. Their campaign card is — clicking
+    // the one they are already in drops them back into it — so the note says so
+    // rather than leaving Escape as the only way out anyone could guess at.
     note.textContent = 'You are running ' + campaignDisplayName(state.party.code) +
                        ' as Game Master, so no character of your own is in play. Your ' +
                        'roster is still yours to edit — pick a player from the character ' +
-                       'tabs to look at theirs.';
+                       'tabs to look at theirs. Click the campaign above to go back to it.';
     note.classList.remove('hidden');
   }
 
@@ -559,8 +563,6 @@ document.getElementById('home-btn').addEventListener('click', () => {
   if (state.screen === 'home') closeHomeScreen();
   else openHomeScreen();
 });
-
-document.getElementById('home-close-btn').addEventListener('click', closeHomeScreen);
 
 document.getElementById('home-new-char-btn').addEventListener('click', () => {
   openCharModal(null, { isNew: true });

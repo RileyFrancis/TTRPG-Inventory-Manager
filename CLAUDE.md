@@ -501,7 +501,15 @@ and a wizard on Fridays and both are theirs. So the save file holds a **roster**
   under the modal backdrop), not a panel inside it — picking a character is what
   happens before there is an inventory to look at. It carries **two** sections
   now, campaigns above characters; `renderHomeScreen()` draws both, so no caller
-  has to remember there is more than one. See *Campaigns*. `renderHomeScreen()` returns
+  has to remember there is more than one. See *Campaigns*.
+- **You leave it by choosing something, not by dismissing it.** There is no Back
+  button: clicking a character opens their inventory and clicking a campaign
+  enters it, which is the same gesture the page is already asking for. Escape
+  still closes it. The one reader with nothing to click is a **GM**, whose
+  character cards are not selectable — their way back is the campaign card for
+  the table they are already running, and `renderHomeScreen()`'s note says so,
+  because it is the only case where the page could otherwise feel like a
+  dead end. `renderHomeScreen()` returns
   early unless it is showing, so anything that replaces the world can call it
   freely.
 - **A signed-in player starts there.** `handleAuthStateChange` opens it on any
