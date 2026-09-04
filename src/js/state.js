@@ -79,7 +79,7 @@ const state = {
     campaignName: null,   // the campaign's own name, from parties/<code>/meta
     viewingPlayerId: null, // which player's inventory we're viewing (null = own for player, none for GM)
     ownState: null,       // saved own state when player views another's inventory
-    players: {},          // Firebase cache: { [uid]: { name, connected, character, instances, customDb } }
+    players: {},          // Firebase cache: { [uid]: { name, connected, lastSeen, character, instances, customDb } }
   },
 };
 

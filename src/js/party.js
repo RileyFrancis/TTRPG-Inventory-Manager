@@ -11,10 +11,12 @@ let partyPlayersRef = null;
 let partyMetaRef = null;
 let firebaseInitError = null; // kept so the party buttons can say what went wrong
 
-// Our own node in the party — the player entry, or the GM's. Held because it
-// carries an onDisconnect handler that must be *cancelled* when we leave on
-// purpose: uncancelled, it would write `connected: false` back into a roster we
-// are no longer in, resurrecting a player the GM has just removed.
+// Our own node in the party — the player entry, or the GM's. Owned by the
+// presence block further down, which is the only thing that may write to it:
+// it carries an onDisconnect handler that has to be re-armed on every reconnect
+// and *cancelled* when we leave on purpose. Uncancelled, it would write
+// `connected: false` back into a roster we are no longer in, resurrecting a
+// player the GM has just removed.
 let partySelfRef = null;
 
 // Whether we have ever seen ourselves in the roster. A player's entry vanishing
@@ -179,6 +181,7 @@ function beginPartySession({ code, role, playerId, playerName, campaignName }) {
   state.party.players = {};
 
   subscribeToParty(code);
+  startPresenceSweep(); // a lapsed claim has no snapshot to announce it
   hideModal('campaign-modal');
   updatePartyUI();
   switchTab('party');
@@ -202,9 +205,9 @@ async function createCampaign(name) {
   try {
     await firebaseDb.ref(`parties/${code}`).update({
       meta: campaignMeta(name, uid, gmName),
-      gm: { name: gmName, uid, connected: true },
+      gm: { name: gmName, uid, connected: true, lastSeen: presenceStamp() },
     });
-    attachSelfRef(firebaseDb.ref(`parties/${code}/gm`));
+    startPresence(firebaseDb.ref(`parties/${code}/gm`));
   } catch (e) {
     alert('Failed to create the campaign: ' + e.message);
     return null;
@@ -223,8 +226,8 @@ async function enterCampaignAsGM(code, meta) {
   const gmName = accountDisplayName() || 'Game Master';
   try {
     const gmRef = firebaseDb.ref(`parties/${code}/gm`);
-    await gmRef.update({ name: gmName, uid, connected: true });
-    attachSelfRef(gmRef);
+    await gmRef.update({ name: gmName, uid, connected: true, lastSeen: presenceStamp() });
+    startPresence(gmRef);
   } catch (e) {
     alert('Could not rejoin as Game Master: ' + e.message);
     return null;
@@ -248,6 +251,7 @@ async function enterCampaignAsPlayer(code, playerName, meta) {
       uid,
       name: playerName,
       connected: true,
+      lastSeen: presenceStamp(),
       characterId: state.character.id ?? null,
       character: state.character,
       instances: getSerializableInstances(),
@@ -255,7 +259,7 @@ async function enterCampaignAsPlayer(code, playerName, meta) {
       equipped: state.equipped,
       _writtenBy: uid,
     });
-    attachSelfRef(playerRef);
+    startPresence(playerRef);
     sawSelfInRoster = true; // we just wrote it — a later absence is a removal
   } catch (e) {
     alert('Failed to join the campaign: ' + e.message);
@@ -268,12 +272,155 @@ async function enterCampaignAsPlayer(code, playerName, meta) {
   return code;
 }
 
-// Our own node, plus the onDisconnect that marks us offline when the tab goes.
-// One place, because the handler must be *cancelled* on a deliberate leave and
-// the ref is the only thing that can cancel it.
-function attachSelfRef(ref) {
-  ref.onDisconnect().update({ connected: false });
+// =============================================================================
+// PRESENCE — what the green dot is allowed to mean
+// =============================================================================
+// The dot is green **iff that person has the app open on this campaign right
+// now**. That is a claim about the present, so it cannot be written once and
+// left: every way a session can end has to be able to reach it, including the
+// ways that never run any of our code.
+//
+// Two things used to break it, and they compound.
+//
+//   1. `onDisconnect` was armed **once**, at join. RTDB *consumes* a handler
+//      when it fires and does not re-arm it on reconnect, so a single wifi blip
+//      spent it — the tab actually closed hours later then wrote nothing, and
+//      the seat stayed lit. Arming from `.info/connected` is the fix: that
+//      listener fires on every (re)connection, so the handler is replaced each
+//      time it is spent. `connected: true` is written *inside* the `.then()`,
+//      after the handler is registered, because a drop between the two would
+//      otherwise leave a live seat with nothing watching it.
+//
+//   2. `leaveParty()` cancelled the handler and wrote nothing in its place. That
+//      was survivable when a rejoin minted a fresh key and orphaned the old
+//      node; now that a seat is keyed by account and *persists*, Leave Session,
+//      switching campaigns and signing out each left a green dot on an empty
+//      chair. `endPresence()` writes the `false` itself, before cancelling.
+//
+// Neither covers a client the server never notices has gone — a killed browser,
+// a closed laptop, a rules change that silently refuses the write. So presence
+// is **two facts, not one**: `connected` is what the client last claimed, and
+// `lastSeen` is when it last claimed it. A dot needs both, so a claim with no
+// heartbeat behind it lapses on its own instead of lying indefinitely.
+const PRESENCE_HEARTBEAT_MS = 40000;  // how often a live client re-states itself
+const PRESENCE_STALE_MS     = 105000; // ~2.5 missed beats before a claim lapses
+const PRESENCE_SWEEP_MS     = 15000;  // how often the panel re-checks the clock
+
+let presenceConnRef   = null; // .info/connected
+let presenceOffsetRef = null; // .info/serverTimeOffset
+let presenceTimer     = null;
+let presenceSweepTimer = null;
+
+// `lastSeen` is stamped by the *server*, so it has to be read against the
+// server's clock. A client whose own clock is an hour out would otherwise call
+// everyone offline, or nobody.
+let serverTimeOffset = 0;
+function serverNow() { return Date.now() + serverTimeOffset; }
+
+function presenceStamp() {
+  return firebase.database.ServerValue.TIMESTAMP;
+}
+
+// Take up our own node and start claiming it. Replaces the one-shot arming that
+// used to happen at join.
+function startPresence(ref) {
+  endPresence(); // anything still held here is a previous seat: stand it down
   partySelfRef = ref;
+
+  if (!presenceOffsetRef) {
+    presenceOffsetRef = firebaseDb.ref('.info/serverTimeOffset');
+    presenceOffsetRef.on('value', snap => { serverTimeOffset = snap.val() ?? 0; });
+  }
+
+  presenceConnRef = firebaseDb.ref('.info/connected');
+  presenceConnRef.on('value', snap => {
+    if (!snap.val()) return;   // the drop itself is the server's to record
+    const self = partySelfRef; // may have been dropped while this was in flight
+    if (!self) return;
+    self.onDisconnect().update({ connected: false, lastSeen: presenceStamp() })
+      .then(() => { if (partySelfRef === self) beatPresence(); })
+      .catch(() => { /* offline again already — the next connect re-arms */ });
+  });
+
+  clearInterval(presenceTimer);
+  presenceTimer = setInterval(beatPresence, PRESENCE_HEARTBEAT_MS);
+}
+
+// The claim itself. Deliberately **not** folded into `syncPartyState()`: that
+// writes to whichever node is being *edited*, which for a GM is one of the
+// players — stamping `lastSeen` there would light a player up because the GM is
+// reading their sheet. This only ever touches our own node.
+function beatPresence() {
+  if (!partySelfRef) return;
+  partySelfRef.update({ connected: true, lastSeen: presenceStamp() })
+    .catch(() => { /* a seat that has been removed; the roster listener has it */ });
+}
+
+// Stand down. The `false` is written *before* the handler is cancelled, so there
+// is no window in which nothing would mark us gone.
+//
+// It can land on a node the GM has just deleted, where `update()` would recreate
+// it — which is why `handleRemovedFromParty()` and `leaveCampaign()` both sweep
+// the node *after* coming through here, exactly as they already did for a sync
+// caught in flight.
+function endPresence({ markOffline = true } = {}) {
+  clearInterval(presenceTimer);
+  presenceTimer = null;
+
+  if (presenceConnRef) { presenceConnRef.off(); presenceConnRef = null; }
+
+  if (partySelfRef) {
+    const self = partySelfRef;
+    partySelfRef = null;
+    if (markOffline) self.update({ connected: false, lastSeen: presenceStamp() }).catch(() => {});
+    try { self.onDisconnect().cancel(); } catch { /* already gone */ }
+  }
+}
+
+// Whether to light this roster entry. Both halves are required: what the client
+// last claimed, and whether that claim is still fresh.
+//
+// An entry carrying **no `lastSeen` at all** reads as offline. Every client that
+// could be connected now writes one on connect and every 40s after, so a seat
+// without one is a record left behind by a session that ended before presence
+// worked — which is exactly the stuck-green entry this fixes.
+function isPlayerOnline(p) {
+  if (!p || !p.connected) return false;
+  const seen = Number(p.lastSeen);
+  if (!Number.isFinite(seen)) return false;
+  return serverNow() - seen < PRESENCE_STALE_MS;
+}
+
+// A claim lapses through the passage of time, and time is not an event Firebase
+// will wake us for: with no snapshot arriving, a dead client's dot would stay
+// lit until something else happened to redraw the panel. So the panel re-checks
+// itself — and redraws only when the answer has actually changed, because this
+// runs every 15s for as long as a session is open and must not rebuild the
+// roster under the reader's cursor for nothing.
+let lastPresenceSignature = '';
+
+function presenceSignature() {
+  return Object.entries(state.party.players ?? {})
+    .map(([id, p]) => id + ':' + (isPlayerOnline(p) ? '1' : '0'))
+    .sort()
+    .join(',');
+}
+
+function startPresenceSweep() {
+  clearInterval(presenceSweepTimer);
+  lastPresenceSignature = presenceSignature();
+  presenceSweepTimer = setInterval(() => {
+    const sig = presenceSignature();
+    if (sig === lastPresenceSignature) return;
+    lastPresenceSignature = sig;
+    updatePartyPanel();
+  }, PRESENCE_SWEEP_MS);
+}
+
+function stopPresenceSweep() {
+  clearInterval(presenceSweepTimer);
+  presenceSweepTimer = null;
+  lastPresenceSignature = '';
 }
 
 // What a code actually points at, or null. The campaign's own record is what
@@ -345,6 +492,7 @@ function subscribeToParty(code) {
     }
 
     noteCampaignRoster(state.party.code, players);
+    lastPresenceSignature = presenceSignature(); // the sweep only chases changes
     updatePartyPanel();
   });
 }
@@ -355,12 +503,11 @@ function leaveParty() {
   if (partyMetaRef) { partyMetaRef.off(); partyMetaRef = null; }
   unsubscribeFromShops();
 
-  // Cancel the onDisconnect before dropping the ref, or closing the tab later
-  // would write `connected: false` back into a party we have left.
-  if (partySelfRef) {
-    try { partySelfRef.onDisconnect().cancel(); } catch { /* already gone */ }
-    partySelfRef = null;
-  }
+  // Marks us offline, then cancels the onDisconnect — see the presence note
+  // above. Cancelling alone used to be the whole of this, which is how a
+  // deliberate leave left a lit dot on an empty chair.
+  endPresence();
+  stopPresenceSweep();
   sawSelfInRoster = false;
 
   const wasGM = state.party.role === 'gm';
@@ -654,7 +801,7 @@ function updatePartyPanel() {
     top.className = 'party-entry-top';
 
     const dot = document.createElement('span');
-    dot.className = 'party-dot ' + (p.connected ? 'online' : 'offline');
+    dot.className = 'party-dot ' + (isPlayerOnline(p) ? 'online' : 'offline');
 
     const nameEl = document.createElement('span');
     nameEl.className = 'party-player-name-text';

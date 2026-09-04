@@ -317,6 +317,54 @@ having no GM, so its original GM would rejoin as a player. Those parties were
 session-scoped and unbookmarkable, so nothing can click into one; they die with
 the session they were made in.
 
+### Presence — the green dot
+
+The dot beside a roster entry is green **iff that person has the app open on this
+campaign right now**. That is a claim about the present, so it cannot be written
+once and left: every way a session can end has to reach it, including the ways
+that run none of our code. `startPresence()` / `endPresence()` /
+`isPlayerOnline()` in `party.js` are the whole of it.
+
+**Two facts, not one.** `connected` is what the client last claimed; `lastSeen`
+is when it last claimed it. A dot needs both, so a claim with no heartbeat behind
+it lapses on its own rather than lying indefinitely. The heartbeat is 40s and a
+claim goes stale at 105s — about two and a half missed beats, so one dropped
+write does not blink somebody out.
+
+- **`onDisconnect` is armed from `.info/connected`, not once at join.** RTDB
+  *consumes* the handler when it fires and does not re-arm it, so a single wifi
+  blip used to spend it: the tab actually closed hours later then wrote nothing,
+  and the seat stayed lit forever. `.info/connected` fires on every
+  (re)connection, so the handler is replaced each time it is spent.
+- **`connected: true` is written inside the handler's `.then()`**, never before
+  it. A drop landing between the two would otherwise leave a live seat with
+  nothing watching it.
+- **`endPresence()` writes the `false` itself**, before cancelling the handler.
+  Cancelling alone used to be the whole of `leaveParty()`'s teardown — survivable
+  when a rejoin minted a fresh key and orphaned the old node, but once a seat is
+  keyed by account and *persists* (see *Campaigns*), Leave Session, switching
+  campaigns and signing out each left a green dot on an empty chair.
+- **`lastSeen` is stamped by the server and read against the server's clock**
+  (`.info/serverTimeOffset`). A client an hour out on its own clock would
+  otherwise call everyone offline, or nobody.
+- **The heartbeat is deliberately not folded into `syncPartyState()`.** That
+  writes to whichever node is being *edited*, which for a GM is one of the
+  players — stamping `lastSeen` there would light a player up because the GM is
+  reading their sheet. `beatPresence()` only ever touches `partySelfRef`.
+- **An entry with no `lastSeen` at all reads as offline.** Every client that
+  could be connected now writes one on connect and every beat after, so a seat
+  without one is a record left behind by a session that ended before any of this
+  worked — which is exactly the stuck-green entry it fixes.
+- **A claim lapses by the passage of time, and time is not an event Firebase
+  wakes us for.** With no snapshot arriving, a silently-killed client's dot would
+  stay lit until something else happened to redraw the panel — so
+  `startPresenceSweep()` re-checks every 15s for as long as a session is open. It
+  compares a signature first and redraws **only when an answer actually
+  changed**, because it must not rebuild the roster under the reader's cursor
+  four times a minute for nothing.
+- The panel and the character tabs both ask `isPlayerOnline()`. Two dots for one
+  fact must not be able to disagree.
+
 ### Party membership
 
 The roster under `parties/<code>/players` is the membership list — see

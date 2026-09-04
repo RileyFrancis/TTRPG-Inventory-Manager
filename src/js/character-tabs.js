@@ -47,7 +47,7 @@ function characterTabList() {
 
   Object.entries(players ?? {}).forEach(([id, p]) => {
     if (role === 'player' && id === playerId) return; // already the own-tab
-    tabs.push({ key: id, name: p.character?.name ?? p.name, own: false, connected: !!p.connected });
+    tabs.push({ key: id, name: p.character?.name ?? p.name, own: false, connected: isPlayerOnline(p) });
   });
 
   return tabs;
