@@ -52,11 +52,18 @@ const state = {
   equipLayout: [],
   // Left panel: which pane is showing, and which shop is open inside the Shop
   // pane (null = the list of shops). Both are UI position, never saved.
-  leftTab: 'equip',   // 'equip' | 'shop'
+  leftTab: 'equip',   // 'equip' | 'shop' | 'map'
   shopOpenId: null,
   // Shops the party can buy from — a read-through cache of the Firebase node,
   // owned by the GM. Never in the save file: a shop belongs to the table.
   shops: {},          // { [shopId]: Shop }
+  // The table's battle maps — a read-through cache of `parties/<code>/battlemap`,
+  // owned by the GM, on exactly the terms the shops are. A map belongs to the
+  // table, so nothing about one is in the save file. battlemap.js owns it.
+  battlemap: { activeId: null, maps: {} },
+  // Which map the GM has open in their library pane (null = the list of maps).
+  // UI position, like state.shopOpenId, and never saved.
+  mapLibraryOpenId: null,
   // Which view of the selected character the inventory panel shows.
   // *Which* character is selected lives in state.party.viewingPlayerId.
   view: 'inventory', // 'inventory' | 'sheet'

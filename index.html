@@ -55,6 +55,7 @@
   <link rel="stylesheet" href="src/css/auth.css">
   <link rel="stylesheet" href="src/css/home.css">
   <link rel="stylesheet" href="src/css/campaigns.css">
+  <link rel="stylesheet" href="src/css/battlemap.css">
 </head>
 <body>
 
@@ -139,6 +140,7 @@
       <div id="left-tabs" class="hidden"><!-- rendered by syncLeftPanel() --></div>
       <div id="left-pane-equip" class="left-pane active"><!-- rendered by renderEquipPanel() --></div>
       <div id="left-pane-shop" class="left-pane"><!-- rendered by renderShopPanel() --></div>
+      <div id="left-pane-map" class="left-pane"><!-- rendered by renderMapPanel() --></div>
     </div>
     <div class="panel-resizer" id="equip-resizer" data-side="equip"
          title="Drag to resize · double-click to collapse"></div>
@@ -416,6 +418,14 @@
            because the roll is the app's answer, not one panel's — and it is
            where a flung number lands. `pointer-events: none` throughout: it is
            a readout, and the stash it may overlap must stay clickable. -->
+      <!-- The way onto the battle map. Bottom left of the middle of the app,
+           opposite the corner rolls land in, and inside this panel for the same
+           reason the dice stack is: the map is the app's answer to "where are
+           we", not one panel's. Hidden until there is a map to open — for a
+           player that means one the GM has revealed. -->
+      <button id="map-btn" class="hidden" title="Battle map"
+              aria-label="Battle map"><span class="ico ico-map"></span></button>
+
       <div id="dice-history" class="hidden"><!-- rendered by renderRollHistory() --></div>
     </div>
 
@@ -623,6 +633,35 @@
     </div>
     <p id="home-note" class="home-note hidden"></p>
     <div id="home-card-grid"><!-- rendered by renderHomeScreen() --></div>
+  </div>
+</div>
+
+<!-- ===== BATTLE MAP =====
+     A page in front of the app, like the home screen and at the same depth
+     (under the modal backdrop, so the creature editor opens over it). While
+     the party is looking at the board, the board is what the screen is for.
+     src/js/battlemap-view.js owns everything inside it. -->
+<div id="battlemap-screen" class="hidden">
+  <div id="map-toolbar">
+    <span id="map-title">Battle Map</span>
+    <span id="map-role-badge" class="party-role-badge"></span>
+    <!-- The drawing tools. Rebuilt by renderMapToolbar(), because most of them
+         are the GM's and a player's strip is what is left of it. -->
+    <div id="map-tools"></div>
+    <div id="map-actions"></div>
+    <button id="map-close-btn" class="btn-sm" title="Close the map (Esc)">&#10005;</button>
+  </div>
+  <div id="map-stage">
+    <canvas id="map-canvas"></canvas>
+    <div id="map-empty" class="hidden">
+      <span class="map-empty-icon">&#128506;</span>
+      <p>No map is in play. The Game Master puts one out from the <strong>Maps</strong> tab.</p>
+    </div>
+    <div id="map-legend">
+      <span class="map-legend-item" style="--lc:var(--hostility-party)"><span class="map-legend-dot"></span>Party</span>
+      <span class="map-legend-item" style="--lc:var(--hostility-neutral)"><span class="map-legend-dot"></span>Neutral</span>
+      <span class="map-legend-item" style="--lc:var(--hostility-hostile)"><span class="map-legend-dot"></span>Hostile</span>
+    </div>
   </div>
 </div>
 
@@ -1098,6 +1137,67 @@
   </div>
 </div>
 
+<!-- ===== BATTLE MAP: IMPORT ===== -->
+<!-- A map is a picture, from a file or a link, and it is stored with the map in
+     the database rather than pointed at — see the note in battlemap-library.js
+     on why, and on what an imported file is scaled down to first. -->
+<div id="map-modal" class="modal hidden">
+  <div class="modal-box narrow">
+    <h2 id="map-modal-title">Import Map</h2>
+    <label class="field">
+      <span>Map Name</span>
+      <input type="text" id="map-name-input" maxlength="40" placeholder="e.g. The Sunken Crypt">
+    </label>
+    <label class="field">
+      <span>Picture</span>
+      <input type="file" id="map-file-input" accept="image/*">
+    </label>
+    <div class="field">
+      <span class="field-label">&hellip;or a link to one</span>
+      <div class="map-url-row">
+        <input type="url" id="map-url-input" placeholder="https://&hellip;">
+        <button id="map-url-btn" class="btn-sm" type="button">Load</button>
+      </div>
+    </div>
+    <div id="map-modal-preview" class="empty"></div>
+    <p id="map-modal-status">No picture chosen yet.</p>
+    <div class="modal-footer">
+      <button id="map-confirm-btn" class="btn-primary">Import</button>
+      <button class="cancel-btn btn-sm">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== BATTLE MAP: A CREATURE ===== -->
+<!-- What it looks like, how big it is, and whose side it is on. The third is
+     what colours it, so the icons repaint as it changes. -->
+<div id="creature-modal" class="modal hidden">
+  <div class="modal-box narrow">
+    <h2 id="creature-modal-title">New Creature</h2>
+    <label class="field">
+      <span>Name (optional)</span>
+      <input type="text" id="creature-name-input" maxlength="40" placeholder="e.g. Dire Wolf">
+    </label>
+    <label class="field">
+      <span>Size</span>
+      <select id="creature-size-select"><!-- built from CREATURE_SIZES --></select>
+    </label>
+    <div class="field">
+      <span class="field-label">Hostility</span>
+      <div id="creature-hostility" class="segmented"><!-- built by renderCreatureHostility() --></div>
+    </div>
+    <div class="field">
+      <span class="field-label">Icon</span>
+      <div id="creature-icons"><!-- built by renderCreatureIcons() --></div>
+    </div>
+    <div class="modal-footer">
+      <button id="creature-confirm-btn" class="btn-primary">Place</button>
+      <button id="creature-delete-btn" class="btn-sm danger hidden">Delete</button>
+      <button class="cancel-btn btn-sm">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== LOGIN MODAL ===== -->
 <div id="login-modal" class="modal hidden">
   <div class="modal-box narrow">
@@ -1426,6 +1526,12 @@
 <script src="src/js/sheet-layout.js"></script>
 <script src="src/js/equipment.js"></script>
 <script src="src/js/shop.js"></script>
+<!-- After shop.js: the GM's Maps pane is a third tab in the strip syncLeftPanel()
+     builds, and the battle map rides the same party subscription the shops do.
+     The three files are the model, the GM's library, and the map itself. -->
+<script src="src/js/battlemap.js"></script>
+<script src="src/js/battlemap-library.js"></script>
+<script src="src/js/battlemap-view.js"></script>
 <!-- After party.js: chat rides on the same campaign subscription the roster does. -->
 <script src="src/js/chat.js"></script>
 <!-- After chat.js: a roll is said in the log, and every other player's roll

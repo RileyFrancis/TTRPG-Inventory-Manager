@@ -16,6 +16,9 @@ space, and so does the loot you were greedy about.
 - **Equipment panel** — fully configurable slots, sections and layout
 - **Shops** — the GM stocks them, reveals them, and the party draws from one
   shared pile of stock
+- **Battle maps** — the GM imports them, lines a grid up on them and reveals
+  them; anyone drops creatures on the board, and fog of war hides whatever the
+  party cannot see in a straight line
 - **Party play** — share a session code so a GM can see and edit the party's
   sheets
 - **Light and dark themes**, plus a custom accent colour

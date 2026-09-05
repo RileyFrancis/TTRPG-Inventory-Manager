@@ -1,0 +1,352 @@
+/* ============================================================
+   battlemap.css — the map button, the map page, and the GM's library pane
+   ============================================================ */
+
+/* ─── THE BUTTON ─────────────────────────────────────────── */
+/* Bottom left of the middle of the app, opposite the corner the dice land in.
+   Inside #inventory-panel for the reason #dice-history is: the map is the
+   *app's* answer to "where are we", not one panel's — and this is the middle,
+   which is where a thing that takes over the screen should be opened from.
+
+   z-index 7 clears #gm-placeholder (5) and the character tabs (6), exactly as
+   the dice stack does, so a GM with nobody selected still has a way in. */
+#map-btn {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  z-index: 7;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: var(--accent);
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  box-shadow: var(--shadow-soft);
+  transition: transform 0.15s, border-color 0.15s, color 0.15s, background 0.15s;
+}
+#map-btn:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--panel));
+}
+
+/* The stash sits along the bottom of this panel, so the button lands on its
+   header. The dice stack in the opposite corner solves that with
+   `pointer-events: none` — it is a readout — but this one has to take clicks,
+   so the header is padded clear of it instead. Same move `#character-tabs`
+   makes for a collapsed panel's reopen button, and driven the same way: one
+   class, set by the code that decides whether the button is there at all. */
+#inventory-panel.has-map-btn #stash-header { padding-left: 62px; }
+
+/* ─── THE MAP PAGE ───────────────────────────────────────── */
+/* A page in front of the app, like the home screen and at the same depth —
+   under the modal backdrop (500), so the creature editor opens over it. */
+#battlemap-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+#map-toolbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
+}
+
+#map-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 26ch;
+}
+
+/* The tools, and the things that are not tools, separated by the gap that
+   pushes them apart rather than by a rule between them. */
+#map-tools {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--field);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+}
+
+.map-tool {
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 3px;
+  color: var(--text-dim);
+  transition: color 0.15s, background 0.15s;
+}
+.map-tool:hover:not(.active) { color: var(--text); }
+.map-tool.active {
+  color: var(--on-accent);
+  background: var(--accent);
+}
+
+#map-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+/* A toggle that is currently on — the grid button. */
+#map-actions .btn-sm.on {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+#map-close-btn { font-size: 15px; line-height: 1; }
+
+/* The canvas fills whatever is left, and is sized in JS against this box. */
+#map-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 40%, color-mix(in srgb, var(--accent) 6%, transparent), transparent 70%),
+    var(--bg);
+}
+
+#map-canvas {
+  display: block;
+  touch-action: none; /* the pointer gestures are ours: pan, zoom, drag a token */
+  cursor: crosshair;
+}
+
+#map-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  padding: 24px;
+  color: var(--on-bg);
+  pointer-events: none;
+}
+#map-empty .map-empty-icon { font-size: 34px; opacity: 0.5; }
+#map-empty p { font-size: 13px; opacity: 0.75; max-width: 44ch; line-height: 1.6; }
+
+/* The legend rides the bottom of the stage: three colours mean three things,
+   and a board where nobody remembers which is which is a board nobody trusts. */
+#map-legend {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  display: flex;
+  gap: 12px;
+  padding: 6px 10px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  border: 1px solid var(--border);
+  pointer-events: none;
+}
+.map-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+.map-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--lc);
+  background: rgba(16, 12, 8, 0.82);
+}
+
+/* ─── THE GM'S LIBRARY PANE ──────────────────────────────── */
+/* It borrows shop.css's pane furniture — .shop-head, .shop-body, .shop-footer,
+   .shop-section-hdr — on purpose: they are the left panel's own chrome rather
+   than the shop's, and a second set of them would only drift. What is here is
+   the parts a map has and a shop does not. */
+.map-row {
+  display: flex;
+  align-items: stretch;
+  gap: 3px;
+  margin-bottom: 4px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border2);
+  border-radius: 4px;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+.map-row:hover { border-color: var(--accent); }
+/* Revealed to the players; in play under the party. Two different facts, so
+   two different marks — the left edge for the first, the tint for the second. */
+.map-row.revealed { border-left-color: var(--accent); }
+.map-row.in-play  { background: color-mix(in srgb, var(--accent) 10%, var(--panel)); }
+
+.map-row-open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 7px;
+  text-align: left;
+}
+
+.map-thumb {
+  flex-shrink: 0;
+  width: 38px;
+  height: 28px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  background: var(--field) center / cover no-repeat;
+}
+
+.map-row-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.map-row-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.map-row-sub { font-size: 10px; color: var(--text-dim); }
+
+.map-row-btn {
+  flex-shrink: 0;
+  width: 26px;
+  font-size: 11px;
+  color: var(--text-dim);
+  border-left: 1px solid var(--border);
+  transition: color 0.15s, background 0.15s;
+}
+.map-row-btn:hover { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.map-row-btn.on    { color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, transparent); }
+
+.map-preview {
+  display: block;
+  width: 100%;
+  height: 96px;
+  margin: 4px 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--field) center / cover no-repeat;
+  transition: border-color 0.15s;
+}
+.map-preview:hover { border-color: var(--accent); }
+
+.map-open-btn { width: 100%; }
+
+.map-grid-controls { display: flex; flex-direction: column; gap: 5px; }
+.map-grid-row { display: flex; align-items: center; gap: 4px; }
+.map-grid-label {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+.map-grid-row .shop-price-input { width: 62px; }
+
+.map-clear-row { display: flex; flex-wrap: wrap; gap: 4px; }
+.map-clear-row .btn-sm { flex: 1; min-width: 78px; }
+
+/* ─── THE IMPORT DIALOG ──────────────────────────────────── */
+#map-modal-preview {
+  height: 150px;
+  margin-bottom: 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--field) center / contain no-repeat;
+}
+#map-modal-preview.empty {
+  background-image: repeating-linear-gradient(45deg,
+    transparent 0 8px, color-mix(in srgb, var(--border) 55%, transparent) 8px 9px);
+}
+#map-modal-status { font-size: 11px; color: var(--text-dim); margin-bottom: 8px; }
+
+/* The one native control in the app, and it arrives with the OS's own button
+   inside it. Styled back to a .btn-sm so the dialog does not have a piece of
+   Chrome sitting in the middle of it. */
+#map-file-input { padding: 4px; }
+#map-file-input::file-selector-button {
+  margin-right: 8px;
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  cursor: pointer;
+}
+#map-file-input::file-selector-button:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.map-url-row { display: flex; gap: 5px; }
+.map-url-row input { flex: 1; }
+
+/* ─── THE CREATURE DIALOG ────────────────────────────────── */
+/* Hostility is the token's whole colour, so the buttons that choose it are
+   coloured by what they choose rather than by the accent — the one place in the
+   app where the control has to look like its own answer. `--hc` is set in JS
+   from HOSTILITY, which is the same map the canvas reads. */
+.hostility-btn { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.hostility-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid var(--hc);
+  background: rgba(16, 12, 8, 0.75);
+}
+.hostility-btn.active {
+  color: var(--hc);
+  background: color-mix(in srgb, var(--hc) 16%, transparent);
+  box-shadow: inset 0 -2px 0 var(--hc);
+}
+
+#creature-icons {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+  gap: 5px;
+  margin-bottom: 4px;
+}
+
+.creature-icon-btn {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--field);
+  transition: border-color 0.15s, transform 0.15s, background 0.15s;
+}
+.creature-icon-btn:hover { transform: translateY(-1px); border-color: var(--hc); }
+.creature-icon-btn.active {
+  border-color: var(--hc);
+  background: color-mix(in srgb, var(--hc) 20%, var(--field));
+}

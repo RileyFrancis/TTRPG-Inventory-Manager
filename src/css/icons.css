@@ -40,6 +40,7 @@
 .ico-hide    { -webkit-mask-image: url('../../img/icon/hide.png');    mask-image: url('../../img/icon/hide.png'); }
 .ico-home    { -webkit-mask-image: url('../../img/icon/home.png');    mask-image: url('../../img/icon/home.png'); }
 .ico-info    { -webkit-mask-image: url('../../img/icon/info.png');    mask-image: url('../../img/icon/info.png'); }
+.ico-map     { -webkit-mask-image: url('../../img/icon/treasure-map.png'); mask-image: url('../../img/icon/treasure-map.png'); }
 .ico-moon    { -webkit-mask-image: url('../../img/icon/moon.png');    mask-image: url('../../img/icon/moon.png'); }
 .ico-plus    { -webkit-mask-image: url('../../img/icon/plus.png');    mask-image: url('../../img/icon/plus.png'); }
 .ico-setting { -webkit-mask-image: url('../../img/icon/setting.png'); mask-image: url('../../img/icon/setting.png'); }
@@ -47,7 +48,8 @@
 .ico-sun     { -webkit-mask-image: url('../../img/icon/sun.png');     mask-image: url('../../img/icon/sun.png'); }
 
 /* The plus is a hairline cross that reads thin next to bold button text, and
-   the d20's engraved facets need room to separate. Both are nudged rather than
-   the type around them being changed. */
+   the d20's engraved facets need room to separate — as do the treasure map's
+   folds. All nudged rather than the type around them being changed. */
 .ico-plus { width: 0.85em; height: 0.85em; }
 .ico-d20  { width: 1.15em; height: 1.15em; }
+.ico-map  { width: 1.12em; height: 1.12em; }

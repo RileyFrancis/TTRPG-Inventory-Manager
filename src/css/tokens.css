@@ -180,6 +180,13 @@
   --coin-cp: #8a4f1e;
 
   --online: #2c7d34;
+  /* A creature on the battle map is read by its ring, and by nothing else, so
+     the three have to stay apart from each other at a glance across a shared
+     board. Per theme like the rarities: the greens that carry on the candlelit
+     ground go flat on parchment. */
+  --hostility-party:   #2f7d3f;
+  --hostility-neutral: #b08108;
+  --hostility-hostile: #a5312a;
   --role-player-fg: #1b62b4;
   --role-player-bg: rgba(27, 98, 180, 0.14);
   --toggle-on-bg:   rgba(138, 90, 28, 0.18);
@@ -259,6 +266,9 @@
   --coin-cp: #cc8543;
 
   --online: #56d95f;
+  --hostility-party:   #4fc46a;
+  --hostility-neutral: #e0b429;
+  --hostility-hostile: #e05a4c;
   --role-player-fg: #6bb0f5;
   --role-player-bg: rgba(80, 150, 235, 0.16);
   --toggle-on-bg:   rgba(212, 162, 76, 0.18);

@@ -88,6 +88,9 @@ tools/              Standalone dev helpers (not part of the app)
 | `shop.js` | The left panel's tabs, GM shop editor, player shopfront, paying |
 | `chat.js` | The campaign's chat log, and the sidebar's Chat pane |
 | `dice.js` | Rolling: the tumbling number, the corner stack, the advantage wheel, the tray |
+| `battlemap.js` | Battle maps: the model, the Firebase seam, and line of sight |
+| `battlemap-library.js` | The GM's Maps pane, and the import / creature dialogs |
+| `battlemap-view.js` | The map itself: the camera, the canvas, the fog, the pointer |
 | `tooltip.js` | Hover tooltip |
 | `main.js` | `init()` and the single call to it |
 
@@ -116,6 +119,7 @@ that owns the element wins.
 | `shop.css` | The GM shop editor, the player shopfront, and their modals |
 | `chat.css` | The sidebar's Chat pane, its messages and composer, and a roll said in it |
 | `dice.css` | The flying number, the corner stack, the wheel, the hover card, the tray |
+| `battlemap.css` | The map button, the map page, and the GM's library pane |
 | `tooltip.css` | The hover tooltip |
 | `stash.css` | The stash (items needing placement) and the container tabs |
 | `coins.css` | The multi-denomination cost input and the coin purse |
@@ -148,8 +152,10 @@ state.folderAssign    { [templateId]: folderId }    (overrides only; '__unfiled'
 state.folderCollapsed { [folderId]: true }
 state.itemSort    'rarity' | 'name' | 'weight'      (Browse-list sort order)
 state.shops       { [shopId]: Shop }                (the party's shops, from Firebase)
-state.leftTab     'equip' | 'shop'                  (which left-panel pane shows)
+state.battlemap   { activeId, maps{} }              (the party's battle maps, from Firebase)
+state.leftTab     'equip' | 'shop' | 'map'          (which left-panel pane shows)
 state.shopOpenId  shopId | null                     (null = the list of shops)
+state.mapLibraryOpenId  mapId | null                (null = the list of maps)
 state.auth        { user, ready }                   (signed-in account, or null)
 state.view        'inventory' | 'sheet'             (which view of the selected character)
 state.mode        'idle' | 'placing' | 'dragging'
@@ -851,6 +857,147 @@ shared pile of stock — a sword bought by one player is gone for the rest.
   `addCoinsToInventory` / `removeCoinsFromInventory` the purse buttons use, so
   coins come off the grid as well as the stash and the weight stays honest.
 
+### Battle maps
+
+A map belongs to the **table**, exactly as a shop and the chat log do. The GM
+keeps a library of them, puts one in play, and reveals it when the party walks
+in; everyone holding the code then draws the same board, the same creatures on
+it and the same walls between them. Three files: `battlemap.js` is the model,
+the Firebase seam and the geometry; `battlemap-library.js` is the GM's pane and
+the two dialogs; `battlemap-view.js` is the map itself.
+
+```
+parties/<code>/battlemap/activeId          which map the party is on
+parties/<code>/battlemap/maps/<mapId>
+  { id, name, image, w, h, order, revealed, createdAt,
+    grid:   { type, size, offsetX, offsetY, visible },
+    tokens: { <id>: { id, name, icon, x, y, size, hostility, ownerUid } },
+    walls:  { <id>: { id, kind:'rect'|'circle', x, y, w, h, r } },
+    masks:  { <id>: { id, mode:'hide'|'show', x, y, w, h } } }
+```
+
+- **Nothing about a map is in the save file.** A map is not part of a character
+  and the GM's copy is the only one — `state.battlemap` is a read-through cache
+  refreshed by the subscription that already carries the roster, the shops and
+  the chat (`subscribeToBattlemap`, called from `subscribeToParty`). It rides
+  under `parties/<code>` with them, so it needs no new database rule.
+- **Reveal is pacing, not security**, and so is the fog — same caveat the shops
+  carry, and worth restating because a fog of war *looks* like a boundary. Both
+  are computed and drawn on the reader's own machine from data every member can
+  read; somebody reading the database directly sees the whole board. Making
+  either real would mean the GM's client publishing a per-player view.
+- There is **no map without a campaign**, and that is not a gap: a battle map is
+  a thing a table stands round. The corner button is simply absent.
+
+**Every coordinate in the model is in the picture's own pixels.** Never screen
+pixels, never cells.
+
+> The camera is this browser's furniture and the grid moves under the tokens
+> whenever the GM nudges it to line up. A token stored in either frame would
+> move the instant somebody else zoomed, or the GM shifted the grid a pixel.
+
+Image pixels are the one frame every client already agrees on, because they come
+with the picture. `mapBounds()` reads the *stored* `w`/`h` rather than the
+`<img>`'s, which are not known until it loads and are not what the coordinates
+were written in.
+
+**The picture is stored with the map**, as a data URL, rather than pointed at: a
+link rots, a file on one person's disk is not a map anybody else can open, and
+this project has no file storage of its own. That is a real cost — the picture
+is the whole of a map's weight — so an imported file is scaled to
+`MAP_IMAGE_MAX_DIM` and re-encoded as JPEG on the way in. A **link** the browser
+will not let us redraw (a host that refuses its pixels cross-origin) is kept as
+the link, which still works as a picture but cannot be shrunk.
+
+#### The fog
+
+Worked out as a **polygon per party member**, not as a grid of lit cells: a map
+is a picture rather than a lattice, the grid can be moved under it, and a shadow
+that stepped in whole squares would be a different game's fog.
+
+- `computeVisionPolygon()` casts a fan of rays and stops each at the nearest
+  wall. The sweep alone leaves a scalloped shadow — a polygon can only turn
+  where a ray landed — so `visionAngles()` also aims **three rays at every
+  corner**, one either side by a hair. The straddling pair is what makes a
+  shadow's edge a straight line: one ray stops on the box, its twin carries on
+  past it. A circle gets its two tangents, which is where its shadow's edge is.
+- A wall **containing** the source is skipped. A token nudged onto the circle
+  the GM drew round a tree should not go blind, and there is no reading of
+  "inside the obstacle" that gives a useful answer.
+- The result is one **offscreen canvas** at the picture's resolution (capped by
+  `FOG_MAX_DIM`), black where the party cannot see. It is then read twice —
+  drawn over the board, and sampled under each creature — so **what is hidden
+  and what is dark are one answer** and cannot disagree. A creature is on screen
+  if any of five probes across its disc lands in the light.
+- Order matters at the end of `buildFog()`: vision cuts holes in the dark, a
+  **Reveal** region cuts one too, and an **Obscure** region is painted last.
+  "I have decided you cannot see this" is the strongest claim on the map.
+- **A map with nobody on it has no fog at all.** With no party member to see out
+  of, the arithmetic says nothing is visible — and a board that opens entirely
+  black the first time it is used reads as broken rather than as dark. Fog
+  begins the moment somebody is standing there to cast it.
+- The GM sees the fog as a **wash** (0.45) rather than a wall, and hidden
+  creatures dimmed rather than gone: they have to see both what the players
+  cannot see *and* what is standing in it.
+- A party member **carries the light with them**, so a drag rebuilds the fog on
+  every pointermove rather than snapping it into place on release — that is the
+  whole point of dragging a torch-bearer down a corridor. About 10ms on a
+  deliberately extreme map (40 walls, 30 creatures, 6 sources).
+- One player seeing what another sees falls straight out of the fog being a
+  **union** rather than a per-viewer answer, which is what a table sitting round
+  one board actually does.
+
+#### The board
+
+- **The page is a page in front of the app**, like the home screen and at the
+  same depth (400, under the modal backdrop) so the creature editor opens over
+  it rather than being buried by it.
+- One `<canvas>`, **drawn on demand**. Not a rAF loop: nothing on a battle map
+  animates on its own, and repainting a 2400px picture sixty times a second to
+  show the same thing is a laptop fan for no reason. Every path that changes
+  what is on screen ends in `drawBattlemap()`.
+- **The camera is not synced.** Where *you* have scrolled to on a shared map
+  says nothing about the map, and a GM zoomed in on a doorway must not drag
+  every player's view along with them. Like the panel widths and the sheet
+  layout — except that it is not even stored, because a map is opened for a
+  fight rather than lived in.
+- **The button is in the bottom left of the middle panel**, opposite the corner
+  rolls land in, and inside `#inventory-panel` for the reason `#dice-history`
+  is: the map is the *app's* answer to "where are we", not one panel's. Same
+  `z-index: 7`, so it clears the GM placeholder and the character tabs. Unlike
+  the dice it takes clicks, so instead of `pointer-events: none` the stash
+  header is padded clear of it (`has-map-btn`) — the move `#character-tabs`
+  already makes for a collapsed panel's reopen button.
+- It is **absent** unless there is a map to open, which for a player means one
+  the GM has both put in play and revealed.
+
+#### Who may do what
+
+- **The GM alone edits the map**: the terrain, the grid, the fog. That is their
+  account of the world, and two people redrawing a wall at once is not a
+  feature. `canEditMap()`.
+- **A creature is anybody's** — a player marking where their familiar went, the
+  GM dropping in a wolf (`canAddCreature()`). Deliberately *not* gated by
+  `isReadOnly()`, which guards a **character**; a token on a shared map is not
+  one. Same argument the dice make about rolling.
+- **A creature is removed by whoever put it there, or by the GM**
+  (`canRemoveToken()`, on the `ownerUid` stamped at creation). The board is
+  shared, but a player sweeping away the GM's ambush is not a shared gesture.
+- Hostility is the token's **whole colour scheme** — green party, yellow
+  neutral, red hostile — so the buttons that choose it are coloured by what they
+  choose. `--hostility-*` are per-theme tokens read through `hostilityColor()`
+  exactly as `rarityColor()` reads the rarities, and baked into a canvas fill
+  and the icon buttons' inline `--hc`; **`rerenderThemedContent()` therefore
+  clears that cache and redraws**, as it must for anything that inlines a
+  palette colour.
+- **Snapping depends on the footprint.** An odd number of cells centres on a
+  square, an even one on the line between two, which is where a Large creature
+  actually sits (`snapToGrid()`). Halving the cell for a Tiny creature would put
+  it in a corner the rules have nothing to say about, so it centres like a
+  Medium one. Editing a creature's size re-snaps it.
+- **Only a square grid is built.** `grid.type` is the seam a hex grid arrives
+  through; the library pane says so rather than leaving a reader guessing.
+
 ### The left panel and its tabs
 
 The left panel is the equipment rack, plus — for a GM — their own tools. The tab
@@ -864,6 +1011,10 @@ choose between, so a solo player's panel is the bare equipment panel it always w
   Equipment-then-Shop: each role's own thing comes first.
 - A player has no Shop tab until a GM reveals one to them, at which point it
   appears on its own.
+- **Maps is the GM's alone**, and has no player half at all. A player never has
+  a library to keep: the one map that concerns them is the one the party is
+  standing on, and they reach it by the button in the corner of the middle
+  panel. See *Battle maps*.
 - Driven from `syncCharacterViewUI()`, the same single entry point the character
   tabs use — the two strips answer the same question ("who are we looking at?")
   and must not disagree.

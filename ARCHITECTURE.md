@@ -93,6 +93,9 @@ In load order.
 | `shop.js` | The left panel's tabs, GM shop editor, player shopfront, paying |
 | `chat.js` | The campaign's chat log, and the sidebar's Chat pane |
 | `dice.js` | Rolling: the tumbling number, the corner stack, the advantage wheel, the tray |
+| `battlemap.js` | Battle maps: the model, the Firebase seam, and line of sight |
+| `battlemap-library.js` | The GM's Maps pane, and the import / creature dialogs |
+| `battlemap-view.js` | The map itself: the camera, the canvas, the fog, the pointer |
 | `tooltip.js` | Hover tooltip |
 | `main.js` | `init()` and the single call to it |
 
@@ -118,6 +121,7 @@ that owns the element wins.
 | `campaigns.css` | The home screen's Campaigns section, its cards, and the campaign modal |
 | `chat.css` | The sidebar's Chat pane, its messages and composer, and a roll said in it |
 | `dice.css` | The flying number, the corner stack, the wheel, the hover card, the tray |
+| `battlemap.css` | The map button, the map page, and the GM's library pane |
 | `equipment.css` | The equip rack, the left-panel tabs, the layout editor |
 | `shop.css` | The GM shop editor, the player shopfront, and their modals |
 | `tooltip.css` | The hover tooltip |
@@ -153,7 +157,7 @@ Four kinds of state, kept deliberately apart:
 | The character roster — inventories, sheets, custom items | `localStorage`, `dnd_inventory_v1` | Yes, to `users/<uid>/save` |
 | Browser furniture — theme, accent, panel widths, folders, sort order, sheet layout | One `localStorage` key each | Never |
 | Party state — the roster, and everyone's shared view | Firebase, live | It *is* the sync |
-| Shops, and the table's chat log — a roll included | Firebase only | Not in the save file at all |
+| Shops, battle maps, and the table's chat log — a roll included | Firebase only | Not in the save file at all |
 
 That split is the rule to preserve: anything describing *how this browser shows
 the app* stays out of the save file, because a GM paging through the party must

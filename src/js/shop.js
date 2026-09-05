@@ -149,17 +149,25 @@ function unsubscribeFromShops() {
 // =============================================================================
 // LEFT PANEL — TABS
 // =============================================================================
-const LEFT_TAB_LABELS = { equip: 'Equipment', shop: 'Shop' };
+const LEFT_TAB_LABELS = { equip: 'Equipment', shop: 'Shop', map: 'Maps' };
 
 // Which panes the left panel has right now. A GM has no character of their own,
 // so equipment is only theirs to look at while a player is picked — and with
 // nobody picked the Shop is the whole panel rather than an empty rack of slots.
+//
+// **Maps is the GM's alone.** A player never has a library to keep: the one map
+// that concerns them is the one the party is standing on, and they reach it by
+// the button in the corner of the middle panel rather than by a pane listing
+// maps they cannot edit. So there is no `!gm` branch for it, deliberately —
+// unlike the Shop, which a player does get once one is revealed to them.
 function leftTabsAvailable() {
   const gm = isShopGM();
   const hasShop = state.party.active && (gm || visibleShops().length > 0);
+  const hasMap = gm;
   const hasEquip = !gm || state.party.viewingPlayerId !== null;
   const tabs = [];
   if (gm && hasShop) tabs.push('shop');          // the GM's own tools come first
+  if (hasMap) tabs.push('map');
   if (hasEquip) tabs.push('equip');
   if (!gm && hasShop) tabs.push('shop');
   return tabs.length ? tabs : ['equip'];
@@ -184,7 +192,9 @@ function syncLeftPanel() {
 
   document.getElementById('left-pane-equip').classList.toggle('active', state.leftTab === 'equip');
   document.getElementById('left-pane-shop').classList.toggle('active', state.leftTab === 'shop');
+  document.getElementById('left-pane-map').classList.toggle('active', state.leftTab === 'map');
   if (tabs.includes('shop')) renderShopPanel();
+  if (tabs.includes('map')) renderMapPanel();
 }
 
 function setLeftTab(id) {

@@ -68,6 +68,11 @@ function rerenderThemedContent() {
   renderStash();
   renderEquipPanel();
   renderShopPanel(); // rarity swatches and coin colours are inlined there too
+  // The map bakes hostility colours into a canvas and into the creature
+  // editor's swatches, so the cache is cleared before either is drawn again.
+  clearHostilityColorCache();
+  renderMapPanel();
+  drawBattlemap();
 
   // Repaint the details panel in place — deliberately not via
   // show*Details(), which would also yank the user to the Details tab.
