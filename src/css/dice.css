@@ -134,6 +134,13 @@
 }
 
 .roll-flier-total {
+  /* The width is set per roll in dice.js, from the widest total the pool can
+     reach. `flex: none` so the row honours it exactly, and tabular figures so a
+     `ch` really is one digit and the numerals do not shuffle within the box
+     either. Between them the row's layout is fixed for the whole tumble, which
+     also holds the label and the detail line still underneath it. */
+  flex: none;
+  font-variant-numeric: tabular-nums;
   font-family: var(--font-display);
   font-size: clamp(76px, 15vmin, 148px);
   font-weight: 700;
@@ -156,9 +163,30 @@
 .roll-flier-total.dropped {
   color: var(--text-dim);
   opacity: 0.4;
-  transform: scale(0.62);
+  /* Half size. It has to clear the winner sliding into the middle of the row,
+     and with three digits a side even an outward-anchored 0.62 still collided;
+     half also reads more plainly as the discarded one. */
+  transform: scale(0.5);
   text-shadow: none;
 }
+
+/* It shrinks **away from its neighbour**, not about its own middle, so the gap
+   between the two opens rather than staying put. The winner is sliding into the
+   middle of the row at the same moment, which for wide numbers means straight
+   through where the loser used to be — three digits a side and the two would
+   otherwise collide. Anchoring the shrink to the outer edge buys the clearance
+   for free, with nothing measured and no second transform to keep in step.
+
+   With the shrink at exactly a half, the clearance works out to half the row's
+   gap and **stays there whatever the numbers are**: the winner's leading edge
+   lands at `rowCentre + w/2` and the loser's at `2w + gap − w/2`, so the width
+   cancels. That is the reason for the half. At 0.62 the clearance was
+   `gap/2 − 0.12w`, which is comfortable for two digits and gone by three.
+
+   Invisible at the start of the transition, where the scale is still 1 and an
+   origin makes no difference to an identity transform. */
+.roll-flier-total.dropped:first-child { transform-origin: 0% 60%; }
+.roll-flier-total.dropped:last-child  { transform-origin: 100% 60%; }
 .roll-flier.flying .roll-flier-total.dropped { opacity: 0; }
 
 /* Not uppercased, here or in the chip or the bubble. The label arrives already
@@ -192,8 +220,23 @@
 /* The beat as the dice stop, which is `locked` rather than `settled`: on an
    advantage roll both numbers land together and only one of them then wins.
    Small — the number has been moving for up to three seconds, and what marks
-   the end is it *stopping*. */
-.roll-flier.locked .roll-flier-total { animation: roll-lock 320ms cubic-bezier(0.2, 1.5, 0.4, 1); }
+   the end is it *stopping*.
+
+   **The two selectors are the same beat under different endings**, and the
+   split is load-bearing. An animation beats an inline style, so for as long as
+   this one runs it owns `transform` — which is exactly what a paired roll's
+   resolve then uses to shrink the loser and slide the winner into the middle.
+   It finishes well before that in the ordinary way of things, but "well
+   before" is a hundred-odd milliseconds of one timing constant happening to be
+   larger than another, and nothing says so out loud; ending it at `settled`
+   makes the two unable to overlap at all. A straight roll cannot use that
+   ending, because there `settled` follows `locked` in the same breath and the
+   beat would be cut off before it played — and it needs no guard anyway, since
+   nothing sets a transform on it afterwards. */
+.roll-flier.locked:not(.paired) .roll-flier-total,
+.roll-flier.locked.paired:not(.settled) .roll-flier-total {
+  animation: roll-lock 320ms cubic-bezier(0.2, 1.5, 0.4, 1);
+}
 @keyframes roll-lock {
   0%   { transform: scale(1.18); }
   100% { transform: scale(1); }
@@ -749,7 +792,8 @@
 @media (prefers-reduced-motion: reduce) {
   .roll-flier-inner { animation: none; }
   .roll-flier::before { animation-name: roll-wash-fade; }
-  .roll-flier.locked .roll-flier-total { animation: none; }
+  .roll-flier.locked:not(.paired) .roll-flier-total,
+  .roll-flier.locked.paired:not(.settled) .roll-flier-total { animation: none; }
   .roll-flier.flying { transition-timing-function: ease; }
   .roll-wheel-opt, .roll-wheel-caption { animation: none; }
   @keyframes roll-wash-fade {

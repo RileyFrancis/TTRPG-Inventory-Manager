@@ -516,6 +516,15 @@ rather than being added after it.
 - **Both figures are whole totals**, pool plus modifier, not bare dice. So the
   number that wins is the number that flies to the corner, and the reader never
   watches one figure turn into a different one.
+- **Each number's box is fixed for the whole roll**, at the widest total the
+  pool can reach (`totalBoxWidth()`, in `ch`, with tabular figures so a `ch`
+  really is one digit). A tumbling total runs through one, two and three digits,
+  and a box that grew with it would shove its neighbour sideways on every tick —
+  two numbers jittering away from each other are far harder to read than two
+  numbers changing. It is a *fixed* width rather than a minimum, so a font whose
+  digits are not truly tabular overruns evenly either side of centred text
+  instead of starting the jitter again. It holds the label and the detail line
+  still underneath, too.
 - **They are drawn in the order they were rolled**, which is what `keptIndex` is
   for. Drawing the kept one first would put the winner on the left every single
   time — the answer given away before either number has stopped moving. It is
@@ -523,6 +532,17 @@ rather than being added after it.
 - The loser is greyed and shrunk rather than removed: what advantage *did* is
   only legible if the thing it discarded is still there beside what it kept. It
   goes altogether once the winner leaves for the corner.
+- **It shrinks away from its neighbour**, anchored to its outer edge, because
+  the winner is sliding into the middle of the row at the same moment — which
+  for wide numbers means straight through where the loser used to be. At
+  **exactly a half** the clearance comes out as half the row's gap and stays
+  there whatever the digits, since the width cancels; at 0.62 it was
+  `gap/2 − 0.12w`, comfortable for two digits and gone by three.
+- The lock beat's keyframes own `transform` while they run, and `transform` is
+  what the resolve then needs — so the beat is scoped to end at `settled` on a
+  paired roll. A straight roll keeps the unscoped version, because there
+  `settled` follows `locked` in the same breath and the beat would be cut off
+  before it played.
 - **Both halves move by transform only**, so the row never reflows and the
   flier's box — which the flight is measured against a moment later — does not
   shift under it.

@@ -338,9 +338,16 @@ function flyRoll(roll) {
   // with one child, so nothing below here has two shapes to cope with.
   const totals = document.createElement('div');
   totals.className = 'roll-flier-totals';
+  // Each number is given the widest box this roll could ever need, up front and
+  // for the whole of its life. A tumbling total runs through one, two and three
+  // digits, and a box that grew with it would shove its neighbour sideways on
+  // every tick — two numbers jittering away from each other are much harder to
+  // read than two numbers changing.
+  const width = totalBoxWidth(roll);
   const nums = (paired ? [0, 1] : [0]).map(() => {
     const n = document.createElement('div');
     n.className = 'roll-flier-total';
+    n.style.width = width + 'ch';
     n.textContent = fakeTotal(roll);
     totals.appendChild(n);
     return n;
@@ -365,6 +372,23 @@ function flyRoll(roll) {
   diceStageEl.classList.remove('hidden');
 
   spinFlier(flier, totals, nums, roll, paired);
+}
+
+// How wide a box this roll's totals need, in `ch` — which with tabular figures
+// is exactly one digit. Worked out from the extremes the pool can actually
+// reach rather than from the number in hand, so the box is right on the first
+// tick and never changes again.
+//
+// A **fixed** width rather than a minimum: a font whose digits are not truly
+// tabular could still overrun a minimum and start the jitter again, whereas an
+// overrun of a fixed box spills evenly either side of centred text and moves
+// nothing. The sign gets a fraction of a digit, since a modifier can drag a
+// total below zero and a minus is narrower than a numeral.
+function totalBoxWidth(r) {
+  const hi = r.count * r.faces + r.mod;
+  const lo = r.count + r.mod;
+  const digits = n => String(Math.abs(n)).length;
+  return Math.max(digits(hi), digits(lo)) + (lo < 0 || hi < 0 ? 0.6 : 0);
 }
 
 // A plausible number to show on the way past: the same pool, rolled again. Made
