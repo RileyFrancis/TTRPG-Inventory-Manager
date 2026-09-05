@@ -51,6 +51,19 @@ const ROLL_SPIN_MIN_MS = 1000;
 const ROLL_SPIN_MAX_MS = 3000;
 const ROLL_SETTLE_MS   = 450;
 
+// An advantage roll has a second act, so its 1-to-3 seconds are spent
+// differently: the tumble is shortened by exactly what the two extra beats
+// cost, rather than bolted on to the end of a full-length one. The first is how
+// long both numbers stand side by side before either is judged — long enough to
+// read them and see for yourself which one wins — and the second is the
+// grey-out and the slide to the middle.
+const ROLL_PAIR_HOLD_MS = 450;
+const ROLL_RESOLVE_MS   = 520;
+
+// However the arithmetic falls out, the tumble gets at least this much: at the
+// very bottom of the range the two extra beats would otherwise eat all of it.
+const ROLL_SPIN_MIN_FLOOR_MS = 320;
+
 // The tumble's own pacing: the gap between one number and the next, at the
 // start and at the very end. Fast to slow is what reads as a die losing speed.
 const ROLL_TICK_FAST_MS = 40;
@@ -116,21 +129,28 @@ function performRoll({ label, faces = 20, count = 1, mod = 0, mode = 'normal', p
   mod   = Math.max(-99, Math.min(99, parseInt(mod, 10) || 0));
   if (!ROLL_MODES[mode]) mode = 'normal';
 
-  let dice, dropped = [];
+  let dice, dropped = [], keptIndex = 0;
   if (mode === 'normal') {
     dice = rollPool(faces, count);
   } else {
     const a = rollPool(faces, count);
     const b = rollPool(faces, count);
     const keepA = mode === 'adv' ? poolTotal(a) >= poolTotal(b) : poolTotal(a) <= poolTotal(b);
-    dice    = keepA ? a : b;
-    dropped = keepA ? b : a;
+    dice      = keepA ? a : b;
+    dropped   = keepA ? b : a;
+    // **Which side won, in the order the two were rolled.** The flier shows
+    // them side by side and greys the loser, and it has to be able to put them
+    // back in the order they came in: drawing the kept one first would put the
+    // winner on the left every single time, which gives the answer away before
+    // either number has stopped moving. Local only — nothing outside the flier
+    // needs it, so it stays out of the chat payload.
+    keptIndex = keepA ? 0 : 1;
   }
 
   const roll = {
     id: ++rollSeq,
     label: label || count + 'd' + faces,
-    faces, count, mod, mode, dice, dropped, parts,
+    faces, count, mod, mode, dice, dropped, keptIndex, parts,
     total: poolTotal(dice) + mod,
   };
 
@@ -197,6 +217,21 @@ function rollDetailLine(r) {
   if (mode) bits.push(mode);
   bits.push(rollBreakdown(r));
   return bits.join(' · ');
+}
+
+// The two totals an advantage roll produced, in the order they were rolled —
+// what the flier shows side by side. Each is a whole total rather than a bare
+// die, so the number that wins is the number that flies to the corner: the
+// reader never has to watch one figure turn into a different one.
+function rollPairTotals(r) {
+  const other = poolTotal(rollDiceList(r, 'dropped')) + r.mod;
+  return r.keptIndex === 1 ? [other, r.total] : [r.total, other];
+}
+
+// Whether this roll is drawn as two numbers. A mode with nothing discarded is
+// not — a remote roll from a client that never sent `dropped` still has to draw.
+function rollIsPaired(r) {
+  return !!ROLL_MODES[r.mode] && rollDiceList(r, 'dropped').length > 0;
 }
 
 // The plain-text form, stamped on the chat message as its `text`. Anything that
@@ -284,17 +319,32 @@ function flyRoll(roll) {
   // older one has a chip waiting for it either way.
   [...diceStageEl.children].forEach(finishFlierNow);
 
+  const paired = rollIsPaired(roll);
+
   const flier = document.createElement('div');
-  flier.className = 'roll-flier spinning';
+  flier.className = 'roll-flier spinning' + (paired ? ' paired' : '');
+  // The crit class is set now but **spends the whole tumble doing nothing**:
+  // the green and the red are gated on `.settled` in the CSS. A number that
+  // turns green the moment it appears has told you it is a 20 before it has
+  // finished deciding to be one, which is the whole of the suspense given away
+  // in the first frame.
   const crit = rollCrit(roll);
   if (crit) flier.classList.add(crit);
 
   const inner = document.createElement('div');
   inner.className = 'roll-flier-inner';
 
-  const total = document.createElement('div');
-  total.className = 'roll-flier-total';
-  total.textContent = fakeTotal(roll);
+  // One row, holding one number or two. A single roll is the same structure
+  // with one child, so nothing below here has two shapes to cope with.
+  const totals = document.createElement('div');
+  totals.className = 'roll-flier-totals';
+  const nums = (paired ? [0, 1] : [0]).map(() => {
+    const n = document.createElement('div');
+    n.className = 'roll-flier-total';
+    n.textContent = fakeTotal(roll);
+    totals.appendChild(n);
+    return n;
+  });
 
   const label = document.createElement('div');
   label.className = 'roll-flier-label';
@@ -306,7 +356,7 @@ function flyRoll(roll) {
   detail.className = 'roll-flier-detail';
   detail.textContent = rollDetailLine(roll);
 
-  inner.append(total, label, detail);
+  inner.append(totals, label, detail);
   flier.appendChild(inner);
   // Which chip this one belongs to, so a flier cut short by the next roll can
   // still reveal the right one without anybody keeping a table of the two.
@@ -314,7 +364,7 @@ function flyRoll(roll) {
   diceStageEl.appendChild(flier);
   diceStageEl.classList.remove('hidden');
 
-  spinFlier(flier, total, roll);
+  spinFlier(flier, totals, nums, roll, paired);
 }
 
 // A plausible number to show on the way past: the same pool, rolled again. Made
@@ -333,39 +383,96 @@ function fakeTotal(roll) {
 // in the corner rather than hang there forever. Throttled timers make the
 // tumble slower and coarser in a tab nobody is looking at, which is exactly
 // what should happen to it.
-function spinFlier(flier, totalEl, roll) {
-  const spinMs = ROLL_SPIN_MIN_MS + Math.random() * (ROLL_SPIN_MAX_MS - ROLL_SPIN_MIN_MS)
-                 - ROLL_SETTLE_MS;
+function spinFlier(flier, totalsEl, nums, roll, paired) {
+  // The two extra beats an advantage roll needs come out of the tumble rather
+  // than being added after it, so the whole thing still runs the 1–3 seconds a
+  // straight roll does.
+  const whole = ROLL_SPIN_MIN_MS + Math.random() * (ROLL_SPIN_MAX_MS - ROLL_SPIN_MIN_MS);
+  const beats = paired ? ROLL_PAIR_HOLD_MS + ROLL_RESOLVE_MS : ROLL_SETTLE_MS;
+  const spinMs = Math.max(ROLL_SPIN_MIN_FLOOR_MS, whole - beats);
   const start = performance.now();
   let timer = null;
 
   const tick = () => {
-    const t = Math.min(1, (performance.now() - start) / Math.max(1, spinMs));
-    if (t >= 1) { settle(); return; }
-    totalEl.textContent = fakeTotal(roll);
+    const t = Math.min(1, (performance.now() - start) / spinMs);
+    if (t >= 1) { lock(); return; }
+    // Both sides tumble independently — they are two separate dice, and two
+    // numbers changing in lockstep would look like one number drawn twice.
+    nums.forEach(n => { n.textContent = fakeTotal(roll); });
     timer = setTimeout(tick, ROLL_TICK_FAST_MS + (ROLL_TICK_SLOW_MS - ROLL_TICK_FAST_MS) * t * t);
   };
 
-  const settle = () => {
-    totalEl.textContent = roll.total;
-    // The detail line is held back until now on purpose: it names every die,
-    // so showing it during the tumble would give the answer away before the
-    // number gets there.
+  // Both dice have stopped. For a straight roll that is also the answer; for an
+  // advantage roll the two numbers now stand side by side, undecided, for long
+  // enough that the reader can see for themselves which one is going to win.
+  const lock = () => {
+    const finals = paired ? rollPairTotals(roll) : [roll.total];
+    nums.forEach((n, i) => { n.textContent = finals[i]; });
     flier.classList.remove('spinning');
-    flier.classList.add('settled');
-    timer = setTimeout(() => landRoll(flier, roll), ROLL_SETTLE_MS);
+    flier.classList.add('locked');
+    timer = paired
+      ? setTimeout(resolve, ROLL_PAIR_HOLD_MS)
+      : setTimeout(settle, 0);
   };
 
-  // What "stop what you are doing and land" means for this flier, whichever
-  // half of its life it is in. Held on the element so the next roll can reach
-  // it without this file keeping a list.
-  flier.__finishNow = () => {
-    clearTimeout(timer);
-    totalEl.textContent = roll.total;
-    flier.classList.remove('spinning');
+  // The judgement: the loser greys out and shrinks where it stands, and the
+  // winner slides into the middle of the row and becomes the roll.
+  const resolve = () => {
+    const loser = nums[roll.keptIndex === 0 ? 1 : 0];
+    const winner = nums[roll.keptIndex];
+    loser.classList.add('dropped');
+    centreWinner(totalsEl, winner);
+    // A roll thrown in the first moment of a page view is measured in the
+    // fallback font, because the display face has not arrived yet — and digit
+    // widths differ enough to leave the winner visibly off centre. Nothing else
+    // here waits on fonts; this one measurement re-runs when they land, and
+    // `document.fonts.ready` is already resolved every time after the first.
+    if (document.fonts && document.fonts.status !== 'loaded') {
+      document.fonts.ready.then(() => centreWinner(totalsEl, winner));
+    }
+    settle();
   };
+
+  // The answer is final. Only now does the detail line appear — it names every
+  // die, so showing it earlier would give the answer away — and only now is a
+  // natural 20 or a natural 1 allowed its colour.
+  const settle = () => {
+    flier.classList.add('settled');
+    timer = setTimeout(() => landRoll(flier, roll), paired ? ROLL_RESOLVE_MS : ROLL_SETTLE_MS);
+  };
+
+  // What "stop what you are doing" means for this flier, whichever part of its
+  // life it is in. Held on the element so the next roll can reach it without
+  // this file keeping a list; the caller removes the element straight after, so
+  // there is nothing to tidy but the timer.
+  flier.__finishNow = () => clearTimeout(timer);
 
   tick();
+}
+
+// Slides the surviving number into the middle of the row. Measured rather than
+// computed: the two numbers are as wide as their own digits, so where the
+// middle is depends on what was rolled. It moves by transform alone, so the row
+// never reflows and the flier's box — which the flight is measured against a
+// moment later — does not move under it.
+//
+// **`offsetLeft` and `offsetWidth`, not `getBoundingClientRect()`.** The rect is
+// the *transformed* one, and both of these elements sit under the entrance
+// tumble, which scales the whole inner block. Read through a rect, the answer
+// comes back multiplied by whatever the tumble happened to be at — and the
+// tumble only reliably finishes before this runs by a couple of hundred
+// milliseconds. Offsets are layout values, so they are the same answer whatever
+// is being done to the pixels above them.
+//
+// Both offsets are relative to `.roll-flier`, the nearest positioned ancestor,
+// so the difference between them is meaningful. The transform is cleared first
+// so the reading is of where the number *lives* rather than where a previous
+// call put it, which is what makes this safe to run twice.
+function centreWinner(totalsEl, winner) {
+  winner.style.transform = '';
+  const rowCentre = totalsEl.offsetLeft + totalsEl.offsetWidth / 2;
+  const winCentre = winner.offsetLeft + winner.offsetWidth / 2;
+  winner.style.transform = 'translateX(' + (rowCentre - winCentre) + 'px)';
 }
 
 // Used when a new roll supersedes one still in the air: no flight, no fade —

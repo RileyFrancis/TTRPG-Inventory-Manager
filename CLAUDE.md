@@ -484,10 +484,21 @@ turns into a delay to sit through rather than a result to wait for.
   land in the corner rather than hang there forever. Throttled timers make the
   tumble slower and coarser in a tab nobody is looking at, which is exactly what
   should happen to it.
-- **The detail line is held back for the whole tumble** (`.roll-flier.spinning`).
-  It names every die, so showing it early gives the answer away before the
-  number gets there. `visibility`, not `display`, so the flier does not change
+- **Nothing is allowed to give the answer away early.** The detail line is held
+  back until the answer is final — not merely until the dice stop, which for an
+  advantage roll is two beats earlier — because it names every die and says
+  which was dropped. `visibility`, not `display`, so the flier does not change
   height when it arrives.
+- **The crit colour waits too, and that is the whole of the `.settled` gate.**
+  The class is on the flier from the moment it is built, but a number that turns
+  green as it appears has announced it is a 20 before it has finished deciding
+  to be one — the suspense given away in the first frame. `:not(.dropped)` keeps
+  it off the die that lost, however good that die was.
+- Two class names, not one: **`locked` is when the dice stop and `settled` is
+  when the answer is final.** For a straight roll they are the same instant; for
+  an advantage roll two numbers land together and only one of them then wins.
+  The little beat as a number stops belongs to the first, and the detail line
+  and the crit colour to the second.
 - The waiting chip is `pointer-events: none` as well as invisible, or hovering
   where it will land would open the working — the whole answer — while the
   number is still tumbling towards it.
@@ -495,6 +506,39 @@ turns into a delay to sit through rather than a result to wait for.
   in the middle of the screen is unreadable, so `flyRoll()` finishes any flier
   still in the air: no flight, no fade, the number simply appears in the chip
   that was already waiting for it.
+
+**An advantage roll tumbles two numbers, side by side.** Both spin, both stop,
+both stand there for a beat — and then the loser greys out and shrinks where it
+is while the winner slides into the middle and becomes the roll. It is the same
+1–3 seconds a straight roll takes: the two extra beats come *out of* the tumble
+rather than being added after it.
+
+- **Both figures are whole totals**, pool plus modifier, not bare dice. So the
+  number that wins is the number that flies to the corner, and the reader never
+  watches one figure turn into a different one.
+- **They are drawn in the order they were rolled**, which is what `keptIndex` is
+  for. Drawing the kept one first would put the winner on the left every single
+  time — the answer given away before either number has stopped moving. It is
+  local to the flier and deliberately not in the chat payload.
+- The loser is greyed and shrunk rather than removed: what advantage *did* is
+  only legible if the thing it discarded is still there beside what it kept. It
+  goes altogether once the winner leaves for the corner.
+- **Both halves move by transform only**, so the row never reflows and the
+  flier's box — which the flight is measured against a moment later — does not
+  shift under it.
+- `centreWinner()` reads **`offsetLeft` / `offsetWidth`, never
+  `getBoundingClientRect()`**. The rect is the *transformed* one, and these
+  elements sit under the entrance tumble, which scales the whole inner block:
+  read through a rect the answer comes back multiplied by whatever the tumble
+  happened to be at, and the tumble only reliably finishes before this runs by a
+  couple of hundred milliseconds. Offsets are layout values — the same answer
+  whatever is being done to the pixels above them.
+- It is measured rather than computed because the two numbers are as wide as
+  their own digits. That leaves one race worth guarding: a roll thrown in the
+  first moment of a page view measures in the *fallback* font, and digit widths
+  differ enough to leave the winner visibly off centre. Nothing else here waits
+  on fonts; that one measurement re-runs on `document.fonts.ready`, which is
+  already resolved every time after the first.
 
 **The flight.** The chip is put into the corner *first* and held invisible
 (`.roll-chip.landing`), and the flier is then aimed at where it actually landed.
@@ -580,7 +624,8 @@ on.
   than being special-cased to a single d20. For 1d20 that is exactly the rule as
   written; for the tray's 3d6 it is the only reading of "advantage" that means
   anything, and one rule means the two cannot disagree. The discarded pool is
-  kept as `dropped` — it is what makes the hover card legible.
+  kept as `dropped` — it is what makes both the hover card and the flier's pair
+  of numbers legible.
 - **The wheel is small on purpose, and the caption under it is why it can be.**
   It opens *on* the cursor and is nudged only as far as it must be to stay on
   screen — but every pixel of nudge is a pixel between the cursor and the hub

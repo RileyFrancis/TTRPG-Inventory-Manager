@@ -104,6 +104,11 @@
   animation: roll-wash-in 420ms ease both;
 }
 
+/* Two numbers need more ground than one. Only the width changes: the row is
+   wider, not taller, and stretching the ellipse vertically as well would push
+   its soft edge out past the sheet it is supposed to be sitting on. */
+.roll-flier.paired::before { width: min(92vmin, 840px); }
+
 /* The centring translate has to be repeated in both frames: an animated
    `transform` replaces the property outright, so leaving it out of the
    keyframes would drop the wash a quarter-screen down and right. */
@@ -118,6 +123,16 @@
   100% { transform: scale(1) rotate(0deg);     opacity: 1; }
 }
 
+/* One row holding one number, or the two an advantage roll produced. A single
+   roll is the same structure with one child, so nothing in the JS has two
+   shapes to keep in step. */
+.roll-flier-totals {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: clamp(26px, 5vmin, 58px);
+}
+
 .roll-flier-total {
   font-family: var(--font-display);
   font-size: clamp(76px, 15vmin, 148px);
@@ -126,7 +141,25 @@
   color: var(--accent);
   text-shadow: 0 0 34px color-mix(in srgb, var(--accent) 55%, transparent),
                0 6px 20px var(--emboss-lo);
+  /* Both halves of the judgement move by transform only, so the row never
+     reflows: the loser shrinks where it stands and the winner slides to the
+     middle, and the flier's box — which the flight is measured against a
+     moment later — stays exactly where it was. */
+  transform-origin: 50% 60%;
+  transition: transform 0.42s cubic-bezier(0.3, 0.9, 0.3, 1),
+              color 0.34s ease, opacity 0.34s ease, text-shadow 0.34s ease;
 }
+
+/* The die that lost. Greyed and shrunk rather than removed: what advantage
+   *did* is only legible if the thing it discarded is still there beside what
+   it kept. It goes altogether once the winner leaves for the corner. */
+.roll-flier-total.dropped {
+  color: var(--text-dim);
+  opacity: 0.4;
+  transform: scale(0.62);
+  text-shadow: none;
+}
+.roll-flier.flying .roll-flier-total.dropped { opacity: 0; }
 
 /* Not uppercased, here or in the chip or the bubble. The label arrives already
    cased by dice.js — "Arcana", "Dexterity Save" — and a tray roll's label is a
@@ -149,29 +182,39 @@
   transition: opacity 0.25s ease;
 }
 
-/* Held back for the whole tumble: the detail names every die, so showing it
-   while the total is still spinning gives the answer away before the number
-   gets there. `visibility` rather than `display`, so the flier's height does
-   not jump when it arrives. */
-.roll-flier.spinning .roll-flier-detail { opacity: 0; visibility: hidden; }
+/* Held back until the answer is final — not merely until the dice stop, which
+   for an advantage roll is two beats earlier. The line names every die and says
+   which was dropped, so it would settle the question while both numbers are
+   still standing there undecided. `visibility` rather than `display`, so the
+   flier's height does not jump when it arrives. */
+.roll-flier:not(.settled) .roll-flier-detail { opacity: 0; visibility: hidden; }
 
-/* The total's own beat as it locks on. Small — the number has been moving for
-   up to three seconds, and what marks the end is it *stopping*. */
-.roll-flier.settled .roll-flier-total { animation: roll-lock 320ms cubic-bezier(0.2, 1.5, 0.4, 1); }
+/* The beat as the dice stop, which is `locked` rather than `settled`: on an
+   advantage roll both numbers land together and only one of them then wins.
+   Small — the number has been moving for up to three seconds, and what marks
+   the end is it *stopping*. */
+.roll-flier.locked .roll-flier-total { animation: roll-lock 320ms cubic-bezier(0.2, 1.5, 0.4, 1); }
 @keyframes roll-lock {
   0%   { transform: scale(1.18); }
   100% { transform: scale(1); }
 }
 
-/* A natural 20 and a natural 1 are the two results worth recognising before
-   the number is read. Colour *and* the word in the chat detail, never colour
-   alone. */
-.roll-flier.crit .roll-flier-total {
+/* A natural 20 and a natural 1 are the two results worth recognising before the
+   number is read. Colour *and* the word in the detail line, never colour alone.
+
+   **Gated on `.settled`, which is the whole point of the rule.** The class is
+   on the flier from the moment it is built, but a number that turns green as it
+   appears has announced it is a 20 before it has finished deciding to be one —
+   the suspense given away in the first frame. So the colour arrives when the
+   answer does: at the end of the tumble for a straight roll, and after the
+   grey-out for an advantage one. `:not(.dropped)` keeps it off the die that
+   lost, however good that die was. */
+.roll-flier.settled.crit .roll-flier-total:not(.dropped) {
   color: var(--enc-ok);
   text-shadow: 0 0 40px color-mix(in srgb, var(--enc-ok) 62%, transparent),
                0 6px 20px var(--emboss-lo);
 }
-.roll-flier.fumble .roll-flier-total {
+.roll-flier.settled.fumble .roll-flier-total:not(.dropped) {
   color: var(--danger);
   text-shadow: 0 0 34px color-mix(in srgb, var(--danger) 50%, transparent),
                0 6px 20px var(--emboss-lo);
@@ -706,7 +749,7 @@
 @media (prefers-reduced-motion: reduce) {
   .roll-flier-inner { animation: none; }
   .roll-flier::before { animation-name: roll-wash-fade; }
-  .roll-flier.settled .roll-flier-total { animation: none; }
+  .roll-flier.locked .roll-flier-total { animation: none; }
   .roll-flier.flying { transition-timing-function: ease; }
   .roll-wheel-opt, .roll-wheel-caption { animation: none; }
   @keyframes roll-wash-fade {
