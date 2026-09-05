@@ -92,7 +92,7 @@ In load order.
 | `equipment.js` | Equip slots, layout editor, equip/unequip |
 | `shop.js` | The left panel's tabs, GM shop editor, player shopfront, paying |
 | `chat.js` | The campaign's chat log, and the sidebar's Chat pane |
-| `dice.js` | Rolling: the big number, the corner stack, the tray, the tab bubbles |
+| `dice.js` | Rolling: the tumbling number, the corner stack, the advantage wheel, the tray |
 | `tooltip.js` | Hover tooltip |
 | `main.js` | `init()` and the single call to it |
 
@@ -117,7 +117,7 @@ that owns the element wins.
 | `party.css` | Party header badge, sidebar Party tab, party modal, kick |
 | `campaigns.css` | The home screen's Campaigns section, its cards, and the campaign modal |
 | `chat.css` | The sidebar's Chat pane, its messages and composer, and a roll said in it |
-| `dice.css` | The flying number, the corner stack, the tab bubbles, and the dice tray |
+| `dice.css` | The flying number, the corner stack, the wheel, the hover card, the tray |
 | `equipment.css` | The equip rack, the left-panel tabs, the layout editor |
 | `shop.css` | The GM shop editor, the player shopfront, and their modals |
 | `tooltip.css` | The hover tooltip |

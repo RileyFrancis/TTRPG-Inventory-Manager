@@ -254,14 +254,17 @@ function rollMessageBody(m) {
   const label = document.createElement('span');
   label.className = 'chat-roll-label';
   label.textContent = r.label;
+  // Advantage is scannable in a log only if it is a mark rather than a word
+  // buried in the line below. The pill is dice.js's, shared with the corner
+  // chip and the tab bubble, so a mode cannot be shown three different ways.
+  const pill = rollModePill(r);
+  if (pill) label.appendChild(pill);
 
   const detail = document.createElement('span');
   detail.className = 'chat-roll-detail';
-  // A natural 20 or a natural 1 is worth saying out loud; every other roll's
-  // detail is only the arithmetic.
-  detail.textContent = crit === 'crit'   ? 'Natural 20 · ' + rollBreakdown(r)
-                     : crit === 'fumble' ? 'Natural 1 · '  + rollBreakdown(r)
-                     : rollBreakdown(r);
+  // Whatever was remarkable about it, how it was rolled, then the arithmetic —
+  // the same line the flying number carries, from the same function.
+  detail.textContent = rollDetailLine(r);
 
   text.append(label, detail);
   card.append(die, total, text);

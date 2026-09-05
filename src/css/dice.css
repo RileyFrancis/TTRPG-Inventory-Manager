@@ -2,9 +2,10 @@
    dice.css — a roll, in the three places it is seen
 
    The big number in the middle of the screen and the flight that carries it to
-   the corner; the stack of your last three rolls it lands in; and the speech
-   bubble another player's roll pops over their tab. The sidebar's Dice tray is
-   here too — it is the other thing you roll *from*.
+   the corner; the stack of your last three rolls it lands in; the card that
+   opens when one is hovered; the advantage wheel a held press opens; and the
+   speech bubble another player's roll pops over their tab. The sidebar's Dice
+   tray is here too — it is the other thing you roll *from*.
 
    Not here: a roll drawn in the chat log, which is chat.css's, because the
    element belongs to a chat message; and the sheet's rollable rows, which are
@@ -61,26 +62,54 @@
    torn paper, the grid, a character sheet. A wash rather than a panel: this is
    a result passing through, not a dialog.
 
-   It is `--panel`, and that matters more than it looks. The label and the
-   detail below the number are `--text` and `--text-dim`, which are the inks
+   **It hangs off the flier, not off the inner element**, and that is the whole
+   of what keeps it still while the number tumbles. The two transforms do one
+   job each: the flier's carries both of them to the corner, so the wash travels
+   with the number it is the ground for; the inner's does the entrance tumble
+   alone, so the number turns and the light behind it does not. A spinning disc
+   of light is a different effect, and a much sillier one.
+
+   Its size is fixed rather than `inset`-relative, because the flier's box grows
+   and shrinks with the digit count as the number spins — a wash measured off it
+   would breathe in and out for the whole of the tumble.
+
+   The colour is `--panel`, and that matters more than it looks. The label and
+   the detail below the number are `--text` and `--text-dim`, which are the inks
    each palette pins its *panels'* lightness against — so a bloom of anything
    else is a surface those two colours were never chosen for. `--bg` was the
    obvious first guess and is exactly wrong: the ground is locked dark in both
    palettes, so on parchment it laid a dark smudge over the paper and took the
    detail line down with it. */
-.roll-flier-inner::before {
+.roll-flier::before {
   content: '';
   position: absolute;
-  inset: -55%;
+  left: 50%;
+  top: 50%;
+  /* Wider than it is tall, because what it has to cover is: a number with a
+     label and a line of arithmetic under it. `closest-side` on a non-square box
+     draws an ellipse, so the shape follows from the two lengths and nothing
+     has to describe it twice. */
+  width:  min(78vmin, 680px);
+  height: min(46vmin, 400px);
   z-index: -1;
   /* Three stops rather than two: a near-solid middle for the number to sit on,
      and a long tail so the edge of the wash is nowhere in particular. Two stops
      start falling off immediately and leave the digits reading through the
      busiest part of whatever is behind them. */
   background: radial-gradient(closest-side,
-    color-mix(in srgb, var(--panel) 94%, transparent) 0%,
-    color-mix(in srgb, var(--panel) 76%, transparent) 42%,
+    color-mix(in srgb, var(--panel) 95%, transparent) 0%,
+    color-mix(in srgb, var(--panel) 90%, transparent) 45%,
+    color-mix(in srgb, var(--panel) 60%, transparent) 72%,
     transparent 100%);
+  animation: roll-wash-in 420ms ease both;
+}
+
+/* The centring translate has to be repeated in both frames: an animated
+   `transform` replaces the property outright, so leaving it out of the
+   keyframes would drop the wash a quarter-screen down and right. */
+@keyframes roll-wash-in {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.72); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
 
 @keyframes roll-arrive {
@@ -117,6 +146,21 @@
   font-size: 11px;
   letter-spacing: 0.07em;
   color: var(--text-dim);
+  transition: opacity 0.25s ease;
+}
+
+/* Held back for the whole tumble: the detail names every die, so showing it
+   while the total is still spinning gives the answer away before the number
+   gets there. `visibility` rather than `display`, so the flier's height does
+   not jump when it arrives. */
+.roll-flier.spinning .roll-flier-detail { opacity: 0; visibility: hidden; }
+
+/* The total's own beat as it locks on. Small — the number has been moving for
+   up to three seconds, and what marks the end is it *stopping*. */
+.roll-flier.settled .roll-flier-total { animation: roll-lock 320ms cubic-bezier(0.2, 1.5, 0.4, 1); }
+@keyframes roll-lock {
+  0%   { transform: scale(1.18); }
+  100% { transform: scale(1); }
 }
 
 /* A natural 20 and a natural 1 are the two results worth recognising before
@@ -170,7 +214,16 @@
   /* They shrink *toward* the corner as they age, rather than away from it. */
   transform-origin: 100% 100%;
   transition: opacity 0.32s ease, transform 0.32s ease;
+  /* The one part of the stack that takes a pointer: hovering a chip opens the
+     working behind it. The container stays `none`, so the only thing between
+     the reader and the stash underneath is three small chips in the corner. */
+  pointer-events: auto;
+  cursor: help;
 }
+/* An older chip is faded to say it is older, which makes it hard to read the
+   moment it is the one being asked about. Scoped through the id so it outranks
+   the age rules below whatever order they end up in. */
+#dice-history .roll-chip:hover { opacity: 1; }
 
 /* Age, not position: the newest is at full strength and each one behind it
    steps back, so the stack reads as time without needing a timestamp. */
@@ -179,8 +232,16 @@
 .roll-chip.age-2 { opacity: 0.24; transform: scale(0.82); }
 
 /* Drawn, measured, and held invisible until the flier arrives on top of it —
-   the number is never in two places at once, and never in neither. */
-.roll-chip.landing { opacity: 0; transform: scale(0.72); transition: none; }
+   the number is never in two places at once, and never in neither.
+   `pointer-events: none` matters as much as the opacity: an invisible chip
+   still has a box, and hovering it would open the working — the whole answer —
+   while the number in the middle of the screen is still tumbling towards it. */
+.roll-chip.landing {
+  opacity: 0;
+  transform: scale(0.72);
+  transition: none;
+  pointer-events: none;
+}
 
 .roll-chip-total {
   font-family: var(--font-display);
@@ -284,6 +345,273 @@
 .tab-bubble.crit   .tab-bubble-total { color: var(--enc-ok); }
 .tab-bubble.fumble .tab-bubble-total { color: var(--danger); }
 
+/* ─── THE ADV / DIS TAG ──────────────────────────────────── */
+/* One pill, four surfaces — the corner chip, the tab bubble, the chat card and
+   the flier — so a mode cannot end up shown four different ways. Built by
+   `rollModePill()` in dice.js, which is why it lives here rather than in
+   chat.css even where it sits inside a chat message. */
+.roll-mode-pill {
+  flex-shrink: 0;
+  padding: 1px 5px;
+  font-family: var(--font-body);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  line-height: 1.5;
+  border-radius: 2px;
+  /* Advantage reads up and disadvantage down, which is the only pair of
+     directions either word has. Colour carries it too, but never alone. */
+  color: var(--on-accent);
+  background: var(--accent);
+}
+.roll-mode-pill.adv::before { content: '▲ '; }
+.roll-mode-pill.dis::before { content: '▼ '; }
+.roll-mode-pill.dis { background: var(--danger); color: var(--paper); }
+
+/* On the flier it carries the whole word and sits beside the label, so it is
+   sized to the label rather than to a chip. */
+.roll-flier-label .roll-mode-pill {
+  margin-left: 9px;
+  font-size: 10px;
+  vertical-align: 0.16em;
+}
+
+/* ─── THE ADVANTAGE WHEEL ────────────────────────────────── */
+/* Two options either side of the cursor, opened by holding a press on any roll
+   target. Above the stage, because a wheel opened while an earlier roll is
+   still crossing the screen has to be the thing in front. It never takes a
+   pointer event: the gesture is driven by the captured pointer on the button
+   that started it, and an option that could be clicked would be a second,
+   contradictory way to choose one. */
+#roll-wheel {
+  position: fixed;
+  inset: 0;
+  z-index: 1700;
+  pointer-events: none;
+  /* The wheel's geometry, declared once and read by both halves: the rules
+     below place the options from it, and `openRollWheel()` reads it back to
+     work out how far the wheel reaches and therefore how far it may be nudged
+     to stay on screen. Written in the JS as well, the two would drift the first
+     time an option's width changed. */
+  --wheel-w: 66px;   /* one option */
+  --wheel-gap: 16px; /* origin to the near edge of each option */
+  --wheel-h: 40px;
+}
+
+/* Zero-sized, so its children can be placed in plain coordinates around the
+   origin rather than each carrying its own half-width correction. */
+.roll-wheel-anchor {
+  position: absolute;
+  left: var(--wx, 50%);
+  top: var(--wy, 50%);
+  width: 0;
+  height: 0;
+}
+
+/* The dot under the cursor: the middle, and what letting go here means — a
+   straight roll. It closes up when a side is chosen, which is the one piece of
+   feedback saying the middle is no longer where you are. */
+.roll-wheel-hub {
+  position: absolute;
+  left: -5px;
+  top: -5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--panel);
+  border: 1.5px solid var(--accent);
+  box-shadow: var(--shadow-soft);
+  transition: transform 0.14s ease, opacity 0.14s ease;
+}
+#roll-wheel.picked .roll-wheel-hub { transform: scale(0.5); opacity: 0.45; }
+
+.roll-wheel-opt {
+  position: absolute;
+  top: calc(var(--wheel-h) / -2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: var(--wheel-w);
+  height: var(--wheel-h);
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--text-dim);
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  box-shadow: var(--shadow-deep);
+  transition: color 0.12s, background 0.12s, border-color 0.12s, transform 0.14s ease;
+  animation: wheel-in 150ms cubic-bezier(0.2, 1.3, 0.4, 1) both;
+}
+
+/* The gap either side is a shade under the deadzone in dice.js (26px), so the
+   middle you can let go in is very nearly the middle you can see. */
+.roll-wheel-opt.dis {
+  left: calc(-1 * (var(--wheel-gap) + var(--wheel-w)));
+  animation-name: wheel-in-left;
+}
+.roll-wheel-opt.adv { left: var(--wheel-gap); animation-name: wheel-in-right; }
+
+/* What the two abbreviations mean, in full, under the hub — and "Straight roll"
+   when neither is picked, because letting go in the middle is a choice rather
+   than the absence of one. Centred on the origin, so it costs the wheel no
+   width where width is the thing in short supply. */
+.roll-wheel-caption {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--wheel-h) / 2 + 8px);
+  transform: translateX(-50%);
+  padding: 2px 8px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--text-dim);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  box-shadow: var(--shadow-soft);
+  animation: wheel-caption-in 150ms ease both;
+}
+#roll-wheel.picked .roll-wheel-caption { color: var(--text); }
+
+@keyframes wheel-caption-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-5px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.roll-wheel-opt.active {
+  color: var(--on-accent);
+  background: var(--accent);
+  border-color: var(--accent);
+  transform: scale(1.06);
+}
+.roll-wheel-opt.dis.active {
+  color: var(--paper);
+  background: var(--danger);
+  border-color: var(--danger);
+}
+
+.roll-wheel-glyph { font-size: 9px; opacity: 0.75; }
+.roll-wheel-opt.active .roll-wheel-glyph { opacity: 1; }
+
+/* They arrive from the middle, so the wheel reads as opening out of the point
+   that was pressed rather than as two labels appearing beside it. */
+@keyframes wheel-in-left {
+  from { opacity: 0; transform: translateX(26px) scale(0.9); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes wheel-in-right {
+  from { opacity: 0; transform: translateX(-26px) scale(0.9); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ─── THE WORKING, ON HOVER ──────────────────────────────── */
+/* Every die, what advantage discarded, and each score and proficiency that made
+   up the modifier. A card rather than a `title`, because the content is a
+   table — and because a native tooltip cannot strike through the die that was
+   thrown away, which is the one thing an advantage roll needs shown. */
+#roll-detail {
+  position: fixed;
+  z-index: 1650;
+  min-width: 186px;
+  max-width: 260px;
+  padding: 9px 11px;
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: 5px;
+  box-shadow: var(--shadow-deep), inset 0 0 0 1px var(--emboss-hi);
+  /* A readout, never a target: the chip beneath it is what is being hovered,
+     and a card that could take the pointer would flicker as the cursor crossed
+     onto it. */
+  pointer-events: none;
+}
+
+.roll-detail-head {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.roll-detail-name {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  overflow-wrap: anywhere;
+}
+
+/* Dice in one group, the modifier's parts in another, the total in the last —
+   ruled off from each other, because they are three different kinds of number
+   and adding them up in your head is the point of the card. */
+.roll-detail-group + .roll-detail-group {
+  padding-top: 5px;
+  margin-top: 5px;
+  border-top: 1px solid var(--border);
+}
+
+.roll-detail-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--text-dim);
+}
+.roll-detail-label { flex-shrink: 0; }
+/* "score 14", "lower" — the aside that makes a row's number mean something.
+   It takes the slack so the values stay in a column down the right. */
+.roll-detail-note {
+  flex: 1;
+  min-width: 0;
+  font-size: 9.5px;
+  font-style: italic;
+  text-align: right;
+  opacity: 0.75;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.roll-detail-value {
+  flex-shrink: 0;
+  min-width: 26px;
+  font-weight: 700;
+  text-align: right;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The pool advantage threw away. Struck through and dimmed: it was rolled, it
+   is real, and it did not count — all three have to read at once. */
+.roll-detail-row.dropped { opacity: 0.5; }
+.roll-detail-row.dropped .roll-detail-value { text-decoration: line-through; }
+
+.roll-detail-row.crit   .roll-detail-value { color: var(--enc-ok); }
+.roll-detail-row.fumble .roll-detail-value { color: var(--danger); }
+
+.roll-detail-group.total .roll-detail-row { font-size: 12px; }
+.roll-detail-group.total .roll-detail-label {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--text);
+}
+.roll-detail-group.total .roll-detail-value {
+  font-family: var(--font-display);
+  font-size: 15px;
+  color: var(--accent);
+}
+
 /* ─── THE TRAY ───────────────────────────────────────────── */
 #tab-dice { overflow-y: auto; }
 
@@ -377,7 +705,14 @@
    moving under it; the flight itself is shortened to a plain, quick move. */
 @media (prefers-reduced-motion: reduce) {
   .roll-flier-inner { animation: none; }
+  .roll-flier::before { animation-name: roll-wash-fade; }
+  .roll-flier.settled .roll-flier-total { animation: none; }
   .roll-flier.flying { transition-timing-function: ease; }
+  .roll-wheel-opt, .roll-wheel-caption { animation: none; }
+  @keyframes roll-wash-fade {
+    from { opacity: 0; transform: translate(-50%, -50%); }
+    to   { opacity: 1; transform: translate(-50%, -50%); }
+  }
   .roll-chip { transition: opacity 0.15s linear; }
   .tab-bubble { animation-name: bubble-fade, bubble-out; }
   @keyframes bubble-fade { from { opacity: 0; } to { opacity: 1; } }

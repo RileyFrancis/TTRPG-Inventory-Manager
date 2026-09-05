@@ -546,7 +546,9 @@
           </div>
           <div id="dice-faces"><!-- built from DICE_FACES by buildDiceTray() --></div>
           <p class="dice-note">Skills, saving throws, ability checks and
-            initiative roll from the character sheet — click the modifier.</p>
+            initiative roll from the character sheet — click the modifier.
+            <strong>Hold and slide</strong> either here or there for advantage
+            or disadvantage.</p>
         </div>
       </div>
 
@@ -670,6 +672,34 @@
      under the modals, and neither takes a pointer event. See src/js/dice.js. -->
 <div id="dice-stage" class="hidden"><!-- fliers, one per roll in flight --></div>
 <div id="dice-tab-bubbles"><!-- rendered by renderTabBubbles() --></div>
+
+<!-- Press and hold a modifier or a die and this opens around the cursor: two
+     options, one either side, and sliding onto one and letting go rolls that
+     way. Disadvantage is on the left and advantage on the right because that is
+     where they sit on a number line. Positioned from --wx / --wy in dice.js. -->
+<div id="roll-wheel" class="hidden">
+  <div class="roll-wheel-anchor">
+    <!-- Short on the buttons, spelled out in the caption under the hub. The
+         two have to sit close to the cursor to be reachable, and a die pressed
+         at the very edge of the window has only so much room beside it — so
+         the pair stays small and the word that removes all doubt is centred
+         where there is always space for it. -->
+    <div class="roll-wheel-opt dis" data-mode="dis">
+      <span class="roll-wheel-glyph">&#9660;</span>
+      <span class="roll-wheel-name">Dis</span>
+    </div>
+    <div class="roll-wheel-hub"></div>
+    <div class="roll-wheel-opt adv" data-mode="adv">
+      <span class="roll-wheel-name">Adv</span>
+      <span class="roll-wheel-glyph">&#9650;</span>
+    </div>
+    <div class="roll-wheel-caption"><!-- written by paintRollWheel() --></div>
+  </div>
+</div>
+
+<!-- The whole working behind one of your own rolls, opened by hovering its chip
+     in the corner. Built by showRollDetail(). -->
+<div id="roll-detail" class="hidden"></div>
 
 <div id="char-tab-menu" class="hidden">
   <button class="char-view-btn" data-view="sheet">Character Sheet</button>

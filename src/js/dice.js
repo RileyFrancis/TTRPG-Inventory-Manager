@@ -1,16 +1,20 @@
 // =============================================================================
-// DICE — rolling, and the three places a roll is seen
+// DICE — rolling, and the four places a roll is seen
 // =============================================================================
 'use strict';
 
 // A roll is one event with three audiences, and each wants a different amount
 // of it:
 //
-//   you            the number, large, in the middle of the screen — then it
-//                  flies to the corner and joins your last three
+//   you            the number, large, in the middle of the screen — it spins,
+//                  settles, then flies to the corner and joins your last three
 //   the table      a line in the chat log, because a roll is a thing *said*
 //   everyone else  a speech bubble over your tab, so a roll is noticed without
 //                  anyone having to be looking at the log
+//
+// And a fourth, which is you again a moment later: **hovering a corner chip
+// opens the whole working** — every die, the one advantage threw away, and each
+// score and proficiency that made up the modifier.
 //
 // **There is no `parties/<code>/rolls`.** A roll *is* a chat message — one with
 // a `kind` of `'roll'` and the numbers carried beside the sentence — and that
@@ -37,10 +41,22 @@ const DICE_FACES = [4, 6, 8, 10, 12, 20, 100];
 // about as many as can fade back legibly before the oldest is invisible anyway.
 const ROLL_HISTORY = 3;
 
-// How long the number holds in the middle before it flies, and how long the
-// flight takes. The dwell is what makes it read as a *result* rather than a
-// flicker on the way to somewhere else.
-const ROLL_DWELL_MS  = 950;
+// **How long a roll takes is deliberately not fixed.** The number tumbles
+// through other values before it settles, and the whole business runs 1–3
+// seconds — a die you can time to the millisecond has no suspense in it, and
+// the same beat every time turns into a delay to sit through rather than a
+// result to wait for. The last stretch is the settle: the true number, held
+// still, so it is read as an answer before it is thrown to the corner.
+const ROLL_SPIN_MIN_MS = 1000;
+const ROLL_SPIN_MAX_MS = 3000;
+const ROLL_SETTLE_MS   = 450;
+
+// The tumble's own pacing: the gap between one number and the next, at the
+// start and at the very end. Fast to slow is what reads as a die losing speed.
+const ROLL_TICK_FAST_MS = 40;
+const ROLL_TICK_SLOW_MS = 205;
+
+// How long the flight to the corner takes.
 const ROLL_FLIGHT_MS = 620;
 
 // How long another player's roll hangs over their tab: long enough to catch out
@@ -49,17 +65,27 @@ const ROLL_FLIGHT_MS = 620;
 const TAB_BUBBLE_MS = 4500;
 const TAB_BUBBLE_FADE_MS = 400;
 
+// The two things a d20 can be rolled at instead of straight. Keyed by the value
+// stored on a roll, so the map is also the set of legal modes.
+const ROLL_MODES = {
+  adv: { label: 'Advantage',    short: 'Adv', glyph: '▲' },
+  dis: { label: 'Disadvantage', short: 'Dis', glyph: '▼' },
+};
+
 // Your own rolls, oldest first — session-only, like the chat log and for the
 // same reason: what you rolled is not part of a character, and nobody wants it
 // restored next Tuesday. Never in the save file, never synced.
 let rollHistory = [];
 
-// A local counter, used only to match a flier to the chip it is flying to.
+// A local counter, used only to match a flier to the chip it is flying to, and
+// a chip to the roll its hover detail is drawn from.
 let rollSeq = 0;
 
 const diceStageEl   = document.getElementById('dice-stage');
 const diceHistoryEl = document.getElementById('dice-history');
 const diceBubbleEl  = document.getElementById('dice-tab-bubbles');
+const rollWheelEl   = document.getElementById('roll-wheel');
+const rollDetailEl  = document.getElementById('roll-detail');
 
 // =============================================================================
 // ROLLING
@@ -68,20 +94,44 @@ function rollOneDie(faces) {
   return 1 + Math.floor(Math.random() * faces);
 }
 
+function rollPool(faces, count) {
+  const out = [];
+  for (let i = 0; i < count; i++) out.push(rollOneDie(faces));
+  return out;
+}
+
+function poolTotal(pool) {
+  return pool.reduce((a, b) => a + b, 0);
+}
+
 // The one way a roll happens. Everything above it — a skill row, a saving
-// throw, a die in the tray — only works out a label and a modifier.
-function performRoll({ label, faces = 20, count = 1, mod = 0 }) {
+// throw, a die in the tray — only works out a label, a modifier and a mode.
+//
+// **Advantage rolls the whole pool twice and keeps the better one**, rather
+// than being special-cased to a single d20. For 1d20 that is exactly the rule
+// as written; for the tray's 3d6 it is the only reading of "advantage" that
+// means anything, and having one rule means the two can never disagree.
+function performRoll({ label, faces = 20, count = 1, mod = 0, mode = 'normal', parts = [] }) {
   count = Math.max(1, Math.min(20, parseInt(count, 10) || 1));
   mod   = Math.max(-99, Math.min(99, parseInt(mod, 10) || 0));
+  if (!ROLL_MODES[mode]) mode = 'normal';
 
-  const dice = [];
-  for (let i = 0; i < count; i++) dice.push(rollOneDie(faces));
+  let dice, dropped = [];
+  if (mode === 'normal') {
+    dice = rollPool(faces, count);
+  } else {
+    const a = rollPool(faces, count);
+    const b = rollPool(faces, count);
+    const keepA = mode === 'adv' ? poolTotal(a) >= poolTotal(b) : poolTotal(a) <= poolTotal(b);
+    dice    = keepA ? a : b;
+    dropped = keepA ? b : a;
+  }
 
   const roll = {
     id: ++rollSeq,
     label: label || count + 'd' + faces,
-    faces, count, mod, dice,
-    total: dice.reduce((a, b) => a + b, 0) + mod,
+    faces, count, mod, mode, dice, dropped, parts,
+    total: poolTotal(dice) + mod,
   };
 
   showOwnRoll(roll);    // the middle of the screen, then the corner
@@ -90,7 +140,8 @@ function performRoll({ label, faces = 20, count = 1, mod = 0 }) {
 }
 
 // A natural 20 or a natural 1, and only on a single d20 — three d20s summed
-// have no such thing, and calling one of them a crit would be a lie.
+// have no such thing, and calling one of them a crit would be a lie. It is read
+// off the *kept* die, which is the one that counted.
 function rollCrit(r) {
   if (r.faces !== 20 || r.count !== 1) return '';
   if (r.dice[0] === 20) return 'crit';
@@ -106,25 +157,64 @@ function rollCrit(r) {
 // written in: the total is the large thing everywhere it appears, and the label
 // rides beside or beneath it.
 
+function rollModeLong(r)  { return ROLL_MODES[r.mode]?.label ?? ''; }
+function rollModeShort(r) { return ROLL_MODES[r.mode]?.short ?? ''; }
+
+function formatSigned(n) { return (n >= 0 ? '+' : '−') + Math.abs(n); }
+
+// " + 3" / " − 2" / "" — the trailing half of a formula.
+function modSuffix(mod) {
+  return mod ? ' ' + (mod > 0 ? '+' : '−') + ' ' + Math.abs(mod) : '';
+}
+
 // "1d20 + 3" — what was asked for, with nothing of the answer in it.
 function rollFormula(r) {
-  const mod = r.mod ? ' ' + (r.mod > 0 ? '+' : '−') + ' ' + Math.abs(r.mod) : '';
-  return r.count + 'd' + r.faces + mod;
+  return r.count + 'd' + r.faces + modSuffix(r.mod);
 }
 
 // "1d20 (9) + 3" — what was actually on the dice, which is the half a total
-// throws away. Shown under the label wherever there is room for it.
+// throws away, plus whatever advantage discarded to get there.
 function rollBreakdown(r) {
-  const dice = (r.dice ?? []).join(', ');
-  const mod = r.mod ? ' ' + (r.mod > 0 ? '+' : '−') + ' ' + Math.abs(r.mod) : '';
-  return r.count + 'd' + r.faces + ' (' + dice + ')' + mod;
+  const dropped = rollDiceList(r, 'dropped');
+  let s = r.count + 'd' + r.faces + ' (' + rollDiceList(r).join(', ') + ')' + modSuffix(r.mod);
+  if (dropped.length) {
+    s += ' · dropped ' + (dropped.length > 1
+      ? dropped.join(', ') + ' = ' + poolTotal(dropped)
+      : dropped[0]);
+  }
+  return s;
+}
+
+// Everything under the number, in one line: what was remarkable about it, how
+// it was rolled, and then the arithmetic. Shared by the flier and the chat card
+// so the two cannot describe one roll differently.
+function rollDetailLine(r) {
+  const bits = [];
+  const crit = rollCrit(r);
+  if (crit === 'crit')   bits.push('Natural 20');
+  if (crit === 'fumble') bits.push('Natural 1');
+  const mode = rollModeLong(r);
+  if (mode) bits.push(mode);
+  bits.push(rollBreakdown(r));
+  return bits.join(' · ');
 }
 
 // The plain-text form, stamped on the chat message as its `text`. Anything that
 // reads the log without knowing what a roll is — an older client, a copy-paste,
 // an export written later — still gets the sentence rather than a blank line.
 function rollSentence(r) {
-  return '🎲 ' + r.total + ' ' + r.label + ' · ' + rollBreakdown(r);
+  return '🎲 ' + r.total + ' ' + r.label + ' · ' + rollDetailLine(r);
+}
+
+// The small Adv / Dis tag, built once and used by every surface that draws a
+// roll — the corner chip, the tab bubble and the chat card — so a mode cannot
+// be shown three different ways. `long` is for the flier, which has the room.
+function rollModePill(r, long) {
+  if (!ROLL_MODES[r.mode]) return null;
+  const el = document.createElement('span');
+  el.className = 'roll-mode-pill ' + r.mode;
+  el.textContent = long ? rollModeLong(r) : rollModeShort(r);
+  return el;
 }
 
 // =============================================================================
@@ -143,6 +233,7 @@ function showOwnRoll(roll) {
 
 function renderRollHistory(landingId) {
   if (!diceHistoryEl) return;
+  hideRollDetail(); // the chip it was describing is about to be thrown away
   diceHistoryEl.textContent = '';
   diceHistoryEl.classList.toggle('hidden', rollHistory.length === 0);
 
@@ -166,7 +257,10 @@ function renderRollHistory(landingId) {
     label.textContent = r.label;
 
     chip.append(total, label);
-    chip.title = r.total + ' ' + r.label + ' — ' + rollBreakdown(r);
+    // No `title`. Hovering opens the full working instead — see
+    // `showRollDetail()` — and a native tooltip would only race it.
+    const pill = rollModePill(r);
+    if (pill) chip.appendChild(pill);
     diceHistoryEl.appendChild(chip);
   });
 }
@@ -175,11 +269,23 @@ function renderRollHistory(landingId) {
 // else — so the entrance tumble lives on the inner element instead. That keeps
 // the flier's own transform free for the flight, and keeps its bounding box
 // truthful at the moment the flight is measured.
+//
+// The **wash behind the number is the flier's own `::before`, not the inner
+// one's**: it has to travel to the corner with the number (it is the ground the
+// number is read against the whole way) but must not tumble with it, and a
+// spinning disc of light is a different, much sillier effect. One transform
+// each: the flier's carries both of them to the corner, the inner's does the
+// tumble alone.
 function flyRoll(roll) {
   if (!diceStageEl) return;
 
+  // A second roll while one is still in the air supersedes it. Two numbers
+  // tumbling over each other in the middle of the screen is unreadable, and the
+  // older one has a chip waiting for it either way.
+  [...diceStageEl.children].forEach(finishFlierNow);
+
   const flier = document.createElement('div');
-  flier.className = 'roll-flier';
+  flier.className = 'roll-flier spinning';
   const crit = rollCrit(roll);
   if (crit) flier.classList.add(crit);
 
@@ -188,22 +294,94 @@ function flyRoll(roll) {
 
   const total = document.createElement('div');
   total.className = 'roll-flier-total';
-  total.textContent = roll.total;
+  total.textContent = fakeTotal(roll);
 
   const label = document.createElement('div');
   label.className = 'roll-flier-label';
   label.textContent = roll.label;
+  const pill = rollModePill(roll, true);
+  if (pill) label.appendChild(pill);
 
   const detail = document.createElement('div');
   detail.className = 'roll-flier-detail';
-  detail.textContent = rollBreakdown(roll);
+  detail.textContent = rollDetailLine(roll);
 
   inner.append(total, label, detail);
   flier.appendChild(inner);
+  // Which chip this one belongs to, so a flier cut short by the next roll can
+  // still reveal the right one without anybody keeping a table of the two.
+  flier.__rollId = roll.id;
   diceStageEl.appendChild(flier);
   diceStageEl.classList.remove('hidden');
 
-  setTimeout(() => landRoll(flier, roll), ROLL_DWELL_MS);
+  spinFlier(flier, total, roll);
+}
+
+// A plausible number to show on the way past: the same pool, rolled again. Made
+// the honest way rather than from a range, so a 3d6 + 2 never flashes a 4 it
+// could not have produced and a d100 tumbles through three digits like a d100.
+function fakeTotal(roll) {
+  return poolTotal(rollPool(roll.faces, roll.count)) + roll.mod;
+}
+
+// The tumble. Numbers arrive fast and then further and further apart, which is
+// what a die losing speed looks like; the gap is eased on `t²` so almost all of
+// the slowing happens at the end, where it is the suspense rather than a wait.
+//
+// A `setTimeout` chain rather than rAF, deliberately: a background tab stops
+// painting and stops rAF entirely, and a roll thrown in one has to still land
+// in the corner rather than hang there forever. Throttled timers make the
+// tumble slower and coarser in a tab nobody is looking at, which is exactly
+// what should happen to it.
+function spinFlier(flier, totalEl, roll) {
+  const spinMs = ROLL_SPIN_MIN_MS + Math.random() * (ROLL_SPIN_MAX_MS - ROLL_SPIN_MIN_MS)
+                 - ROLL_SETTLE_MS;
+  const start = performance.now();
+  let timer = null;
+
+  const tick = () => {
+    const t = Math.min(1, (performance.now() - start) / Math.max(1, spinMs));
+    if (t >= 1) { settle(); return; }
+    totalEl.textContent = fakeTotal(roll);
+    timer = setTimeout(tick, ROLL_TICK_FAST_MS + (ROLL_TICK_SLOW_MS - ROLL_TICK_FAST_MS) * t * t);
+  };
+
+  const settle = () => {
+    totalEl.textContent = roll.total;
+    // The detail line is held back until now on purpose: it names every die,
+    // so showing it during the tumble would give the answer away before the
+    // number gets there.
+    flier.classList.remove('spinning');
+    flier.classList.add('settled');
+    timer = setTimeout(() => landRoll(flier, roll), ROLL_SETTLE_MS);
+  };
+
+  // What "stop what you are doing and land" means for this flier, whichever
+  // half of its life it is in. Held on the element so the next roll can reach
+  // it without this file keeping a list.
+  flier.__finishNow = () => {
+    clearTimeout(timer);
+    totalEl.textContent = roll.total;
+    flier.classList.remove('spinning');
+  };
+
+  tick();
+}
+
+// Used when a new roll supersedes one still in the air: no flight, no fade —
+// the number simply appears in the chip that was already waiting for it.
+function finishFlierNow(flier) {
+  flier.__finishNow?.();
+  const id = flier.__rollId;
+  flier.remove();
+  if (id !== undefined) revealChip(id);
+  if (!diceStageEl.childElementCount) diceStageEl.classList.add('hidden');
+}
+
+function revealChip(rollId) {
+  diceHistoryEl
+    ?.querySelector('.roll-chip[data-roll-id="' + rollId + '"]')
+    ?.classList.remove('landing');
 }
 
 // Measure, then move. Both rectangles are read in the same frame and before
@@ -272,18 +450,26 @@ function postRollToChat(r) {
     text: rollSentence(r),
     // Flat and complete: the renderer at the other end works only from this and
     // never from a lookup, exactly as a shop entry snapshots its template.
+    //
+    // **`parts` is deliberately not sent.** It is what the *sheet* knew at the
+    // moment of the roll — which ability, which proficiency, off what score —
+    // and it exists for the hover detail on your own corner chips. Nobody else
+    // is offered that, so shipping every roller's ability scores into a shared
+    // log would be a payload nothing reads.
     roll: {
-      label: r.label, total: r.total,
-      faces: r.faces, count: r.count, mod: r.mod, dice: r.dice,
+      label: r.label, total: r.total, mode: r.mode,
+      faces: r.faces, count: r.count, mod: r.mod,
+      dice: r.dice, dropped: r.dropped,
     },
     at: firebase.database.ServerValue.TIMESTAMP,
   }).catch(() => { /* a roll that could not be said is still a roll */ });
 }
 
 // RTDB hands an array back as an array when its keys are 0…n and as an object
-// when they are not. Neither is worth trusting at a call site.
-function rollDiceList(roll) {
-  const d = roll ? roll.dice : null;
+// when they are not — and drops it entirely when it is empty, which `dropped`
+// is on every ordinary roll. Neither is worth trusting at a call site.
+function rollDiceList(roll, key) {
+  const d = roll ? roll[key ?? 'dice'] : null;
   return Array.isArray(d) ? d : Object.values(d ?? {});
 }
 
@@ -297,7 +483,10 @@ function rollFromMessage(m) {
     faces: Number(r.faces) || 20,
     count: Number(r.count) || 1,
     mod:   Number(r.mod)   || 0,
-    dice:  rollDiceList(r),
+    mode:  ROLL_MODES[r.mode] ? r.mode : 'normal',
+    dice:    rollDiceList(r),
+    dropped: rollDiceList(r, 'dropped'),
+    parts: [],
   };
 }
 
@@ -311,7 +500,7 @@ function rollFromMessage(m) {
 // The bubbles are a **fixed layer**, not children of the tabs: `#character-tabs`
 // scrolls horizontally and clips what overflows it, so a bubble hanging below a
 // tab would be sliced off at the strip's own edge.
-const tabBubbles = new Map(); // tab key → { total, label, crit, timer }
+const tabBubbles = new Map(); // tab key → { total, label, crit, mode, at, timer }
 
 // null until the first chat snapshot has been seen. Joining a campaign delivers
 // the whole tail at once, and every line in it is history — a bubble per line
@@ -352,6 +541,7 @@ function popTabBubble(uid, roll) {
     total: roll.total,
     label: roll.label,
     crit: rollCrit(roll),
+    mode: roll.mode,
     // When it was said, so a redraw can put the bubble back at the age it had
     // reached rather than starting its life over — see renderTabBubbles().
     at: Date.now(),
@@ -387,13 +577,14 @@ function renderTabBubbles() {
     label.textContent = b.label;
 
     bubble.append(total, label);
+    const pill = rollModePill(b);
+    if (pill) bubble.appendChild(pill);
     diceBubbleEl.appendChild(bubble);
 
     // Measured after the text is in — a bubble is as wide as the label it
     // carries — and clamped so the rightmost tab's cannot hang off the window.
     const w = bubble.offsetWidth;
-    const left = r.left + r.width / 2 - w / 2;
-    const clamped = Math.max(6, Math.min(left, window.innerWidth - w - 6));
+    const clamped = Math.max(6, Math.min(r.left + r.width / 2 - w / 2, window.innerWidth - w - 6));
     bubble.style.left = clamped + 'px';
     bubble.style.top  = (r.bottom + 8) + 'px';
     // The tail points back at the middle of the tab even when the clamp has
@@ -418,43 +609,328 @@ window.addEventListener('resize', () => { if (tabBubbles.size) renderTabBubbles(
 charTabsEl.addEventListener('scroll', () => { if (tabBubbles.size) renderTabBubbles(); });
 
 // =============================================================================
+// 4 · THE WORKING, ON HOVER
+// =============================================================================
+// A total is an answer with its reasoning thrown away, and the reasoning is
+// exactly what gets argued about at a table. So hovering a chip in the corner
+// opens the whole of it: every die face, the pool advantage discarded, and each
+// score and proficiency that went into the modifier — the *raw* numbers, not
+// the one they add up to.
+//
+// This is why `parts` is collected at roll time rather than worked out here.
+// The sheet moves: a level gained or a proficiency ticked between the roll and
+// the hover would otherwise rewrite the history of a roll already made.
+function showRollDetail(chip) {
+  const roll = rollHistory.find(r => String(r.id) === chip.dataset.rollId);
+  if (!roll || !rollDetailEl) return;
+
+  rollDetailEl.textContent = '';
+
+  const head = document.createElement('div');
+  head.className = 'roll-detail-head';
+  const name = document.createElement('span');
+  name.className = 'roll-detail-name';
+  name.textContent = roll.label;
+  head.appendChild(name);
+  const pill = rollModePill(roll);
+  if (pill) head.appendChild(pill);
+  rollDetailEl.appendChild(head);
+
+  // Each die on its own line, kept ones first. A dropped pool is drawn the same
+  // way and then struck through: what advantage did is only legible if the
+  // thing it discarded is shown beside what it kept.
+  const dice = document.createElement('div');
+  dice.className = 'roll-detail-group';
+  rollDiceList(roll).forEach(v => dice.appendChild(
+    rollDetailRow('d' + roll.faces, '', String(v), rollDieRowClass(roll, v))));
+  rollDiceList(roll, 'dropped').forEach(v => dice.appendChild(
+    rollDetailRow('d' + roll.faces, roll.mode === 'adv' ? 'lower' : 'higher',
+                  String(v), 'dropped')));
+  rollDetailEl.appendChild(dice);
+
+  // Where the modifier came from. An empty `parts` — a bare tray roll with no
+  // modifier — simply has no group, rather than a heading over nothing.
+  const parts = (roll.parts ?? []).filter(p => p);
+  if (parts.length) {
+    const box = document.createElement('div');
+    box.className = 'roll-detail-group';
+    parts.forEach(p => box.appendChild(
+      rollDetailRow(p.label, p.note ?? '', formatSigned(p.value))));
+    rollDetailEl.appendChild(box);
+  }
+
+  const foot = document.createElement('div');
+  foot.className = 'roll-detail-group total';
+  foot.appendChild(rollDetailRow('Total', rollFormula(roll), String(roll.total)));
+  rollDetailEl.appendChild(foot);
+
+  rollDetailEl.classList.remove('hidden');
+  positionRollDetail(chip);
+}
+
+// A natural 20 or a natural 1 is worth marking on the die itself, not only on
+// the card as a whole — with three dice in the pool it is the only way to see
+// which one it was.
+function rollDieRowClass(roll, value) {
+  if (roll.faces !== 20) return '';
+  if (value === 20) return 'crit';
+  if (value === 1)  return 'fumble';
+  return '';
+}
+
+function rollDetailRow(label, note, value, cls) {
+  const row = document.createElement('div');
+  row.className = 'roll-detail-row' + (cls ? ' ' + cls : '');
+
+  const l = document.createElement('span');
+  l.className = 'roll-detail-label';
+  l.textContent = label;
+
+  const n = document.createElement('span');
+  n.className = 'roll-detail-note';
+  n.textContent = note;
+
+  const v = document.createElement('span');
+  v.className = 'roll-detail-value';
+  v.textContent = value;
+
+  row.append(l, n, v);
+  return row;
+}
+
+// To the *left* of the chip, and bottom-aligned with it. The stack lives in the
+// bottom-right corner, so there is room on exactly one side and below it there
+// is none at all; clamped to the window for the case where the panels have been
+// dragged narrow enough that there is not.
+function positionRollDetail(chip) {
+  const c = chip.getBoundingClientRect();
+  const d = rollDetailEl.getBoundingClientRect(); // measurable now it is shown
+  const left = Math.max(8, Math.min(c.left - d.width - 10, window.innerWidth - d.width - 8));
+  const top  = Math.max(8, Math.min(c.bottom - d.height, window.innerHeight - d.height - 8));
+  rollDetailEl.style.left = left + 'px';
+  rollDetailEl.style.top  = top + 'px';
+}
+
+function hideRollDetail() {
+  if (!rollDetailEl) return;
+  rollDetailEl.classList.add('hidden');
+  rollDetailEl.textContent = '';
+}
+
+// Delegated, because the chips are rebuilt on every roll while the container is
+// static markup that outlives them. `pointerover` rather than `mouseenter` so
+// moving between two chips swaps the card instead of needing to leave first.
+diceHistoryEl.addEventListener('pointerover', e => {
+  const chip = e.target.closest('.roll-chip');
+  if (chip) showRollDetail(chip);
+});
+diceHistoryEl.addEventListener('pointerleave', hideRollDetail);
+
+// =============================================================================
+// ADVANTAGE AND DISADVANTAGE — the press-and-hold wheel
+// =============================================================================
+// Press and hold a modifier or a die, and two options open either side of the
+// cursor; slide onto one and let go to roll it that way. Letting go without
+// leaving the middle rolls straight, so the gesture costs an ordinary click
+// nothing — which is the whole reason it is a hold rather than a modifier key
+// or a third button beside every one of the sheet's twenty-five roll targets.
+//
+// **Disadvantage is on the left and advantage on the right**, because that is
+// where they are on a number line and there is nothing else to go on.
+
+// How long a press has to be held before the wheel opens on its own, and how
+// far the pointer has to move to open it sooner. The second is what keeps a
+// decisive flick from feeling ignored while the timer is still counting.
+const WHEEL_HOLD_MS = 180;
+const WHEEL_REACH   = 9;
+
+// How far from the origin counts as having chosen a side. Wide enough that a
+// hand shaking on the button is still a straight roll.
+const WHEEL_DEADZONE = 26;
+
+// The live gesture, or null. One at a time by construction: a second pointer
+// going down cancels the first rather than racing it.
+let rollGesture = null;
+
+// When a roll was last made by the pointer flow, so the `click` that follows
+// can be ignored. Keyboard-driven clicks (Enter or Space on the button) arrive
+// with no pointer sequence in front of them and are the only ones this lets
+// through — which is what keeps every roll target reachable from the keyboard.
+let lastPointerRollAt = 0;
+
+function beginRollGesture(e, el, spec) {
+  if (e.button !== 0) return;
+  finishRollGesture(false);
+  if (!spec()) return; // nothing to roll — an unknown key, or a stale target
+
+  rollGesture = {
+    spec, el, mode: 'normal', shown: false,
+    x0: e.clientX, y0: e.clientY, pointerId: e.pointerId,
+    timer: setTimeout(openRollWheel, WHEEL_HOLD_MS),
+  };
+  // Captured so the pointer can leave the button — which it must, since the
+  // options are further away than the button is wide — without the gesture
+  // ending or another element claiming the drag.
+  try { el.setPointerCapture(e.pointerId); } catch (_) { /* no capture, still works */ }
+}
+
+// The wheel opens *on* the cursor, and is nudged only as far as it must be to
+// stay on screen. A die at the right-hand edge of the window has barely fifty
+// pixels beside it, which is why the two options are small — the further the
+// wheel has to be shifted to fit, the further the cursor sits from the hub it
+// is being measured against, and the shift is a lie about where the middle is.
+// Small options make that lie small, and the caption under the hub is what
+// spells out in full what the two abbreviations mean.
+function openRollWheel() {
+  if (!rollGesture || rollGesture.shown) return;
+  rollGesture.shown = true;
+
+  // How far the wheel reaches, read from the CSS that draws it rather than
+  // written out again here. One source of truth: change an option's width in
+  // the stylesheet and the clamp follows it.
+  const cs = getComputedStyle(rollWheelEl);
+  const reachX = parseFloat(cs.getPropertyValue('--wheel-gap')) +
+                 parseFloat(cs.getPropertyValue('--wheel-w'));
+  const reachY = parseFloat(cs.getPropertyValue('--wheel-h')) / 2;
+  const pad = 6;
+
+  rollWheelEl.style.setProperty('--wx',
+    Math.max(reachX + pad, Math.min(rollGesture.x0, window.innerWidth - reachX - pad)) + 'px');
+  rollWheelEl.style.setProperty('--wy',
+    Math.max(reachY + pad, Math.min(rollGesture.y0, window.innerHeight - reachY - pad)) + 'px');
+
+  rollWheelEl.classList.remove('hidden');
+  paintRollWheel();
+}
+
+function paintRollWheel() {
+  const mode = rollGesture?.mode ?? 'normal';
+  rollWheelEl.querySelectorAll('.roll-wheel-opt').forEach(o => {
+    o.classList.toggle('active', o.dataset.mode === mode);
+  });
+  rollWheelEl.classList.toggle('picked', mode !== 'normal');
+  // Letting go in the middle is a real choice, not the absence of one, so it is
+  // named as plainly as the other two.
+  rollWheelEl.querySelector('.roll-wheel-caption').textContent =
+    ROLL_MODES[mode]?.label ?? 'Straight roll';
+}
+
+// `roll` is false for the ways a gesture ends without one — Escape, a cancelled
+// pointer, or a fresh press landing on top of it. `lastPointerRollAt` is
+// stamped either way: the browser still delivers a `click` after a press the
+// user backed out of, and that click must not roll what Escape just refused.
+function finishRollGesture(roll) {
+  const g = rollGesture;
+  if (!g) return;
+  rollGesture = null;
+
+  clearTimeout(g.timer);
+  rollWheelEl.classList.add('hidden');
+  rollWheelEl.classList.remove('picked');
+  try { g.el.releasePointerCapture(g.pointerId); } catch (_) { /* never captured */ }
+
+  lastPointerRollAt = Date.now();
+  // The spec is read *now* rather than at press time, so a roll always uses the
+  // modifier the sheet is showing at the moment it is let go.
+  if (roll) performRoll({ ...g.spec(), mode: g.mode });
+}
+
+window.addEventListener('pointermove', e => {
+  if (!rollGesture) return;
+  const dx = e.clientX - rollGesture.x0;
+  const dy = e.clientY - rollGesture.y0;
+  if (!rollGesture.shown && Math.hypot(dx, dy) > WHEEL_REACH) openRollWheel();
+  if (!rollGesture.shown) return;
+  rollGesture.mode = Math.abs(dx) < WHEEL_DEADZONE ? 'normal' : (dx < 0 ? 'dis' : 'adv');
+  paintRollWheel();
+});
+
+window.addEventListener('pointerup',     () => finishRollGesture(true));
+window.addEventListener('pointercancel', () => finishRollGesture(false));
+window.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && rollGesture) finishRollGesture(false);
+});
+
+// The keyboard's way in, and the fallback for any pointer sequence that did not
+// produce a roll of its own.
+function rollFromClick(spec) {
+  if (Date.now() - lastPointerRollAt < 400) return;
+  const s = spec();
+  if (s) performRoll({ ...s, mode: 'normal' });
+}
+
+// =============================================================================
 // ROLLING FROM THE CHARACTER SHEET
 // =============================================================================
 // Every roll target on the sheet says what it is in one `data-roll` attribute,
 // and this is the only thing that reads it. The modifier itself is never stored
-// on the element — it is asked of the sheet at the moment of the click, so a
+// on the element — it is asked of the sheet at the moment of the gesture, so a
 // roll cannot be made with a number that has since changed underneath it.
+//
+// `parts` is the same answer taken apart: the ability the modifier came off,
+// the score behind it, and the proficiency added to it. It is what the corner's
+// hover detail shows, and it has to be captured here because only the sheet
+// knows it — by the time a chip is hovered, the roll is history.
 function sheetRollSpec(key) {
   const [kind, id] = key.split(':');
+  const pb = proficiencyBonus();
+  const ability = a => ({
+    label: ABILITIES.find(x => x.id === a).label,
+    value: abilityModOf(a),
+    note: 'score ' + abilityScoreOf(a),
+  });
 
   if (kind === 'skill') {
     const s = SKILLS.find(x => x.id === id);
-    return s ? { label: s.label, mod: skillModOf(s) } : null;
+    if (!s) return null;
+    const level = skillProfOf(s.id);
+    return {
+      label: s.label, faces: 20, count: 1, mod: skillModOf(s),
+      parts: [
+        ability(s.ability),
+        level ? { label: level === PROF_EXPERTISE ? 'Expertise' : 'Proficiency', value: pb * level } : null,
+      ].filter(Boolean),
+    };
   }
   if (kind === 'save') {
     const a = ABILITIES.find(x => x.id === id);
-    return a ? { label: a.label + ' Save', mod: saveModOf(id) } : null;
+    if (!a) return null;
+    return {
+      label: a.label + ' Save', faces: 20, count: 1, mod: saveModOf(id),
+      parts: [
+        ability(id),
+        saveProfOf(id) ? { label: 'Proficiency', value: pb } : null,
+      ].filter(Boolean),
+    };
   }
   if (kind === 'ability') {
     const a = ABILITIES.find(x => x.id === id);
-    return a ? { label: a.label + ' Check', mod: abilityModOf(id) } : null;
+    if (!a) return null;
+    return { label: a.label + ' Check', faces: 20, count: 1, mod: abilityModOf(id), parts: [ability(id)] };
   }
-  if (kind === 'initiative') return { label: 'Initiative', mod: initiativeBonus() };
+  if (kind === 'initiative') {
+    return { label: 'Initiative', faces: 20, count: 1, mod: initiativeBonus(), parts: [ability('dex')] };
+  }
   return null;
 }
 
-// One delegated listener for the whole sheet, like every other listener on it —
+// One delegated pair for the whole sheet, like every other listener on it —
 // there are twenty-five roll targets and they all do the same thing.
 //
 // **Deliberately not gated by `isReadOnly()`.** Rolling writes nothing to the
 // character, and the roll is attributed to the *account* that clicked it rather
 // than to the sheet it was read off — so a GM rolling a player's Perception is
 // both honest and useful.
-document.getElementById('character-sheet').addEventListener('click', e => {
+const sheetRollEl = document.getElementById('character-sheet');
+
+sheetRollEl.addEventListener('pointerdown', e => {
   const el = e.target.closest('[data-roll]');
-  if (!el) return;
-  const spec = sheetRollSpec(el.dataset.roll);
-  if (spec) performRoll({ label: spec.label, faces: 20, count: 1, mod: spec.mod });
+  if (el) beginRollGesture(e, el, () => sheetRollSpec(el.dataset.roll));
+});
+
+sheetRollEl.addEventListener('click', e => {
+  const el = e.target.closest('[data-roll]');
+  if (el) rollFromClick(() => sheetRollSpec(el.dataset.roll));
 });
 
 // =============================================================================
@@ -462,39 +938,54 @@ document.getElementById('character-sheet').addEventListener('click', e => {
 // =============================================================================
 // Seven faces, built from DICE_FACES rather than written out — the same
 // argument the sheet's ability groups make. The count and the modifier above
-// them are read at the moment a face is clicked, so the tray keeps no state of
+// them are read at the moment a face is let go, so the tray keeps no state of
 // its own that could fall out of step with its boxes.
 const diceCountEl = document.getElementById('dice-count');
 const diceModEl   = document.getElementById('dice-mod');
+const diceFacesEl = document.getElementById('dice-faces');
+
+function trayRollSpec(faces) {
+  const count = Math.max(1, Math.min(20, parseInt(diceCountEl.value, 10) || 1));
+  const mod   = Math.max(-30, Math.min(30, parseInt(diceModEl.value, 10) || 0));
+  // No label but the formula: a bare handful of dice is not *about* anything,
+  // and "3d6 + 2" is the most that can honestly be said it was for.
+  return {
+    label: rollFormula({ count, faces, mod }),
+    faces, count, mod,
+    parts: mod ? [{ label: 'Modifier', value: mod }] : [],
+  };
+}
 
 function buildDiceTray() {
-  const box = document.getElementById('dice-faces');
-  if (!box || box.childElementCount) return;
+  if (!diceFacesEl || diceFacesEl.childElementCount) return;
 
   DICE_FACES.forEach(faces => {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'die-btn';
     btn.dataset.faces = faces;
-    btn.title = 'Roll d' + faces;
+    btn.title = 'Roll d' + faces + ' — hold and slide for advantage';
 
     const face = document.createElement('span');
     face.className = 'die-face';
     face.textContent = 'd' + faces;
 
     btn.appendChild(face);
-    btn.addEventListener('click', () => rollFromTray(faces));
-    box.appendChild(btn);
+    diceFacesEl.appendChild(btn);
   });
 }
 
-function rollFromTray(faces) {
-  const count = Math.max(1, Math.min(20, parseInt(diceCountEl.value, 10) || 1));
-  const mod   = Math.max(-30, Math.min(30, parseInt(diceModEl.value, 10) || 0));
-  // No label but the formula: a bare handful of dice is not *about* anything,
-  // and "3d6 + 1" is the most that can honestly be said it was for.
-  performRoll({ label: rollFormula({ count, faces, mod }), faces, count, mod });
-}
+// Delegated for the same reason the sheet's are: the gesture is identical, and
+// one pair of listeners cannot drift from another the way seven pairs can.
+diceFacesEl.addEventListener('pointerdown', e => {
+  const btn = e.target.closest('.die-btn');
+  if (btn) beginRollGesture(e, btn, () => trayRollSpec(Number(btn.dataset.faces)));
+});
+
+diceFacesEl.addEventListener('click', e => {
+  const btn = e.target.closest('.die-btn');
+  if (btn) rollFromClick(() => trayRollSpec(Number(btn.dataset.faces)));
+});
 
 const diceClearBtn = document.getElementById('dice-clear-btn');
 if (diceClearBtn) diceClearBtn.addEventListener('click', () => {

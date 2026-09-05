@@ -87,7 +87,7 @@ tools/              Standalone dev helpers (not part of the app)
 | `equipment.js` | Equip slots, layout editor, equip/unequip |
 | `shop.js` | The left panel's tabs, GM shop editor, player shopfront, paying |
 | `chat.js` | The campaign's chat log, and the sidebar's Chat pane |
-| `dice.js` | Rolling: the big number, the corner stack, the tray, the tab bubbles |
+| `dice.js` | Rolling: the tumbling number, the corner stack, the advantage wheel, the tray |
 | `tooltip.js` | Hover tooltip |
 | `main.js` | `init()` and the single call to it |
 
@@ -115,7 +115,7 @@ that owns the element wins.
 | `equipment.css` | The equip rack, the left-panel tabs, the layout editor |
 | `shop.css` | The GM shop editor, the player shopfront, and their modals |
 | `chat.css` | The sidebar's Chat pane, its messages and composer, and a roll said in it |
-| `dice.css` | The flying number, the corner stack, the tab bubbles, and the dice tray |
+| `dice.css` | The flying number, the corner stack, the wheel, the hover card, the tray |
 | `tooltip.css` | The hover tooltip |
 | `stash.css` | The stash (items needing placement) and the container tabs |
 | `coins.css` | The multi-denomination cost input and the coin purse |
@@ -417,11 +417,13 @@ A roll is **one event with three audiences**, and each of them wants a different
 amount of it. `src/js/dice.js`.
 
 ```
-you            the number, large, in the middle of the screen — then it flies
-               to the corner and joins your last three
+you            the number, large, in the middle of the screen — it spins,
+               settles, then flies to the corner and joins your last three
 the table      a line in the chat log, because a roll is a thing said
 everyone else  a speech bubble over your tab, so a roll is noticed without
                anyone having to be looking at the log
+you, again     hovering a corner chip opens the whole working — every die,
+               the one advantage threw away, and each score behind the modifier
 ```
 
 **There is no `parties/<code>/rolls`.** A roll *is* a chat message — one with a
@@ -431,8 +433,14 @@ everyone else  a speech bubble over your tab, so a roll is noticed without
 parties/<code>/chat/<pushId>
   { uid, name, text, at,
     kind: 'roll',
-    roll: { label, total, faces, count, mod, dice[] } }
+    roll: { label, total, mode, faces, count, mod, dice[], dropped[] } }
 ```
+
+**`parts` is deliberately not in that payload.** It is what the *sheet* knew at
+the moment of the roll — which ability, off what score, which proficiency — and
+it exists for the hover card on your own corner chips. Nobody else is offered
+that card, so shipping every roller's ability scores into a shared log would be
+a payload nothing reads.
 
 That is the whole of the plumbing, and it is the load-bearing decision here. The
 log is already ordered by the server, already subscribed by everyone holding the
@@ -460,6 +468,34 @@ disagree about the total.
 the chat log and for the same reason: what you rolled is not part of a character,
 and nobody wants it restored next Tuesday.
 
+**The tumble.** The number arrives spinning: other plausible values, arriving
+fast and then further and further apart, before it locks onto the real one and
+holds still. The whole business runs a **random 1–3 seconds**, because a die you
+can time to the millisecond has no suspense in it, and the same beat every time
+turns into a delay to sit through rather than a result to wait for.
+
+- The values shown on the way past are made by **rolling the same pool again**,
+  not picked out of a range — so a `3d6 + 2` never flashes a 4 it could not have
+  produced, and a d100 tumbles through three digits like a d100.
+- The gap between one number and the next is eased on `t²`, so almost all of the
+  slowing happens at the very end, where it is suspense rather than a wait.
+- A `setTimeout` chain rather than `requestAnimationFrame`: a background tab
+  stops painting and stops rAF entirely, and a roll thrown in one still has to
+  land in the corner rather than hang there forever. Throttled timers make the
+  tumble slower and coarser in a tab nobody is looking at, which is exactly what
+  should happen to it.
+- **The detail line is held back for the whole tumble** (`.roll-flier.spinning`).
+  It names every die, so showing it early gives the answer away before the
+  number gets there. `visibility`, not `display`, so the flier does not change
+  height when it arrives.
+- The waiting chip is `pointer-events: none` as well as invisible, or hovering
+  where it will land would open the working — the whole answer — while the
+  number is still tumbling towards it.
+- **A second roll supersedes the first.** Two numbers tumbling over each other
+  in the middle of the screen is unreadable, so `flyRoll()` finishes any flier
+  still in the air: no flight, no fade, the number simply appears in the chip
+  that was already waiting for it.
+
 **The flight.** The chip is put into the corner *first* and held invisible
 (`.roll-chip.landing`), and the flier is then aimed at where it actually landed.
 
@@ -479,11 +515,20 @@ and nobody wants it restored next Tuesday.
 - No destination — the corner is behind the home page, or the history was reset
   mid-flight — and it fades where it stands rather than flying at a rectangle
   that is not there.
-- The wash behind the number is **`--panel`**, not `--bg`. The label and detail
-  under it are `--text` and `--text-dim`, which are the inks each palette pins
-  its *panels'* lightness against; `--bg` is locked dark in both palettes, so on
-  parchment it laid a dark smudge over the paper and took the detail line with
-  it.
+- **The wash hangs off the flier, not off the inner element**, and that is the
+  whole of what keeps it still while the number tumbles. The two transforms do
+  one job each: the flier's carries both of them to the corner, so the wash
+  travels with the number it is the ground for; the inner's does the entrance
+  tumble alone, so the number turns and the light behind it does not. A spinning
+  disc of light is a different effect, and a much sillier one.
+- Its size is **fixed rather than `inset`-relative**, because the flier's box
+  grows and shrinks with the digit count as the number spins — a wash measured
+  off it would breathe in and out for the whole of the tumble. Two lengths,
+  wider than tall; `closest-side` turns them into the ellipse.
+- Its colour is **`--panel`**, not `--bg`. The label and detail under it are
+  `--text` and `--text-dim`, which are the inks each palette pins its *panels'*
+  lightness against; `--bg` is locked dark in both palettes, so on parchment it
+  laid a dark smudge over the paper and took the detail line with it.
 
 **The corner** (`#dice-history`) is inside `#inventory-panel` because a roll is
 the *app's* answer rather than one panel's, and because the middle is where a
@@ -516,11 +561,69 @@ end of it and re-aims from the tabs each time.
 - A GM has no tab, so a GM's roll has nothing to point at and is dropped. Their
   rolls are said in the log like everyone else's.
 
+**Advantage, on a held press.** Press and hold any modifier or any die and two
+options open either side of the cursor; slide onto one and let go to roll it
+that way. Letting go without leaving the middle rolls straight, so the gesture
+costs an ordinary click nothing — which is the whole reason it is a hold rather
+than a modifier key or a third button beside each of the sheet's twenty-five
+roll targets. **Disadvantage is on the left and advantage on the right**,
+because that is where they are on a number line and there is nothing else to go
+on.
+
+- The wheel opens after a short hold **or** as soon as the pointer moves nine
+  pixels, whichever comes first. The second is what keeps a decisive flick from
+  feeling ignored while the timer is still counting.
+- The pointer is **captured on the button that started it**, because the options
+  are further away than the button is wide and the gesture must survive the
+  cursor leaving it.
+- **Advantage rolls the whole pool twice and keeps the better total**, rather
+  than being special-cased to a single d20. For 1d20 that is exactly the rule as
+  written; for the tray's 3d6 it is the only reading of "advantage" that means
+  anything, and one rule means the two cannot disagree. The discarded pool is
+  kept as `dropped` — it is what makes the hover card legible.
+- **The wheel is small on purpose, and the caption under it is why it can be.**
+  It opens *on* the cursor and is nudged only as far as it must be to stay on
+  screen — but every pixel of nudge is a pixel between the cursor and the hub
+  the gesture is measured against, which is a lie about where the middle is. A
+  die at the right-hand edge of the window has barely fifty pixels beside it, so
+  the two options carry "Adv" and "Dis" and the word that removes all doubt sits
+  centred under the hub, where there is always room. It reads "Straight roll"
+  with neither picked, because letting go in the middle is a choice rather than
+  the absence of one.
+- The wheel's reach is declared **once, in the CSS** (`--wheel-w`,
+  `--wheel-gap`, `--wheel-h`) and read back by `openRollWheel()` to work out the
+  clamp. Written out in the JS as well, the two would drift the first time an
+  option's width changed.
+- `lastPointerRollAt` is what stops the `click` the browser delivers after the
+  press from rolling a second time. It is stamped even when a gesture is
+  **abandoned** — Escape, or a cancelled pointer — because that click still
+  arrives and must not roll what Escape just refused. A click with no pointer
+  sequence in front of it is a keyboard one, and is the only kind let through:
+  that is what keeps every roll target reachable from the keyboard.
+
+**The working, on hover.** A total is an answer with its reasoning thrown away,
+and the reasoning is exactly what gets argued about at a table. So hovering a
+chip in the corner opens the whole of it: every die face, the pool advantage
+discarded (struck through — it was rolled, it is real, and it did not count),
+and each score and proficiency that went into the modifier as its own raw
+number.
+
+- This is why **`parts` is collected at roll time** rather than worked out on
+  hover. The sheet moves: a level gained or a proficiency ticked between the
+  roll and the hover would otherwise rewrite the history of a roll already made.
+- It is the one part of the corner that takes a pointer event — the container
+  stays `pointer-events: none`, so the only thing between the reader and the
+  stash underneath is three small chips.
+- A card, not a `title`: the content is a table, and a native tooltip cannot
+  strike through the die that was thrown away, which is the one thing an
+  advantage roll needs shown.
+
 **What can be rolled.** Every target on the sheet says what it is in one
 `data-roll` attribute (`skill:arcana`, `save:dex`, `ability:cha`, `initiative`),
 read by `sheetRollSpec()` and nothing else. The **modifier is never stored on the
-element** — it is asked of the sheet at the moment of the click, so a roll cannot
-be made with a number the sheet has since moved on from.
+element** — it is asked of the sheet when the press is *let go*, so a roll cannot
+be made with a number the sheet has since moved on from. `parts` is that same
+answer taken apart, and only the sheet can supply it.
 
 - A prof row is now **two** buttons: the dot, which changes what the character is
   proficient in, and the name-plus-modifier, which rolls it. One button doing
@@ -535,8 +638,13 @@ be made with a number the sheet has since moved on from.
   with its own boxes.
 - **A crit is a natural 20 or a natural 1 on a single d20, and only there.**
   Three d20s summed have no such thing, and calling one of them a crit would be
-  a lie the sheet told. It is colour *and* the word in the chat card's detail
-  line, never colour alone.
+  a lie the sheet told. It is read off the **kept** die, which is the one that
+  counted, and it is colour *and* the word in the detail line, never colour
+  alone.
+- The Adv / Dis tag is **one pill across four surfaces** — the chip, the bubble,
+  the chat card and the flier — built by `rollModePill()`, so a mode cannot end
+  up shown four different ways. It lives in dice.css even where it sits inside a
+  chat message, because dice.js is what builds it.
 
 **The label is what the roll was about, and the number leads it everywhere:**
 "14 Arcana", not "Arcana: 14". The total is the large thing in all three places
