@@ -42,22 +42,22 @@ Heavy Crossbow,,,50gp,weapon|martial ranged weapon,1d10,piercing,,,,01110|11111|
 Longbow,,,50gp,weapon|martial ranged weapon,1d8,piercing,,,,1|1,,,,"Ammunition (Range 150/600, Arrow); Heavy; Two-Handed",Slow,PHB
 Musket,,,500gp,weapon|martial ranged weapon,1d12,piercing,,,,11111|11111,,,,"Ammunition (Range 40/120, Bullet); Loading; Two-Handed",Slow,DMG
 Pistol,,,250gp,weapon|martial ranged weapon,1d10,piercing,,,,11|10,,,,"Ammunition (Range 30/90, Bullet); Loading",Vex,DMG
-Padded Armor,,,5gp,armor|light armor,,,,,,1111|1111,,,,AC 11 + Dex; Stealth Disadvantage,,PHB
-Leather Armor,,,10gp,armor|light armor,,,,,,11111|11111,,,,AC 11 + Dex,,PHB
-Studded Leather Armor,,,45gp,armor|light armor,,,,,,11111|11111|11100,,,,AC 12 + Dex,,PHB
-Hide Armor,,,10gp,armor|medium armor,,,,,,1111|1111|1111,,,,AC 12 + Dex (max 2),,PHB
-Chain Shirt,,,50gp,armor|medium armor,,,,,,11111|11111|11111|11111,,,,AC 13 + Dex (max 2),,PHB
-Scale Mail,,,50gp,armor|medium armor,,,,,,111111111|111111111|111111111|111111111|111111111,,,,AC 14 + Dex (max 2); Stealth Disadvantage,,PHB
-Breastplate,,,400gp,armor|medium armor,,,,,,1111|1111|1111|1111|1111,,,,AC 14 + Dex (max 2),,PHB
-Half Plate Armor,,,750gp,armor|medium armor,,,,,,11111111|11111111|11111111|11111111|11111111,,,,AC 15 + Dex (max 2); Stealth Disadvantage,,PHB
-Ring Mail,,,30gp,armor|heavy armor,,,,,,1111111111|1111111111|1111111111|1111111111,,,,AC 14; Stealth Disadvantage,,PHB
-Chain Mail,,,75gp,armor|heavy armor,,,,,,11111111111|11111111111|11111111111|11111111111|11111111111,,,,AC 16; Str 13; Stealth Disadvantage,,PHB
-Splint Armor,,,200gp,armor|heavy armor,,,,,,1111111111|1111111111|1111111111|1111111111|1111111111|1111111111,,,,AC 17; Str 15; Stealth Disadvantage,,PHB
-Plate Armor,,,1500gp,armor|heavy armor,,,,,,1111111111111|1111111111111|1111111111111|1111111111111|1111111111111,,,,AC 18; Str 15; Stealth Disadvantage,,PHB
-Shield,,,10gp,armor|shield,,,,,,111|111,,,,AC +2,,PHB
+Padded Armor,,,5gp,armor|light armor,,,,,,101|111|111,,,,AC 11 + Dex; Stealth Disadvantage,,PHB
+Leather Armor,,,10gp,armor|light armor,,,,,,1001|1111|0110|0110,,,,AC 11 + Dex,,PHB
+Studded Leather Armor,,,45gp,armor|light armor,,,,,,1001|1111|1111|0110|0010,,,,AC 12 + Dex,,PHB
+Hide Armor,,,10gp,armor|medium armor,,,,,,1001|1111|1111|0110,,,,AC 12 + Dex (max 2),,PHB
+Chain Shirt,,,50gp,armor|medium armor,,,,,,010010|111111|011110|011110|011110,,,,AC 13 + Dex (max 2),,PHB
+Scale Mail,,,50gp,armor|medium armor,,,,,,01100110|11111111|11111111|01111110|01111110|00111100|00111100,,,,AC 14 + Dex (max 2); Stealth Disadvantage,,PHB
+Breastplate,,,400gp,armor|medium armor,,,,,,1001|1111|1111|1111|1111|0110,,,,AC 14 + Dex (max 2),,PHB
+Half Plate Armor,,,750gp,armor|medium armor,,,,,,01000010|11111111|11111111|01111110|01111110|01111110|01100110,,,,AC 15 + Dex (max 2); Stealth Disadvantage,,PHB
+Ring Mail,,,30gp,armor|heavy armor,,,,,,01000010|11111111|11111111|01111110|01111110|01111110|01100110,,,,AC 14; Stealth Disadvantage,,PHB
+Chain Mail,,,75gp,armor|heavy armor,,,,,,0010000100|0111111110|1111111111|1111111111|0011111100|0011111100|0011111100|0001111100|0000001100,,,,AC 16; Str 13; Stealth Disadvantage,,PHB
+Splint Armor,,,200gp,armor|heavy armor,,,,,,0010000100|0111111110|1111111111|1111111111|0011111100|0011111100|0011111100|0011111100|0011111100,,,,AC 17; Str 15; Stealth Disadvantage,,PHB
+Plate Armor,,,1500gp,armor|heavy armor,,,,,,00100000100|01110101110|11111111111|11111111111|00111111100|00111111100|00111111100|00011111000|00011111000|00001110000,,,,AC 18; Str 15; Stealth Disadvantage,,PHB
+Shield,,,10gp,armor|shield,,,,,,11|11|11,,,,AC +2,,PHB
 Alchemist's Supplies,,"An alembic, a mortar and pestle, glass beakers, pouches of reagents and a stirring rod.",50gp,tool|artisan's tools,,,,,,1111|1111,,,,"Ability: Intelligence; Utilize: Identify a substance (DC 15) or start a fire (DC 15); Craft: Acid, Alchemist's Fire, Component Pouch, Oil, Paper, Perfume",,PHB
 Brewer's Supplies,,"A siphon, tubing, a stirring rod, a thermometer and a sack of hops.",20gp,tool|artisan's tools,,,,,,111|111|111,,,,"Ability: Intelligence; Utilize: Detect poison or impurities in a drink (DC 15) or identify alcohol (DC 10); Craft: Antitoxin",,PHB
-Calligrapher's Supplies,,"Ink, a dozen sheets of parchment and three quills with spare nibs.",10gp,tool|artisan's tools,,,,,,111|110,,,,"Ability: Dexterity; Utilize: Write text with impressive flourishes (DC 10) or determine whether handwriting is forged (DC 15); Craft: Ink, Spell Scroll",,PHB
+Calligrapher's Supplies,,"Ink, a dozen sheets of parchment and three quills with spare nibs.",10gp,tool|artisan's tools,,,,,,01|11|11,,,,"Ability: Dexterity; Utilize: Write text with impressive flourishes (DC 10) or determine whether handwriting is forged (DC 15); Craft: Ink, Spell Scroll",,PHB
 Carpenter's Tools,,"A saw, a hammer and nails, a hatchet, a square, a ruler, an adze, a plane and a chisel.",8gp,tool|artisan's tools,,,,,,111|111,,,,"Ability: Strength; Utilize: Seal or pry open a door or container (DC 20); Craft: Club, Greatclub, Quarterstaff, Barrel, Chest, Ladder, Pole, Portable Ram, Torch",,PHB
 Cartographer's Tools,,"Quills, ink, parchment, a pair of compasses, calipers and a ruler.",15gp,tool|artisan's tools,,,,,,111|111,,,,"Ability: Wisdom; Utilize: Draft a map of a small area (DC 15); Craft: Map",,PHB
 Cobbler's Tools,,"A hammer, an awl, a knife, a shoe stand, cured leather and thread.",5gp,tool|artisan's tools,,,,,,111|110,,,,"Ability: Dexterity; Utilize: Modify footwear to give advantage on the wearer's next Dexterity (Acrobatics) check (DC 10); Craft: Climber's Kit",,PHB
@@ -65,7 +65,7 @@ Cook's Utensils,,"A metal pot, knives, forks, a stirring spoon and a ladle.",1gp
 Glassblower's Tools,,"A blowpipe, a small marver, blocks and a bag of sand.",30gp,tool|artisan's tools,,,,,,11111,,,,"Ability: Intelligence; Utilize: Discern what a glass object held within the past 24 hours (DC 15); Craft: Glass Bottle, Magnifying Glass, Spyglass, Vial",,PHB
 Jeweler's Tools,,"A loupe, pliers, a file, tweezers and a small saw.",25gp,tool|artisan's tools,,,,,,11,,,,"Ability: Intelligence; Utilize: Discern a gem's value (DC 15); Craft: Arcane Focus, Holy Symbol",,PHB
 Leatherworker's Tools,,"A knife, thread, leather scraps, an awl and a small mallet.",5gp,tool|artisan's tools,,,,,,111|110,,,,"Ability: Dexterity; Utilize: Add a design to a leather item (DC 10); Craft: Sling, Whip, Hide Armor, Leather Armor, Studded Leather Armor, Backpack, Crossbow Bolt Case, Map or Scroll Case, Parchment, Pouch, Quiver, Waterskin",,PHB
-Mason's Tools,,"A trowel, a hammer, a chisel, brushes and a square.",10gp,tool|artisan's tools,,,,,,1111|1111,,,,"Ability: Strength; Utilize: Chisel a symbol or hole in stone (DC 10); Craft: Block and Tackle",,PHB
+Mason's Tools,,"A trowel, a hammer, a chisel, brushes and a square.",10gp,tool|artisan's tools,,,,,,011|111|111,,,,"Ability: Strength; Utilize: Chisel a symbol or hole in stone (DC 10); Craft: Block and Tackle",,PHB
 Painter's Supplies,,"An easel, canvas, paints, brushes, charcoal sticks and a palette.",10gp,tool|artisan's tools,,,,,,111|110,,,,"Ability: Wisdom; Utilize: Paint an accurate portrait of something you've seen (DC 10); Craft: Druidic Focus, Holy Symbol",,PHB
 Potter's Tools,,"Potter's needles, ribs, scrapers, a knife and calipers.",10gp,tool|artisan's tools,,,,,,111,,,,"Ability: Intelligence; Utilize: Determine what a ceramic object held within the past 24 hours (DC 15); Craft: Jug, Lamp",,PHB
 Smith's Tools,,"Hammers, tongs, charcoal, rags and a whetstone.",20gp,tool|artisan's tools,,,,,,1111|1111,,,,"Ability: Strength; Utilize: Pry apart two objects (DC 20); Craft: most Melee weapons and Medium or Heavy armor, Ball Bearings, Bucket, Caltrops, Chain, Crowbar, Firearm Bullets, Grappling Hook, Iron Pot, Iron Spikes",,PHB
