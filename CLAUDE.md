@@ -90,7 +90,7 @@ tools/              Standalone dev helpers (not part of the app)
 | `dice.js` | Rolling: the tumbling number, the corner stack, the advantage wheel, the tray |
 | `battlemap.js` | Battle maps: the model, the Firebase seam, and line of sight |
 | `battlemap-library.js` | The GM's Maps pane, and the import / creature dialogs |
-| `battlemap-view.js` | The map itself: the camera, the canvas, the fog, the pointer |
+| `battlemap-view.js` | The map view: the camera, the canvas, the fog, the pointer |
 | `tooltip.js` | Hover tooltip |
 | `main.js` | `init()` and the single call to it |
 
@@ -119,7 +119,7 @@ that owns the element wins.
 | `shop.css` | The GM shop editor, the player shopfront, and their modals |
 | `chat.css` | The sidebar's Chat pane, its messages and composer, and a roll said in it |
 | `dice.css` | The flying number, the corner stack, the wheel, the hover card, the tray |
-| `battlemap.css` | The map button, the map page, and the GM's library pane |
+| `battlemap.css` | The map button, the map view, and the GM's library pane |
 | `tooltip.css` | The hover tooltip |
 | `stash.css` | The stash (items needing placement) and the container tabs |
 | `coins.css` | The multi-denomination cost input and the coin purse |
@@ -157,7 +157,7 @@ state.leftTab     'equip' | 'shop' | 'map'          (which left-panel pane shows
 state.shopOpenId  shopId | null                     (null = the list of shops)
 state.mapLibraryOpenId  mapId | null                (null = the list of maps)
 state.auth        { user, ready }                   (signed-in account, or null)
-state.view        'inventory' | 'sheet'             (which view of the selected character)
+state.view        'inventory' | 'sheet' | 'map'     (which view the middle panel shows)
 state.mode        'idle' | 'placing' | 'dragging'
 state.placing     { templateId, rotation }
 state.dragging    { instanceId, anchorRow, anchorCol, origRow, origCol, origRotation }
@@ -335,6 +335,7 @@ currently showing**, because the two answer one question:
 ```
 inventory view    Browse · Details · Party
 sheet view        Chat · Dice · Party
+map view          Chat · Dice · Party      (the same three, deliberately)
 ```
 
 Reading an item's stats beside a grid of items is the whole point of the Details
@@ -349,11 +350,20 @@ lists.
   **Browse**, which is the pane they stock shops by dragging out of. It reproduces
   the `showSheet` test `syncCharacterViewUI()` already uses for `.sheet-view`, so
   the two halves of the screen cannot disagree about what is being shown.
+- **The battle map answers `'sheet'` rather than earning a third row.** What
+  this asks is not "which view is up" but "which panes belong beside it", and
+  beside a board that is Chat, Dice and Party — the table's own three. A third
+  row would be three names for two answers.
 - **Asking for a tab is asking for the view it lives in.** A shop entry clicked
   while reading your character sheet calls `switchTab('details')`, and the honest
   answer is to show the item — which means going where items are shown. That one
   line in `switchTab()` is why every existing caller (`render-sidebar.js`,
   `shop.js`, `leaveParty()`) kept working untouched.
+- **Only the sheet can be refused**, and that is all `hasViewedCharacter()` was
+  ever guarding in `switchTab()`: a GM with nobody picked has no character to
+  show one of. Asked of an *inventory* pane it refuses a move that is always
+  possible — which is how a GM standing on the battle map with no player
+  selected found **Browse** unreachable, the pane they stock shops out of.
 - `activateSidebarTab()` is the plain DOM half — light one button, show one pane
   — and `syncSidebarTabs()` calls *it* rather than `switchTab()`, so the two
   cannot recurse into each other.
@@ -921,6 +931,22 @@ that stepped in whole squares would be a different game's fog.
   corner**, one either side by a hair. The straddling pair is what makes a
   shadow's edge a straight line: one ray stops on the box, its twin carries on
   past it. A circle gets its two tangents, which is where its shadow's edge is.
+- **Every angle is normalized into `[0, 2π)` before that list is sorted, and
+  that one line is the difference between a shadow and no shadow.** The rays are
+  named two ways: `Math.atan2` answers in `(-π, π]` and the uniform fan is
+  written out over `[0, 2π)`. Sorted raw, the two numberings interleave — the
+  corner rays aimed above the source land at the *front* of the list and the
+  sweep rays covering that same arc land at the *back* — so the polygon is
+  walked across that arc twice, once with the corner detail and once at 2°
+  resolution, and the coarse pass paints straight over the shadow the first one
+  cut. It reads as geometry that does not match the object casting it, because
+  half of it is not the object's geometry at all. Measured on a single
+  rectangle with the source stepped over the whole map, **170 of 357 probes
+  taken directly behind the wall came back lit**; normalized, none do.
+- Near-identical angles are then dropped, so the polygon carries no zero-length
+  edges for a fill rule to guess about. The threshold is well under
+  `VISION_NUDGE`, or it would collapse the straddling pair the corners depend
+  on.
 - A wall **containing** the source is skipped. A token nudged onto the circle
   the GM drew round a tree should not go blind, and there is no reading of
   "inside the obstacle" that gives a useful answer.
@@ -949,9 +975,41 @@ that stepped in whole squares would be a different game's fog.
 
 #### The board
 
-- **The page is a page in front of the app**, like the home screen and at the
-  same depth (400, under the modal backdrop) so the creature editor opens over
-  it rather than being buried by it.
+- **The board is the third view of the middle panel**, beside the inventory
+  grid and the character sheet: `state.view === 'map'`, and `.map-view` on
+  `#inventory-panel` is the whole of the swap, exactly as `.sheet-view` is.
+  `syncCharacterViewUI()` drives it, like the other two.
+
+  It was a page over the whole app, and that was the wrong shape for it. A
+  board is *where the party is standing*, which is the same question the middle
+  panel already answers — so taking the screen over to show one cost the reader
+  the character tabs above it, the chat and the dice beside it, and, for the
+  GM, the Maps pane holding the very grid controls they were trying to line the
+  board up with. Every one of those is something you want *while* looking at
+  the map, and the grid controls are unusable without it.
+- **It is the one view that is not a view of a character**, and everything odd
+  about it follows from that. It is reached from the corner button and the Maps
+  pane rather than from a tab's menu; a **GM with nobody selected may be on
+  it**, so `#gm-placeholder` — which paints over this whole panel — stands down
+  for `.map-view`; and the sidebar answers `'sheet'` for it (`sidebarView()`),
+  because beside a board the useful panes are Chat, Dice and Party, the table's
+  own three. Browse and Details are a list of items to read against a grid of
+  items, which a board is not.
+- **`mapViewIsShowing()` is the one answer both halves of the screen ask**, and
+  it is not `state.view === 'map'`: a map can be pulled out from under the
+  reader — deleted, or un-revealed — and the panel falls back to the grid while
+  the field still says `map`. The same shape as the sheet's
+  `hasViewedCharacter()` caveat, given a function rather than written out twice.
+- **`onMapViewShown()` does nothing unless the map was not already up.** It is
+  called on every pass through `syncCharacterViewUI()`, which a party roster
+  snapshot drives — and setting the canvas size clears it while rebuilding the
+  toolbar throws away whatever button the cursor was over. Neither belongs on a
+  presence heartbeat. A panel resize is the `ResizeObserver`'s job and a data
+  change is `onBattlemapDataChanged()`'s.
+- **Closing hands back the view you came from** (`mapReturnView`), and the
+  camera is framed per *map* rather than per arrival (`mapFramedId`): a GM who
+  has zoomed into a doorway, glanced at a player's sheet and come back must find
+  the doorway.
 - One `<canvas>`, **drawn on demand**. Not a rAF loop: nothing on a battle map
   animates on its own, and repainting a 2400px picture sixty times a second to
   show the same thing is a laptop fan for no reason. Every path that changes
@@ -969,7 +1027,14 @@ that stepped in whole squares would be a different game's fog.
   header is padded clear of it (`has-map-btn`) — the move `#character-tabs`
   already makes for a collapsed panel's reopen button.
 - It is **absent** unless there is a map to open, which for a player means one
-  the GM has both put in play and revealed.
+  the GM has both put in play and revealed — and absent again once the map is
+  up, since the way in is not needed from inside.
+- **Opening a map puts the GM's Maps pane in front of them**, and switches the
+  left panel to it. It is the one pane whose subject is the thing now filling
+  the middle of the screen, and the grid controls on it are meant to be turned
+  while watching the picture they are being lined up on.
+- The keyboard is shared now, so the map's own handler ignores a key pressed
+  into an `input`, `textarea` or `select` — the chat composer is beside it.
 
 #### Who may do what
 
@@ -997,6 +1062,47 @@ that stepped in whole squares would be a different game's fog.
   Medium one. Editing a creature's size re-snaps it.
 - **Only a square grid is built.** `grid.type` is the seam a hex grid arrives
   through; the library pane says so rather than leaving a reader guessing.
+
+#### Lining the grid up
+
+The grid has to land on **somebody else's picture**, and that is a measurement
+rather than a preference. Two things make it possible.
+
+- **The figures are fractional** (`roundGridValue()`, two places). A photographed
+  or exported map is very rarely a whole number of pixels per square, and a size
+  rounded to one is out by up to half a pixel *per square* — invisible on the
+  first and unmissable on the thirtieth, where the grid has walked a full square
+  off the picture. That accumulating drift was the whole of "the grid cannot be
+  made the right size". The steppers still nudge by a whole pixel from wherever
+  the value is, because that is the unit a hand works in; only what may be
+  *stored* changed.
+- **The Grid tool works the size out from a drag.** Drag a box across a few of
+  the picture's own squares and `gridFromCalibration()` reads the size off it —
+  the offsets from the corner the drag started at, wrapped into one cell
+  (`wrapGridOffset()`) so the numbers in the panel stay meaningful.
+
+  How many squares the box covers is **counted at the size the grid is set to
+  now**, which is what turns a rough guess typed in the panel into an exact
+  answer, and what makes the tool converge: each pass divides the previous
+  pass's error away. It is also the one thing that can be wrong, so the count is
+  **drawn on the box while it is dragged** ("5 × 3 squares") — a reader who sees
+  it disagree with the picture drags a shorter box. The count survives an error
+  of up to half a cell across the whole span, so a wilder guess wants a shorter
+  drag first.
+
+  The two spans are averaged weighted by how many squares each crossed
+  (`(w + h) / (nx + ny)` is exactly that), since a drag five squares wide and
+  one tall knows five times as much about the width. An axis shorter than half a
+  cell is measuring nothing and is left out — otherwise a deliberately flat drag
+  along a row would average its own zero height in and halve the answer.
+- While the tool is up the grid is drawn **in accent, and drawn whether or not
+  it is switched on for play**: it is the thing being worked on. Turning the
+  grid off to look at the picture and then being unable to line it up is the
+  trap that avoids.
+- The numbers stay in the **Maps pane**, not on the map's toolbar. Opening a map
+  brings that pane up (see *The board*), so they are already beside the picture
+  — and a second set of boxes on the toolbar would be a second editor for one
+  value.
 
 ### The left panel and its tabs
 

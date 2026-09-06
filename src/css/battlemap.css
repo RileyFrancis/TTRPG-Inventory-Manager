@@ -1,15 +1,16 @@
 /* ============================================================
-   battlemap.css — the map button, the map page, and the GM's library pane
+   battlemap.css — the map button, the map view, and the GM's library pane
    ============================================================ */
 
 /* ─── THE BUTTON ─────────────────────────────────────────── */
 /* Bottom left of the middle of the app, opposite the corner the dice land in.
    Inside #inventory-panel for the reason #dice-history is: the map is the
    *app's* answer to "where are we", not one panel's — and this is the middle,
-   which is where a thing that takes over the screen should be opened from.
+   which is the panel the map then fills.
 
    z-index 7 clears #gm-placeholder (5) and the character tabs (6), exactly as
-   the dice stack does, so a GM with nobody selected still has a way in. */
+   the dice stack does, so a GM with nobody selected still has a way in. It
+   stands down once the map is up: the way in is not needed from inside. */
 #map-btn {
   position: absolute;
   left: 14px;
@@ -42,17 +43,33 @@
    class, set by the code that decides whether the button is there at all. */
 #inventory-panel.has-map-btn #stash-header { padding-left: 62px; }
 
-/* ─── THE MAP PAGE ───────────────────────────────────────── */
-/* A page in front of the app, like the home screen and at the same depth —
-   under the modal backdrop (500), so the creature editor opens over it. */
-#battlemap-screen {
-  position: fixed;
-  inset: 0;
-  z-index: 400;
+/* ─── THE MAP VIEW ────────────────────────────────────── */
+/* The third view of the middle panel, and one switch drives the swap exactly as
+   `.sheet-view` does: the grid, the stash and the sheet never share the panel
+   with the board.
+
+   It is not a page over the app any more. A board is where the party is
+   standing, which is the same question this panel already answers — and taking
+   the screen over to show one cost the reader the character tabs above it, the
+   chat beside it and, for a GM, the Maps pane holding the very grid controls
+   they were trying to line the board up with. */
+#battlemap-view { display: none; }
+#inventory-panel.map-view #battlemap-view {
   display: flex;
+  flex: 1;
+  min-height: 0;
   flex-direction: column;
   background: var(--bg);
 }
+#inventory-panel.map-view #grid-scroll,
+#inventory-panel.map-view #stash-section,
+#inventory-panel.map-view #container-tabs,
+#inventory-panel.map-view #character-sheet { display: none; }
+
+/* The map belongs to the table rather than to a character, so a GM with nobody
+   selected is allowed to be looking at one — and the placeholder that otherwise
+   paints over this whole panel would bury it. */
+#inventory-panel.map-view #gm-placeholder { display: none; }
 
 #map-toolbar {
   flex-shrink: 0;
@@ -66,6 +83,8 @@
   box-shadow: var(--shadow-soft);
 }
 
+/* The title yields first when the strip runs out of room: which map you are on
+   is the one thing on this bar that the picture underneath already answers. */
 #map-title {
   font-family: var(--font-display);
   font-size: 15px;
@@ -74,6 +93,8 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 0 1 auto;
+  min-width: 4ch;
   max-width: 26ch;
 }
 
@@ -105,6 +126,7 @@
 #map-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
   margin-left: auto;
 }
@@ -148,6 +170,26 @@
 }
 #map-empty .map-empty-icon { font-size: 34px; opacity: 0.5; }
 #map-empty p { font-size: 13px; opacity: 0.75; max-width: 44ch; line-height: 1.6; }
+
+/* What the Grid tool is doing, said where it is being done — and the size the
+   grid is set to now beside it, because that is the number the calibration drag
+   counts squares against. Above the legend rather than beside it: this is a
+   sentence and that is three words, and side by side in a panel a reader has
+   dragged narrow they would fight over the same row. */
+#map-grid-hint {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 44px;
+  padding: 6px 10px;
+  border-radius: 5px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-dim);
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  border: 1px solid var(--accent);
+  pointer-events: none;
+}
 
 /* The legend rides the bottom of the stage: three colours mean three things,
    and a board where nobody remembers which is which is a board nobody trusts. */

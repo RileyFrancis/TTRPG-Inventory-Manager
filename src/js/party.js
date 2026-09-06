@@ -891,7 +891,9 @@ function updateViewingBanner() {
   const textEl = document.getElementById('viewing-banner-text');
   const returnBtn = document.getElementById('return-to-own-btn');
 
-  const what = state.view === 'sheet' ? 'character sheet' : 'inventory';
+  // The map is the party's, not this player's, so the banner names the view the
+  // reader will be handed back rather than claiming they are editing a board.
+  const what = { sheet: 'character sheet', map: 'inventory' }[state.view] || 'inventory';
   if (state.party.role === 'gm') {
     textEl.textContent = `Editing ${name}'s ${what}`;
     returnBtn.textContent = 'Deselect Player';

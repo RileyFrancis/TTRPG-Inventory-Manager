@@ -215,7 +215,21 @@ function mapSectionHdr(text) {
 // The grid has to be lined up on somebody else's picture, which is a fiddly job
 // done by eye. So the size and the two offsets are number boxes with steppers
 // either side, and the map behind them redraws as they move — the answer is on
-// the map, not in the numbers.
+// the map, not in the numbers. The map is in the middle panel now, so it is
+// genuinely beside them while they are turned.
+//
+// **The numbers are fractional, and that is what makes a grid line up at all.**
+// A cell rounded to a whole pixel is out by up to half of one, which nobody can
+// see on one square and everybody can see thirty squares later — a 70.5px grid
+// forced to 70 has walked a full square off the picture by the far edge. That
+// drift is what "the grid cannot be made the right size" was. The steppers
+// still move by a whole pixel, because that is the unit a hand nudges in; only
+// what may be *stored* has changed.
+//
+// It is still a fiddly job done by eye, though, which is why the real answer to
+// sizing is the **Grid tool** on the map itself: drag a box across a few of the
+// picture's own squares and it works the size out — see calibrateMapGrid() in
+// battlemap-view.js. These boxes are where that answer lands.
 function buildGridControls(map) {
   const wrap = document.createElement('div');
   wrap.className = 'map-grid-controls';
@@ -236,8 +250,12 @@ function buildGridControls(map) {
     const input = document.createElement('input');
     input.type = 'number';
     input.className = 'shop-price-input';
-    input.min = min; input.max = max; input.step = 1;
-    input.value = Math.round(g[key]);
+    input.min = min; input.max = max;
+    // `any` rather than a decimal step: the steppers below are the whole-pixel
+    // nudge, and the browser's own validation must not round off an exact size
+    // the calibration drag worked out.
+    input.step = 'any';
+    input.value = roundGridValue(g[key]);
     input.title = hint;
     const inc = document.createElement('button');
     inc.className = 'shop-price-step';
@@ -245,14 +263,18 @@ function buildGridControls(map) {
     inc.textContent = '+';
 
     const set = v => {
-      const clamped = Math.max(min, Math.min(max, Math.round(v)));
+      const clamped = Math.max(min, Math.min(max, roundGridValue(v)));
       input.value = clamped;
       updateMapGrid(map.id, { [key]: clamped });
     };
-    dec.addEventListener('click', () => set((parseInt(input.value, 10) || 0) - 1));
-    inc.addEventListener('click', () => set((parseInt(input.value, 10) || 0) + 1));
+    const cur = () => { const v = parseFloat(input.value); return Number.isFinite(v) ? v : 0; };
+    // A stepper nudges by a whole pixel *from wherever the value is*, so a
+    // calibrated 70.42 steps to 69.42 rather than snapping to 69 and throwing
+    // the alignment away.
+    dec.addEventListener('click', () => set(cur() - 1));
+    inc.addEventListener('click', () => set(cur() + 1));
     // On change rather than input: every keystroke would be its own write.
-    input.addEventListener('change', () => set(parseInt(input.value, 10) || min));
+    input.addEventListener('change', () => set(Number.isFinite(parseFloat(input.value)) ? parseFloat(input.value) : min));
 
     r.appendChild(lbl);
     r.appendChild(dec);
@@ -261,7 +283,7 @@ function buildGridControls(map) {
     return r;
   };
 
-  wrap.appendChild(row('Cell', 'size', 8, 600, 'How many of the picture’s own pixels one square is'));
+  wrap.appendChild(row('Cell', 'size', 8, 600, 'How many of the picture’s own pixels one square is — decimals welcome, and usually necessary'));
   wrap.appendChild(row('Left', 'offsetX', -600, 600, 'Slide the whole grid sideways'));
   wrap.appendChild(row('Top', 'offsetY', -600, 600, 'Slide the whole grid up and down'));
 
@@ -280,7 +302,9 @@ function buildGridControls(map) {
 
   const hint = document.createElement('p');
   hint.className = 'shop-price-note';
-  hint.textContent = 'Creatures snap to these squares whether the grid is drawn or not. Hex grids are not built yet.';
+  hint.textContent = 'Pick the Grid tool on the map and drag a box across a few of the picture’s own '
+    + 'squares to work the size out. Creatures snap to these squares whether the grid is drawn or '
+    + 'not. Hex grids are not built yet.';
   wrap.appendChild(hint);
 
   return wrap;

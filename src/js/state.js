@@ -64,9 +64,12 @@ const state = {
   // Which map the GM has open in their library pane (null = the list of maps).
   // UI position, like state.shopOpenId, and never saved.
   mapLibraryOpenId: null,
-  // Which view of the selected character the inventory panel shows.
-  // *Which* character is selected lives in state.party.viewingPlayerId.
-  view: 'inventory', // 'inventory' | 'sheet'
+  // Which view the middle panel shows. *Which* character is selected lives in
+  // state.party.viewingPlayerId. Two of the three are views of that character;
+  // 'map' is the odd one out — the board belongs to the table, so it is reached
+  // from the corner button rather than a tab's menu, and a GM with nobody
+  // selected is allowed to be on it.
+  view: 'inventory', // 'inventory' | 'sheet' | 'map'
   // Container view: null = main inventory, instanceId = viewing that container's interior
   activeContainer: null,
   // Per-container internal grids: { [instanceId]: 2D array }

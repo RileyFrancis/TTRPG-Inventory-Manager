@@ -405,6 +405,43 @@
         </div>
       </div>
 
+      <!-- ===== BATTLE MAP =====
+           The third view of the middle panel, beside the inventory grid and the
+           character sheet — not a page over the app any more. The board is
+           where the party is standing, so it belongs where the app answers
+           "what am I looking at", with the character tabs still above it and
+           the chat still beside it. `state.view === 'map'` is the switch, and
+           `.map-view` on this panel is the whole of the swap.
+
+           Unlike the other two it is not a view *of a character*, which is why
+           it is reached by the button in the corner rather than from a tab's
+           menu — and why a GM with nobody selected can be on it. -->
+      <div id="battlemap-view">
+        <div id="map-toolbar">
+          <span id="map-title">Battle Map</span>
+          <!-- The drawing tools. Rebuilt by renderMapToolbar(), because most of
+               them are the GM's and a player's strip is what is left of it. -->
+          <div id="map-tools"></div>
+          <div id="map-actions"></div>
+          <button id="map-close-btn" class="btn-sm icon-only" title="Back to the inventory (Esc)">&#10005;</button>
+        </div>
+        <div id="map-stage">
+          <canvas id="map-canvas"></canvas>
+          <div id="map-empty" class="hidden">
+            <span class="map-empty-icon">&#128506;</span>
+            <p>No map is in play. The Game Master puts one out from the <strong>Maps</strong> tab.</p>
+          </div>
+          <!-- What the Grid tool is doing, while it is doing it. Out of the way
+               of the legend, and hidden unless that tool is up. -->
+          <div id="map-grid-hint" class="hidden"></div>
+          <div id="map-legend">
+            <span class="map-legend-item" style="--lc:var(--hostility-party)"><span class="map-legend-dot"></span>Party</span>
+            <span class="map-legend-item" style="--lc:var(--hostility-neutral)"><span class="map-legend-dot"></span>Neutral</span>
+            <span class="map-legend-item" style="--lc:var(--hostility-hostile)"><span class="map-legend-dot"></span>Hostile</span>
+          </div>
+        </div>
+      </div>
+
       <div id="gm-placeholder" class="hidden">
         <div class="gm-ph-inner">
           <div class="gm-ph-icon">&#9876;</div>
@@ -633,35 +670,6 @@
     </div>
     <p id="home-note" class="home-note hidden"></p>
     <div id="home-card-grid"><!-- rendered by renderHomeScreen() --></div>
-  </div>
-</div>
-
-<!-- ===== BATTLE MAP =====
-     A page in front of the app, like the home screen and at the same depth
-     (under the modal backdrop, so the creature editor opens over it). While
-     the party is looking at the board, the board is what the screen is for.
-     src/js/battlemap-view.js owns everything inside it. -->
-<div id="battlemap-screen" class="hidden">
-  <div id="map-toolbar">
-    <span id="map-title">Battle Map</span>
-    <span id="map-role-badge" class="party-role-badge"></span>
-    <!-- The drawing tools. Rebuilt by renderMapToolbar(), because most of them
-         are the GM's and a player's strip is what is left of it. -->
-    <div id="map-tools"></div>
-    <div id="map-actions"></div>
-    <button id="map-close-btn" class="btn-sm" title="Close the map (Esc)">&#10005;</button>
-  </div>
-  <div id="map-stage">
-    <canvas id="map-canvas"></canvas>
-    <div id="map-empty" class="hidden">
-      <span class="map-empty-icon">&#128506;</span>
-      <p>No map is in play. The Game Master puts one out from the <strong>Maps</strong> tab.</p>
-    </div>
-    <div id="map-legend">
-      <span class="map-legend-item" style="--lc:var(--hostility-party)"><span class="map-legend-dot"></span>Party</span>
-      <span class="map-legend-item" style="--lc:var(--hostility-neutral)"><span class="map-legend-dot"></span>Neutral</span>
-      <span class="map-legend-item" style="--lc:var(--hostility-hostile)"><span class="map-legend-dot"></span>Hostile</span>
-    </div>
   </div>
 </div>
 

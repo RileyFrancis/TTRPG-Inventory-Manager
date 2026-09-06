@@ -35,7 +35,15 @@ function sidebarTabView(name) {
 // would leave them on Chat and Dice with no Browse, which is the tab they stock
 // their shops by dragging out of. `syncCharacterViewUI()` computes the same
 // thing for `.sheet-view`; this is that answer, asked from here.
+//
+// **The battle map answers 'sheet' rather than earning a third set of tabs.**
+// The question this function asks is not "which view is up" but "which pane
+// belongs beside it", and beside a board that is Chat, Dice and Party — the
+// table's own three. Browse and Details are a list of items to read against a
+// grid of items, which a map is not. Giving the map its own row would mean
+// three names for two answers.
 function sidebarView() {
+  if (mapViewIsShowing()) return 'sheet';
   return (state.view === 'sheet' && hasViewedCharacter()) ? 'sheet' : 'inventory';
 }
 
@@ -86,7 +94,14 @@ function syncSidebarTabs() {
 // keeps working untouched because of this line.
 function switchTab(name) {
   const view = sidebarTabView(name);
-  if (view && view !== sidebarView() && hasViewedCharacter()) setInventoryView(view);
+  // **The sheet is the only view that can be refused**, and that is what the
+  // `hasViewedCharacter()` test was always for: a GM with nobody picked has no
+  // character to show one of. Asked of an *inventory* pane it refuses a move
+  // that is always possible — which is how a GM standing on the battle map with
+  // no player selected found Browse unreachable, and Browse is the pane they
+  // stock shops by dragging out of.
+  const reachable = view === 'inventory' || hasViewedCharacter();
+  if (view && view !== sidebarView() && reachable) setInventoryView(view);
   activateSidebarTab(name);
 }
 

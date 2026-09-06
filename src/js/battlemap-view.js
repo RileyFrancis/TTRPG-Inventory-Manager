@@ -3,10 +3,21 @@
 // =============================================================================
 'use strict';
 
-// The map is a **page in front of the app**, like the home screen and for the
-// same reason: while the party is looking at the board, the board is what the
-// screen is for. It sits at the same z-index (400), under the modal backdrop,
-// so the creature editor opens over it rather than being buried by it.
+// The map is the **third view of the middle panel**, beside the inventory grid
+// and the character sheet — `state.view === 'map'`, and `.map-view` on
+// `#inventory-panel` is the whole of the swap, exactly as `.sheet-view` is.
+//
+// It used to be a page over the whole app, and that was the wrong shape for it.
+// A board is where the party is standing, which is the same question the middle
+// panel already answers; taking the screen over to show one cost the reader the
+// character tabs above it, the chat and the dice beside it, and — for the GM —
+// the Maps pane holding the grid controls they were trying to line the board up
+// with. Every one of those is something you want *while* looking at the map.
+//
+// The one way it is not like the other two views: it is not a view of a
+// *character*. So it is reached by the button in the corner rather than from a
+// tab's menu, and a GM with nobody selected is allowed to be on it — the
+// placeholder that otherwise covers this panel stands down for it.
 //
 // One `<canvas>`, drawn on demand. Not a rAF loop — nothing on a battle map
 // animates on its own, and a loop repainting a 2400px picture sixty times a
@@ -66,47 +77,111 @@ function viewedMap() {
   return mapById(mapViewId) || mapForViewer();
 }
 
+// **Whether the middle panel is showing the board**, which is not the same as
+// `state.view === 'map'`: the map can be pulled out from under the reader — a
+// GM deleting it, or un-revealing it — and the panel then falls back to the
+// grid while the field still says 'map'. Exactly the shape of the sheet's own
+// `hasViewedCharacter()` caveat, and the reason this is a function both halves
+// of the screen ask rather than a test each writes out for itself.
+//
+// `viewedMap()` rather than `mapForViewer()`: a GM opening a map from their
+// library puts the party on it and shows it in the same breath, and the write
+// saying which map is active has not come back from Firebase yet.
+function mapViewIsShowing() {
+  return state.view === 'map' && !!viewedMap();
+}
+
 // The button in the corner of the inventory panel exists only when there is
 // something behind it. A player with no revealed map, or anyone with no
-// campaign at all, gets no button rather than a button that opens nothing.
+// campaign at all, gets no button rather than a button that opens nothing —
+// and nobody gets one while the map is already what this panel is showing.
 function syncMapButton() {
   const btn = document.getElementById('map-btn');
   if (!btn) return;
   const map = mapForViewer();
-  btn.classList.toggle('hidden', !map);
+  const show = !!map && state.view !== 'map';
+  btn.classList.toggle('hidden', !show);
   btn.title = map ? 'Open the battle map — ' + map.name : 'Battle map';
   // The stash's header runs along the bottom of the panel and the button lands
   // on it, so it is padded clear — see the note in battlemap.css.
-  document.getElementById('inventory-panel').classList.toggle('has-map-btn', !!map);
+  document.getElementById('inventory-panel').classList.toggle('has-map-btn', show);
 }
 
 // =============================================================================
 // OPENING AND CLOSING
 // =============================================================================
+// Which view the reader was on before the map took the panel, so closing it
+// hands them back what they were reading rather than always the grid. Session
+// only, like every other piece of "where am I" in this app.
+let mapReturnView = 'inventory';
+
 function openBattlemap(mapId) {
   const map = mapId ? mapById(mapId) : mapForViewer();
   if (!map) return;
   mapViewId = map.id;
-  mapOpen = true;
   mapSelectedTokenId = null;
   mapTool = 'select';
-  document.getElementById('battlemap-screen').classList.remove('hidden');
-  ensureMapCanvas();
-  resizeMapCanvas();
-  loadMapImage(map);
   fogDirty = true;
-  fitMapToView(map);
-  renderMapToolbar();
-  drawBattlemap();
+  if (state.view !== 'map') mapReturnView = state.view;
+  // The GM's grid controls live in the Maps pane, and lining a grid up on a
+  // picture is done by looking at the picture — so opening a map puts that pane
+  // in front of them. It is the one pane whose subject is the thing now filling
+  // the middle of the screen.
+  if (isMapGM()) {
+    state.mapLibraryOpenId = map.id;
+    if (leftTabsAvailable().includes('map')) state.leftTab = 'map';
+  }
+  // Everything the panel has to do to show a map happens in onMapViewShown(),
+  // driven from the single "what are we looking at" entry point — so opening
+  // the map from here and arriving at it any other way cannot disagree.
+  setInventoryView('map');
 }
 
 function closeBattlemap() {
+  if (state.view !== 'map') return;
+  setInventoryView(mapReturnView === 'map' ? 'inventory' : mapReturnView);
+}
+
+// Which map the camera was last framed for. Framing is not something to do
+// every time the map is looked at: a GM who has zoomed into a doorway, glanced
+// at a player's sheet and come back must find the doorway, not the whole board.
+// It is a *different* map that has never been framed.
+let mapFramedId = null;
+
+// The panel has just started showing the map. **Called on every pass through
+// `syncCharacterViewUI()`, which a party roster snapshot drives — so it does
+// nothing at all unless the map was not already up.** Setting the canvas size
+// clears it, and rebuilding the toolbar throws away whatever button the cursor
+// was over; neither belongs on a presence heartbeat. A panel resize is the
+// ResizeObserver's, and a data change is `onBattlemapDataChanged()`'s.
+function onMapViewShown() {
+  const wasOpen = mapOpen;
+  mapOpen = true;
+  if (!wasOpen) {
+    // The canvas has no size until the panel is showing it, so it is measured
+    // here rather than when the map was asked for.
+    ensureMapCanvas();
+    resizeMapCanvas();
+    const map = viewedMap();
+    if (map) {
+      loadMapImage(map);
+      if (mapFramedId !== map.id) { mapFramedId = map.id; fitMapToView(map); }
+    }
+    fogDirty = true;
+    renderMapToolbar();
+    drawBattlemap();
+  }
+  syncGridHint();
+}
+
+// The panel has stopped showing the map. A gesture in flight is abandoned —
+// there is no canvas under the cursor any more to finish it on.
+function onMapViewHidden() {
   if (!mapOpen) return;
   mapOpen = false;
-  mapViewId = null;
   mapPan = mapTokenDrag = mapDrawing = null;
   mapSelectedTokenId = null;
-  document.getElementById('battlemap-screen').classList.add('hidden');
+  syncGridHint();
 }
 
 // Everything arriving from Firebase lands here — a creature somebody else
@@ -115,7 +190,8 @@ function onBattlemapDataChanged() {
   if (!mapOpen) return;
   const map = viewedMap();
   // The map was deleted, or a player's map was hidden again mid-session. There
-  // is nothing to show, so the page closes rather than standing empty.
+  // is nothing to show, so the panel hands the reader back their inventory
+  // rather than standing empty.
   if (!map) { closeBattlemap(); return; }
   loadMapImage(map);
   fogDirty = true;
@@ -327,7 +403,12 @@ function drawBattlemap() {
 
 function drawMapGrid(ctx, map, b) {
   const g = mapGrid(map);
-  if (g.visible === false) return;
+  // While the Grid tool is up the grid is what is being worked on, so it is
+  // drawn whether or not it is switched on for play and whether or not it is
+  // faint enough to read against the picture. Turning it off to look at the map
+  // and then being unable to line it up is the trap this avoids.
+  const tuning = mapTool === 'grid';
+  if (g.visible === false && !tuning) return;
   const cell = mapCellSize(map);
   if (cell * mapCam.scale < 4) return; // too fine to read; drawing it is just noise
 
@@ -335,8 +416,8 @@ function drawMapGrid(ctx, map, b) {
   ctx.beginPath();
   ctx.rect(b.x, b.y, b.w, b.h);
   ctx.clip();
-  ctx.strokeStyle = 'rgba(0,0,0,0.38)';
-  ctx.lineWidth = Math.max(0.6, 1 / mapCam.scale);
+  ctx.strokeStyle = tuning ? 'rgba(255, 196, 64, 0.85)' : 'rgba(0,0,0,0.38)';
+  ctx.lineWidth = Math.max(tuning ? 1 : 0.6, (tuning ? 1.5 : 1) / mapCam.scale);
   const startX = g.offsetX - Math.ceil((g.offsetX - b.x) / cell) * cell;
   const startY = g.offsetY - Math.ceil((g.offsetY - b.y) / cell) * cell;
   ctx.beginPath();
@@ -450,6 +531,7 @@ function drawMapDrawing(ctx) {
     'wall-circle': 'rgba(255, 92, 92, 0.95)',
     'fog-hide':    'rgba(150, 110, 220, 0.95)',
     'fog-show':    'rgba(90, 210, 130, 0.95)',
+    'grid':        'rgba(255, 196, 64, 0.95)',
   }[mapDrawing.tool] || 'rgba(255, 255, 255, 0.95)';
   ctx.strokeStyle = tone;
   ctx.fillStyle = tone.replace(/[\d.]+\)$/, '0.18)');
@@ -461,6 +543,38 @@ function drawMapDrawing(ctx) {
   }
   ctx.fill();
   ctx.stroke();
+  if (mapDrawing.tool === 'grid') drawCalibrationCount(ctx, r);
+  ctx.restore();
+}
+
+// **How many squares the box is being read as, said on the box.** The size it
+// works out is the box divided by that count, so the count is the whole of
+// whether the answer will be right — and it is a guess made from the size the
+// grid is set to now, which is the part that can be wrong. Shown, the reader
+// sees "6 × 4 squares" disagree with the picture and drags a shorter box; not
+// shown, they would see only a grid that came out wrong by a sixth with nothing
+// to say why.
+function drawCalibrationCount(ctx, r) {
+  const map = viewedMap();
+  if (!map) return;
+  const n = calibrationSpanCells(map, r);
+  if (!n.x && !n.y) return;
+  const text = (n.x || '—') + ' × ' + (n.y || '—') + ' squares';
+
+  // Drawn at a fixed size on *screen*: it is a readout of the gesture, not a
+  // mark on the board, so it must not shrink away as the map is zoomed out.
+  const fs = 13 / mapCam.scale;
+  ctx.save();
+  ctx.setLineDash([]);
+  ctx.font = '600 ' + fs + 'px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const w = ctx.measureText(text).width;
+  const cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+  ctx.fillStyle = 'rgba(12, 9, 5, 0.82)';
+  ctx.fillRect(cx - w / 2 - fs * 0.5, cy - fs * 0.85, w + fs, fs * 1.7);
+  ctx.fillStyle = '#ffd479';
+  ctx.fillText(text, cx, cy);
   ctx.restore();
 }
 
@@ -598,6 +712,13 @@ const MAP_MIN_SHAPE = 6;
 function commitMapDrawing(map, d) {
   if (!canEditMap()) return;
   const r = drawingRect(d);
+  if (d.tool === 'grid') {
+    // Nothing is drawn on the map by this one - the box was a measurement, and
+    // what it produces is three numbers in the map's grid.
+    const g = gridFromCalibration(map, r);
+    if (g) { updateMapGrid(map.id, g); syncGridHint(); }
+    return;
+  }
   if (d.tool === 'wall-circle') {
     const radius = drawingRadius(d);
     if (radius < MAP_MIN_SHAPE) return;
@@ -630,6 +751,7 @@ function eraseMapPieceAt(map, w) {
 // selection, and a player's strip is the short one that is left.
 const MAP_TOOLS = [
   { id: 'select',      label: 'Select',  hint: 'Move creatures · drag the board to pan',   gm: false },
+  { id: 'grid',        label: 'Grid',    hint: 'Line the grid up: drag a box across a few of the picture’s own squares', gm: true },
   { id: 'wall-rect',   label: 'Wall',    hint: 'Drag a rectangle over a wall — it blocks sight', gm: true },
   { id: 'wall-circle', label: 'Pillar',  hint: 'Drag out a circle over a tree or a pillar', gm: true },
   { id: 'fog-hide',    label: 'Obscure', hint: 'Drag a region the players cannot see into', gm: true },
@@ -637,14 +759,31 @@ const MAP_TOOLS = [
   { id: 'erase',       label: 'Erase',   hint: 'Click a wall or a fog edit to remove it',   gm: true },
 ];
 
+// The Grid tool's standing instruction, under the map. A gesture nobody can
+// guess at needs saying once, where it is being done — and the size the grid is
+// set to now beside it, because that is what the drag counts squares against
+// and therefore the number that explains a count coming out wrong.
+function syncGridHint() {
+  const el = document.getElementById('map-grid-hint');
+  if (!el) return;
+  const map = viewedMap();
+  const on = mapOpen && mapTool === 'grid' && !!map;
+  el.classList.toggle('hidden', !on);
+  if (!on) return;
+  const g = mapGrid(map);
+  el.textContent = 'Drag a box across whole squares of the picture — the grid takes its size from it. '
+    + 'Now: ' + roundGridValue(g.size) + ' px, offset ' + roundGridValue(g.offsetX)
+    + ' / ' + roundGridValue(g.offsetY) + '.';
+}
+
 function renderMapToolbar() {
   const map = viewedMap();
   document.getElementById('map-title').textContent = map ? map.name : 'Battle Map';
 
+  // No role badge here any more: the map shares the panel with the header's
+  // party badge now rather than covering it, and this strip has to survive
+  // being squeezed into a middle panel the reader has dragged narrow.
   const gm = canEditMap();
-  const badge = document.getElementById('map-role-badge');
-  badge.textContent = gm ? 'Game Master' : 'Player';
-  badge.className = 'party-role-badge ' + (gm ? 'gm' : 'player');
 
   const tools = document.getElementById('map-tools');
   tools.innerHTML = '';
@@ -657,6 +796,7 @@ function renderMapToolbar() {
     b.addEventListener('click', () => { mapTool = t.id; renderMapToolbar(); drawBattlemap(); });
     tools.appendChild(b);
   });
+  syncGridHint();
 
   const acts = document.getElementById('map-actions');
   acts.innerHTML = '';
@@ -717,6 +857,11 @@ document.getElementById('map-close-btn').addEventListener('click', closeBattlema
 document.addEventListener('keydown', e => {
   if (!mapOpen) return;
   if (document.querySelector('.modal:not(.hidden)')) return;
+  // The map lives in a panel now, beside a chat box and a sheet full of fields.
+  // A key pressed into one of those is not a key pressed at the board.
+  const t = e.target;
+  if (t && t.matches && t.matches('input, textarea, select')) return;
+  if (t && t.isContentEditable) return;
   if (e.key === 'Escape') {
     // A shape half drawn is what Escape is refusing, not the whole map.
     if (mapDrawing) { mapDrawing = null; drawBattlemap(); return; }

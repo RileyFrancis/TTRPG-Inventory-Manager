@@ -173,8 +173,14 @@ function selectCharacterView(key, view) {
   setInventoryView(view);
 }
 
+// Three views now, and the third is the odd one out: the battle map is not a
+// view *of a character*, it is where the party is standing. So it is never
+// reached from a tab's menu — only from the corner button and from the Maps
+// pane — and `selectCharacterView()` below never passes it.
+const INVENTORY_VIEWS = ['inventory', 'sheet', 'map'];
+
 function setInventoryView(view) {
-  state.view = view === 'sheet' ? 'sheet' : 'inventory';
+  state.view = INVENTORY_VIEWS.includes(view) ? view : 'inventory';
   syncCharacterViewUI();
   updateViewingBanner(); // the banner names the view it is talking about
 }
@@ -187,14 +193,27 @@ function hasViewedCharacter() {
 // The one entry point for "who or what we're looking at changed" — the party UI
 // calls it too, so deselecting a player can't leave their sheet on screen.
 function syncCharacterViewUI() {
-  const showSheet = state.view === 'sheet' && hasViewedCharacter();
-  document.getElementById('inventory-panel').classList.toggle('sheet-view', showSheet);
+  // The map answers to the party rather than to a character, so it survives a
+  // GM having nobody selected — but not the map itself going away underneath
+  // it, which is what a player being un-revealed looks like from here.
+  const showMap = mapViewIsShowing();
+  const showSheet = !showMap && state.view === 'sheet' && hasViewedCharacter();
+  const panel = document.getElementById('inventory-panel');
+  panel.classList.toggle('map-view', showMap);
+  panel.classList.toggle('sheet-view', showSheet);
   // Arriving at the inventory is where a Strength typed on the sheet finally
   // resizes the grid — see the deferred resize in grid.js. This is the single
   // entry point for "what are we looking at changed", so it is the one place
   // that can know, and it costs nothing when nothing was edited.
-  if (!showSheet) rebuildGridIfSizeDirty();
+  if (!showSheet && !showMap) rebuildGridIfSizeDirty();
   if (showSheet) renderCharacterSheet();
+  // The canvas has no size until the panel is showing it, so the map is told
+  // it is on screen from here rather than from whatever asked for it. Both
+  // halves are called unconditionally — each is a no-op when nothing changed —
+  // so no caller has to remember which way the swap went.
+  if (showMap) onMapViewShown(); else onMapViewHidden();
+  // The corner button is the way *in*, so it stands down once you are there.
+  syncMapButton();
   renderCharacterTabs();
   // The sidebar's tabs answer the same question these do — Browse and Details
   // belong beside a grid of items, Chat and Dice beside a character sheet.
@@ -230,14 +249,19 @@ function characterShortcutsAllowed(e) {
 
 function toggleInventoryView() {
   if (!hasViewedCharacter()) return; // a GM with nobody picked has no sheet to show
+  // From the map, this key means "back to the character" rather than "the other
+  // page of them": the map is not one of the two pages it flips between, and
+  // landing on the sheet from a board would be an arbitrary choice of which.
+  if (state.view === 'map') { setInventoryView('inventory'); return; }
   setInventoryView(state.view === 'sheet' ? 'inventory' : 'sheet');
 }
 
 // Keeps the current view: this half of the selection is about *who*, not about
-// which of their two pages you are reading.
+// which of their two pages you are reading. Asking for a character while the
+// board is up is asking to leave the board, though — the map is nobody's page.
 function showCharacterAt(index) {
   const tab = characterTabList()[index];
-  if (tab) selectCharacterView(tab.key, state.view);
+  if (tab) selectCharacterView(tab.key, state.view === 'map' ? 'inventory' : state.view);
 }
 
 function cycleCharacter(step) {
