@@ -57,6 +57,16 @@ let fogCanvas = null, fogCtx = null, fogScale = 1, fogDirty = true;
 let hiddenTokenIds = new Set();
 const FOG_MAX_DIM = 1600;
 
+// **How soft the fog's edge is, as a fraction of the map's longer side.** A
+// fraction rather than a number of pixels: the softness then reads the same on a
+// small map and a large one, and it is the map the reader is looking at rather
+// than the fog canvas, whose resolution is an implementation detail that changes
+// with `FOG_MAX_DIM`. Under a hundredth of the board — enough that a shadow has
+// no drawn edge, small enough that it is still an answer about where the light
+// stops.
+const FOG_BLUR_FRACTION = 0.008;
+const FOG_BLUR_MIN_PX = 2;
+
 // A gesture in flight: a pan, a token being dragged, a shape being drawn, or
 // the grid being stretched or slid.
 let mapPan = null;      // { sx, sy, camX, camY }
@@ -278,6 +288,30 @@ function zoomMapAt(clientX, clientY, factor) {
 // out of, the honest arithmetic is that nothing is visible — and a board that
 // opens entirely black the first time it is used reads as broken rather than as
 // dark. Fog begins the moment somebody is standing there to cast it.
+// **The edge of a shadow is not a line.** Light falls off, eyes are not
+// cameras, and a hard black boundary crossing a picture of a room reads as a
+// polygon rather than as dark. So every hole the vision cuts, and every region
+// the GM paints, is drawn through a blur.
+//
+// It is done to the **shapes as they are cut**, not to the finished canvas. A
+// blur over the whole thing would soften the fog's own outer boundary too, and
+// that boundary is the edge of the map — where the dark has to stay solid, or
+// the board would end in a glow of half-light leaking in from beyond the
+// picture.
+//
+// The radius is in fog-canvas pixels, which is where the drawing happens.
+// Returns `null` where the browser has no canvas filters, and the caller then
+// draws exactly what it always did: a crisp edge is a worse shadow, not a broken
+// one.
+function fogBlurFilter(fx) {
+  const px = Math.max(FOG_BLUR_MIN_PX, Math.round(Math.max(fogCanvas.width, fogCanvas.height) * FOG_BLUR_FRACTION));
+  const filter = 'blur(' + px + 'px)';
+  fx.filter = filter;
+  const supported = fx.filter === filter;
+  fx.filter = 'none';
+  return supported ? filter : null;
+}
+
 function buildFog(map) {
   const b = mapBounds(map);
   const sources = visionSources(map);
@@ -294,14 +328,21 @@ function buildFog(map) {
 
   const fx = fogCtx;
   fx.setTransform(fogScale, 0, 0, fogScale, 0, 0);
+  fx.filter = 'none';
   fx.globalCompositeOperation = 'source-over';
   fx.fillStyle = '#000';
   fx.fillRect(0, 0, b.w, b.h);
+
+  // The dark itself is laid down hard — it is the whole canvas, and its only
+  // edge is the edge of the map. Everything cut *out* of it is what gets the
+  // soft edge.
+  const blur = fogBlurFilter(fx);
 
   // What each party member can see, cut straight out of the dark.
   const walls = mapWalls(map);
   fx.globalCompositeOperation = 'destination-out';
   fx.fillStyle = '#000';
+  if (blur) fx.filter = blur;
   sources.forEach(t => {
     const at = tokenDrawPos(t);
     const poly = computeVisionPolygon(at.x, at.y, walls, b);
@@ -316,14 +357,23 @@ function buildFog(map) {
   // The GM's own hand, applied over the arithmetic. A revealed region beats
   // what the walls say; an obscured one beats everything, so it goes last —
   // "I have decided you cannot see this" is the strongest claim on the map.
+  // Softened alike: a hand-drawn region is still a claim about what can be seen,
+  // and the one place on the board where the dark had a drawn edge would be
+  // exactly the place the eye went to.
   masks.filter(m => m.mode === 'show').forEach(m => fx.fillRect(m.x, m.y, m.w, m.h));
   fx.globalCompositeOperation = 'source-over';
   fx.fillStyle = '#000';
   masks.filter(m => m.mode === 'hide').forEach(m => fx.fillRect(m.x, m.y, m.w, m.h));
+  fx.filter = 'none';
 
   // Which creatures that leaves off the board. Sampled from the fog rather than
   // recomputed from the polygons, so what is hidden and what is dark are one
   // answer: a creature is on screen if any part of its disc is in the light.
+  //
+  // The blur costs this nothing. A half-alpha threshold on a soft edge is the
+  // middle of the ramp, which is where the hard edge used to be — so a creature
+  // standing on the boundary is judged exactly as before, and one standing in
+  // the new penumbra is judged by whether it is more in the light than out.
   mapTokens(map).forEach(t => {
     const at = tokenDrawPos(t);
     const r = tokenRadius(map, t) * 0.7;

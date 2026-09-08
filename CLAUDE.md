@@ -955,6 +955,31 @@ that stepped in whole squares would be a different game's fog.
   drawn over the board, and sampled under each creature — so **what is hidden
   and what is dark are one answer** and cannot disagree. A creature is on screen
   if any of five probes across its disc lands in the light.
+- **The edge of a shadow is not a line.** Light falls off, eyes are not cameras,
+  and a hard black boundary crossing a picture of a room reads as a polygon
+  rather than as dark — so every hole the vision cuts, and every region the GM
+  paints, is drawn through a canvas `blur()`.
+  - It is applied to the **shapes as they are cut**, never to the finished
+    canvas. Blurring the whole thing would soften the fog's own outer boundary,
+    and that boundary is the edge of the map — where the dark has to stay solid,
+    or the board would end in a glow of half-light leaking in from beyond the
+    picture.
+  - The radius is a **fraction of the map's longer side** (`FOG_BLUR_FRACTION`,
+    under a hundredth), not a number of pixels: softness then reads the same on
+    a small map and a large one, and it is measured against the thing the reader
+    is looking at rather than against the fog canvas, whose resolution is an
+    implementation detail of `FOG_MAX_DIM`. About half a square of penumbra on a
+    normal map.
+  - **The GM's own regions are softened alike.** A hand-drawn Obscure is still a
+    claim about what can be seen, and the one place on the board where the dark
+    kept a drawn edge would be exactly the place the eye went to.
+  - **It costs the creature test nothing.** A half-alpha threshold on a soft edge
+    is the middle of the ramp, which is where the hard edge used to be — so a
+    creature on the boundary is judged as before, and one in the new penumbra by
+    whether it is more in the light than out.
+  - `fogBlurFilter()` **feature-detects and hands back `null`** where a browser
+    has no canvas filters, and buildFog then draws exactly what it always did. A
+    crisp edge is a worse shadow, not a broken one.
 - Order matters at the end of `buildFog()`: vision cuts holes in the dark, a
   **Reveal** region cuts one too, and an **Obscure** region is painted last.
   "I have decided you cannot see this" is the strongest claim on the map.
