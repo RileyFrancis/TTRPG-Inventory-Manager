@@ -965,10 +965,16 @@ that stepped in whole squares would be a different game's fog.
 - The GM sees the fog as a **wash** (0.45) rather than a wall, and hidden
   creatures dimmed rather than gone: they have to see both what the players
   cannot see *and* what is standing in it.
-- A party member **carries the light with them**, so a drag rebuilds the fog on
-  every pointermove rather than snapping it into place on release — that is the
-  whole point of dragging a torch-bearer down a corridor. About 10ms on a
-  deliberately extreme map (40 walls, 30 creatures, 6 sources).
+- **The fog settles when a creature is let go, and not before.** A party member
+  carries the light, so a fog that followed the drag would hand anyone a free
+  look at the whole board: sweep your own token down every corridor, read what
+  the shadows give back, and let go where you started, having moved nothing and
+  learnt everything. Where a creature is *put down* is a decision the table can
+  see; where it passed through on the way is not. So `fogDirty` is set in
+  `onMapPointerUp()` alone — the token moves under the cursor and the dark stays
+  where it was. The rebuild is about 10ms on a deliberately extreme map (40
+  walls, 30 creatures, 6 sources), so the cost was never the argument either
+  way.
 - One player seeing what another sees falls straight out of the fog being a
   **union** rather than a per-viewer answer, which is what a table sitting round
   one board actually does.
@@ -1076,25 +1082,80 @@ rather than a preference. Two things make it possible.
   made the right size". The steppers still nudge by a whole pixel from wherever
   the value is, because that is the unit a hand works in; only what may be
   *stored* changed.
-- **The Grid tool works the size out from a drag.** Drag a box across a few of
-  the picture's own squares and `gridFromCalibration()` reads the size off it —
-  the offsets from the corner the drag started at, wrapped into one cell
-  (`wrapGridOffset()`) so the numbers in the panel stay meaningful.
+- **The Grid tool's handles are the picture's own corners and edges.** Pull one
+  and the grid is magnified about the point opposite — a corner about the corner
+  diagonally across, an edge about the middle of the edge facing it — so drag the
+  top left outward and the squares grow while the bottom right stays welded to
+  the map. Drag anywhere else and the whole grid slides. That is the whole tool:
+  `scaleGridAbout()` and `slideGridBy()` in battlemap.js, THE GRID'S HANDLES in
+  battlemap-view.js.
 
-  How many squares the box covers is **counted at the size the grid is set to
-  now**, which is what turns a rough guess typed in the panel into an exact
-  answer, and what makes the tool converge: each pass divides the previous
-  pass's error away. It is also the one thing that can be wrong, so the count is
-  **drawn on the box while it is dragged** ("5 × 3 squares") — a reader who sees
-  it disagree with the picture drags a shorter box. The count survives an error
-  of up to half a cell across the whole span, so a wilder guess wants a shorter
-  drag first.
+  **A scale about a fixed point answers both halves of the question at once**,
+  which is why there is nothing else to set. A grid on somebody else's picture is
+  "how big is a square" and "where does the run of them start", and the pivot
+  *is* the start: every line lands at `pivot + (line - pivot) * k`, so the offset
+  falls out of the same transform that sets the size. Nothing is counted and
+  nothing is inferred.
 
-  The two spans are averaged weighted by how many squares each crossed
-  (`(w + h) / (nx + ny)` is exactly that), since a drag five squares wide and
-  one tall knows five times as much about the width. An axis shorter than half a
-  cell is measuring nothing and is left out — otherwise a deliberately flat drag
-  along a row would average its own zero height in and halve the answer.
+  It is also **the longest lever the map has**. A square out by a pixel at one
+  corner is out by twenty at the other, so the far side is where that error is
+  visible and where the drag divides it away — no reader has to be asked how much
+  precision they would like.
+
+  Both earlier versions of this asked for a third thing that was about the *tool*
+  rather than the map: first a box dragged out over the picture and counted into
+  a size — counted at the size the grid was already set to, so a guess corrected
+  itself and could be wrong with nothing on screen to say so — and then a frame
+  whose span the reader had to keep in step with the squares underneath it. The
+  corner of the picture needs neither.
+
+  A corner's magnification is read as **the average of what each axis says** —
+  how far the pointer now stands from the pivot, against how far the handle stood
+  from it — rather than as a distance along the diagonal. Along the diagonal, a
+  map twice as wide as it is tall would let sideways movement do most of the
+  work, and the grid would pull unevenly under the hand.
+
+  **An edge is the same gesture with one axis held back**, and the two kinds of
+  handle differ in exactly that one field (`axis` in `GRID_HANDLE_SPOTS`). A
+  corner is pulled diagonally and both axes have an opinion; an edge is pushed
+  straight in or out, so only the axis it faces is asked and movement *along* the
+  edge counts for nothing. That makes it the finer of the two — a hand wandering
+  sideways across the picture cannot nudge the answer — and it is the handle to
+  reach for when only the size is wrong. The grid still scales about a *point*
+  (the middle of the opposite edge), so the lines move on both axes; it is the
+  reading of the drag that is one-dimensional, not the transform.
+
+  Both live on one rule: `ix` / `iy` run 0 to 1 across the map and the pivot is
+  always `1 - i`, which gives a corner its diagonal and an edge its opposite side
+  without either being written out. The shapes follow the same fact — a corner is
+  a square block, an edge a bar lying along its own edge — so which way a handle
+  moves is legible before it is touched, and the cursor says it again.
+
+  The applied factor is taken from the **clamped** size, not from the factor as
+  asked: at either end of the size range the squares stop growing, and an offset
+  that went on scaling past that point would slide the grid sideways under a hand
+  that was only trying to make the squares bigger.
+- **Sizing and positioning are two gestures, and that is honest.** Scaling
+  preserves where the pivot sits inside its own square, so it can never fix a
+  grid that is the right size in the wrong place — that is what dragging the
+  middle is for. Scale until the squares match, slide until the lines do.
+- **Nothing about the tool is stored.** The handles are drawn while it is up and
+  are not part of the map; there is no frame, no span, and no state to keep in
+  step with a grid that somebody else may be editing.
+- **The grid is written once, on release.** Every pointermove is drawn from a
+  pending copy (`viewGrid()` / `viewCellSize()`), so the reader watches the lines
+  move the whole way — but a write per move is a write per move into a database
+  every other member of the party is reading. A click that never moved writes
+  nothing, and Escape abandons the drag with the stored grid untouched.
+- **The size reached is said at the handle in the reader's hand**, as well as in
+  the bar under the map: mid-drag they are watching the handle and the lines
+  moving under it, not a caption by their knee. The readout is pushed inwards off
+  whichever edges the handle sits on and centred on the one it sits in the middle
+  of, so it is on the board wherever it is drawn.
+- **The left button no longer pans the camera while this tool is up** — it slides
+  the grid, from anywhere, because the grid runs over the whole picture and the
+  whole picture is therefore its middle. The middle and right buttons still pan,
+  as they do under every tool.
 - While the tool is up the grid is drawn **in accent, and drawn whether or not
   it is switched on for play**: it is the thing being worked on. Turning the
   grid off to look at the picture and then being unable to line it up is the
@@ -1102,7 +1163,9 @@ rather than a preference. Two things make it possible.
 - The numbers stay in the **Maps pane**, not on the map's toolbar. Opening a map
   brings that pane up (see *The board*), so they are already beside the picture
   — and a second set of boxes on the toolbar would be a second editor for one
-  value.
+  value. The bar under the map is not that: it says what the two gestures are and
+  reads the same three numbers back, so a reader watching the lines move never
+  has to look away from the picture.
 
 ### The left panel and its tabs
 

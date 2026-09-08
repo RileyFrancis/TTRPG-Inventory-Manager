@@ -57,13 +57,24 @@ let fogCanvas = null, fogCtx = null, fogScale = 1, fogDirty = true;
 let hiddenTokenIds = new Set();
 const FOG_MAX_DIM = 1600;
 
-// A gesture in flight: a pan, a token being dragged, or a shape being drawn.
+// A gesture in flight: a pan, a token being dragged, a shape being drawn, or
+// the grid being stretched or slid.
 let mapPan = null;      // { sx, sy, camX, camY }
 let mapTokenDrag = null;// { id, x, y, dx, dy, moved }
 let mapDrawing = null;  // { tool, x0, y0, x1, y1 }
+let mapGridDrag = null; // { mode, held, pivot, sx, sy, grid0, grid, moved }
 
 const MAP_MIN_SCALE = 0.05;
 const MAP_MAX_SCALE = 8;
+
+// **The Grid tool's handles are the picture's own corners and edges.** Drag one
+// and the grid is magnified about the point opposite — a corner about the corner
+// diagonally across, an edge about the middle of the edge facing it. Drag
+// anywhere else and the whole grid slides. See THE GRID'S HANDLES below.
+//
+// Their reach is in *screen* pixels: a handle is something the hand aims at, so
+// it is the same size however far the board is zoomed out.
+const GRID_HANDLE_PX = 13;
 
 // =============================================================================
 // WHAT IS BEING LOOKED AT
@@ -179,7 +190,7 @@ function onMapViewShown() {
 function onMapViewHidden() {
   if (!mapOpen) return;
   mapOpen = false;
-  mapPan = mapTokenDrag = mapDrawing = null;
+  mapPan = mapTokenDrag = mapDrawing = mapGridDrag = null;
   mapSelectedTokenId = null;
   syncGridHint();
 }
@@ -397,19 +408,33 @@ function drawBattlemap() {
   if (canEditMap()) drawMapMasks(ctx, map);
   drawMapTokens(ctx, map);
   drawMapDrawing(ctx);
+  if (mapTool === 'grid' && canEditMap()) drawGridHandles(ctx, map);
 
   ctx.restore();
 }
 
+// The grid as it is *being* dragged, which is not yet the grid as it is stored:
+// a size or an offset is written once, on release, rather than a write per
+// pointermove into a database every other member is reading. Everything that
+// draws the grid asks these two rather than the model's own, so what is under
+// the cursor is what the release will commit.
+function viewGrid(map) {
+  return mapGridDrag ? mapGridDrag.grid : mapGrid(map);
+}
+function viewCellSize(map) {
+  const s = viewGrid(map).size;
+  return Number.isFinite(s) && s >= 4 ? s : mapCellSize(map);
+}
+
 function drawMapGrid(ctx, map, b) {
-  const g = mapGrid(map);
+  const g = viewGrid(map);
   // While the Grid tool is up the grid is what is being worked on, so it is
   // drawn whether or not it is switched on for play and whether or not it is
   // faint enough to read against the picture. Turning it off to look at the map
   // and then being unable to line it up is the trap this avoids.
   const tuning = mapTool === 'grid';
   if (g.visible === false && !tuning) return;
-  const cell = mapCellSize(map);
+  const cell = viewCellSize(map);
   if (cell * mapCam.scale < 4) return; // too fine to read; drawing it is just noise
 
   ctx.save();
@@ -531,7 +556,6 @@ function drawMapDrawing(ctx) {
     'wall-circle': 'rgba(255, 92, 92, 0.95)',
     'fog-hide':    'rgba(150, 110, 220, 0.95)',
     'fog-show':    'rgba(90, 210, 130, 0.95)',
-    'grid':        'rgba(255, 196, 64, 0.95)',
   }[mapDrawing.tool] || 'rgba(255, 255, 255, 0.95)';
   ctx.strokeStyle = tone;
   ctx.fillStyle = tone.replace(/[\d.]+\)$/, '0.18)');
@@ -543,41 +567,12 @@ function drawMapDrawing(ctx) {
   }
   ctx.fill();
   ctx.stroke();
-  if (mapDrawing.tool === 'grid') drawCalibrationCount(ctx, r);
   ctx.restore();
 }
 
-// **How many squares the box is being read as, said on the box.** The size it
-// works out is the box divided by that count, so the count is the whole of
-// whether the answer will be right — and it is a guess made from the size the
-// grid is set to now, which is the part that can be wrong. Shown, the reader
-// sees "6 × 4 squares" disagree with the picture and drags a shorter box; not
-// shown, they would see only a grid that came out wrong by a sixth with nothing
-// to say why.
-function drawCalibrationCount(ctx, r) {
-  const map = viewedMap();
-  if (!map) return;
-  const n = calibrationSpanCells(map, r);
-  if (!n.x && !n.y) return;
-  const text = (n.x || '—') + ' × ' + (n.y || '—') + ' squares';
-
-  // Drawn at a fixed size on *screen*: it is a readout of the gesture, not a
-  // mark on the board, so it must not shrink away as the map is zoomed out.
-  const fs = 13 / mapCam.scale;
-  ctx.save();
-  ctx.setLineDash([]);
-  ctx.font = '600 ' + fs + 'px system-ui, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  const w = ctx.measureText(text).width;
-  const cx = r.x + r.w / 2, cy = r.y + r.h / 2;
-  ctx.fillStyle = 'rgba(12, 9, 5, 0.82)';
-  ctx.fillRect(cx - w / 2 - fs * 0.5, cy - fs * 0.85, w + fs, fs * 1.7);
-  ctx.fillStyle = '#ffd479';
-  ctx.fillText(text, cx, cy);
-  ctx.restore();
-}
-
+// The rectangle a drag has swept out, whichever corner it was started from, and
+// the radius a circle has reached. Both read the same `mapDrawing` the commit
+// does, so the shape written is the shape that was shown.
 function drawingRect(d) {
   return {
     x: Math.min(d.x0, d.x1), y: Math.min(d.y0, d.y1),
@@ -585,6 +580,181 @@ function drawingRect(d) {
   };
 }
 function drawingRadius(d) { return Math.hypot(d.x1 - d.x0, d.y1 - d.y0); }
+
+// =============================================================================
+// THE GRID'S HANDLES
+// =============================================================================
+// **The grid is lined up by dragging the picture it has to line up with.** The
+// handles are the map's own corners and edges: pull one and the grid is
+// magnified about the point opposite — a corner about the corner diagonally
+// across, an edge about the middle of the edge facing it — so that point stays
+// welded where it is and the squares grow or shrink under the hand. Drag
+// anywhere else and the whole grid slides.
+//
+// There is nothing else to set, and that is the point. A grid on somebody else's
+// picture is two questions — how big is a square, and where does the run of them
+// start — and a scale about a fixed point answers both at once, because the
+// pivot *is* the start. The old versions of this both asked the reader for a
+// third thing that was really about the tool rather than the map: a box to count
+// squares in, then a frame to say how many squares it spanned. A corner of the
+// picture needs no such thing, and it is the longest lever the map has to offer,
+// so it is also the most precise: a square out by a pixel at one corner is
+// visibly out by twenty at the other, and the drag divides that error by every
+// square in between.
+//
+// **An edge is the same gesture with one axis held back.** A corner is pulled
+// diagonally and both axes have an opinion about the magnification; an edge is
+// pushed straight in or out and only the axis it faces does, so movement along
+// the edge is ignored rather than averaged in. That is what makes it the finer
+// of the two — a hand crossing the picture sideways cannot nudge the answer —
+// and it is why the two kinds of handle differ in exactly one field.
+//
+// Nothing here is stored. The handles are drawn while the tool is up and are
+// otherwise not part of the map at all.
+
+// Where the handles are, in the picture's own pixels. `ix` / `iy` run 0 to 1
+// across the map, so a half is the middle of an edge and the pivot is always
+// `1 - i` — one rule that gives the corner its diagonal and the edge its
+// opposite side without either being written out.
+const GRID_HANDLE_SPOTS = [
+  { ix: 0,   iy: 0,   axis: null },   // the four corners: both axes speak
+  { ix: 1,   iy: 0,   axis: null },
+  { ix: 0,   iy: 1,   axis: null },
+  { ix: 1,   iy: 1,   axis: null },
+  { ix: 0.5, iy: 0,   axis: 'y' },    // the four edges: only the axis they face
+  { ix: 0.5, iy: 1,   axis: 'y' },
+  { ix: 0,   iy: 0.5, axis: 'x' },
+  { ix: 1,   iy: 0.5, axis: 'x' },
+];
+
+function mapGridHandles(map) {
+  const b = mapBounds(map);
+  return GRID_HANDLE_SPOTS.map(h => ({
+    ...h,
+    x: b.x + h.ix * b.w,
+    y: b.y + h.iy * b.h,
+    pivot: { x: b.x + (1 - h.ix) * b.w, y: b.y + (1 - h.iy) * b.h },
+  }));
+}
+
+// Which handle the pointer is on, measured in **screen** pixels for the reason
+// they are drawn at a fixed screen size: they are targets for the hand, not
+// marks on the board. A handle scrolled off the edge simply cannot be grabbed —
+// Fit brings the whole picture, and all eight, back.
+//
+// Nearest wins, so on a map squeezed small enough for a corner and an edge to
+// overlap the reader gets whichever they were actually closer to.
+function gridHandleAtPoint(map, clientX, clientY) {
+  const r = mapCanvas.getBoundingClientRect();
+  const px = clientX - r.left, py = clientY - r.top;
+  let best = null, bestD = GRID_HANDLE_PX + 5;
+  mapGridHandles(map).forEach(h => {
+    const at = worldToScreen(h.x, h.y);
+    const d = Math.hypot(px - at.x, py - at.y);
+    if (d <= bestD) { bestD = d; best = h; }
+  });
+  return best;
+}
+
+// **How far the handle has been pulled, as one number.** Each axis says what it
+// thinks the magnification is — how far the pointer now stands from the pivot,
+// against how far the handle stood from it.
+//
+// A corner averages the two. Averaged rather than measured along the diagonal,
+// so the answer does not depend on the shape of the picture: on a map twice as
+// wide as it is tall, a diagonal measurement would let sideways movement do most
+// of the work and the grid would pull unevenly under the hand.
+//
+// **An edge asks only the axis it faces**, which is the whole of what an edge
+// handle is for. Its other axis is a span of zero — the handle and its pivot
+// share that coordinate — so there is no ratio there to take, and movement along
+// the edge is not a magnification of anything.
+//
+// A drag straight past the pivot is a magnification of nothing, and the size
+// clamp is what catches it.
+function scaleGridDrag(map, drag, w) {
+  const held = drag.held, pivot = drag.pivot;
+  const spanX = held.x - pivot.x, spanY = held.y - pivot.y;
+  const kx = held.axis === 'y' || !spanX ? null : Math.abs((w.x - pivot.x) / spanX);
+  const ky = held.axis === 'x' || !spanY ? null : Math.abs((w.y - pivot.y) / spanY);
+  const ks = [kx, ky].filter(k => k !== null);
+  if (!ks.length) return;
+  const k = ks.reduce((a, b) => a + b, 0) / ks.length;
+  drag.grid = { ...drag.grid0, ...scaleGridAbout(drag.grid0, pivot, k) };
+}
+
+function slideGridDrag(map, drag, e) {
+  const dx = (e.clientX - drag.sx) / mapCam.scale;
+  const dy = (e.clientY - drag.sy) / mapCam.scale;
+  drag.grid = { ...drag.grid0, ...slideGridBy(drag.grid0, dx, dy) };
+}
+
+// The cursor a handle deserves: an edge moves one way, a corner both.
+function gridHandleCursor(h) {
+  if (h.axis === 'x') return 'ew-resize';
+  if (h.axis === 'y') return 'ns-resize';
+  return h.ix === h.iy ? 'nwse-resize' : 'nesw-resize';
+}
+
+// The handles, and — while one is held — what the drag has made of the squares.
+// A corner is a square block and an edge is a bar lying along the edge it
+// belongs to, so which axis a handle will move is legible before it is touched.
+function drawGridHandles(ctx, map) {
+  const accent = 'rgba(255, 196, 64, ';
+  const px = 1 / mapCam.scale;           // one screen pixel, in image pixels
+  const size = GRID_HANDLE_PX * px;
+  const held = mapGridDrag && mapGridDrag.mode === 'scale' ? mapGridDrag.held : null;
+
+  ctx.save();
+  ctx.setLineDash([]);
+  ctx.strokeStyle = 'rgba(20, 14, 6, 0.9)';
+  ctx.lineWidth = Math.max(1, px);
+  const LONG = size * 2.6, THIN = size * 0.55;
+  mapGridHandles(map).forEach(h => {
+    const on = held && held.ix === h.ix && held.iy === h.iy;
+    ctx.fillStyle = accent + (on ? '1)' : '0.9)');
+    // Lying along its own edge, and thin across it: the shape of a handle says
+    // which way it will move before it is touched.
+    const w = h.axis === 'y' ? LONG : h.axis === 'x' ? THIN : size;
+    const t = h.axis === 'y' ? THIN : h.axis === 'x' ? LONG : size;
+    // Tucked inside the picture rather than centred on the rim: half a handle
+    // hanging off the map is half a handle to aim at, and the rim is exactly
+    // where the reader has the least room.
+    const x = h.x - (h.ix === 1 ? w : h.ix === 0.5 ? w / 2 : 0);
+    const y = h.y - (h.iy === 1 ? t : h.iy === 0.5 ? t / 2 : 0);
+    ctx.fillRect(x, y, w, t);
+    ctx.strokeRect(x, y, w, t);
+  });
+  if (held) drawGridScaleLabel(ctx, map, held);
+  ctx.restore();
+}
+
+// The size the squares have reached, said at the handle being pulled. The bar
+// under the map says it too, but a reader mid-drag is looking at the handle in
+// their hand and at the lines moving under it, not at a caption by their knee.
+function drawGridScaleLabel(ctx, map, held) {
+  const text = roundGridValue(viewCellSize(map)) + ' px per square';
+  const fs = 13 / mapCam.scale;
+  const pad = 10 / mapCam.scale;
+
+  ctx.save();
+  ctx.font = '600 ' + fs + 'px system-ui, sans-serif';
+  // Pushed inwards off whichever edges the handle sits on, and centred on the
+  // one it sits in the middle of — so the readout is on the board wherever the
+  // handle is.
+  ctx.textAlign = held.ix === 0 ? 'left' : held.ix === 1 ? 'right' : 'center';
+  ctx.textBaseline = held.iy === 0 ? 'top' : held.iy === 1 ? 'bottom' : 'middle';
+  const w = ctx.measureText(text).width;
+  const x = held.x + (held.ix === 0 ? pad : held.ix === 1 ? -pad : 0);
+  const y = held.y + (held.iy === 0 ? pad : held.iy === 1 ? -pad : 0);
+  const boxX = (held.ix === 0 ? x : held.ix === 1 ? x - w : x - w / 2) - fs * 0.5;
+  const boxY = (held.iy === 0 ? y : held.iy === 1 ? y - fs * 1.2 : y - fs * 0.6) - fs * 0.25;
+  ctx.fillStyle = 'rgba(12, 9, 5, 0.82)';
+  ctx.fillRect(boxX, boxY, w + fs, fs * 1.7);
+  ctx.fillStyle = '#ffd479';
+  ctx.fillText(text, x, y);
+  ctx.restore();
+}
 
 // =============================================================================
 // THE POINTER
@@ -614,6 +784,20 @@ function onMapPointerDown(e) {
   if (e.button !== 0) return;
 
   if (mapTool === 'erase') { eraseMapPieceAt(map, w); return; }
+
+  // The Grid tool is the picture: a corner or an edge of the map magnifies the
+  // grid about the point opposite, anywhere else slides the whole thing. Sliding
+  // from anywhere rather than from some handle is deliberate — the grid runs over
+  // the whole picture, so the whole picture is its middle.
+  if (mapTool === 'grid') {
+    const handle = gridHandleAtPoint(map, e.clientX, e.clientY);
+    const grid0 = mapGrid(map);
+    mapGridDrag = handle
+      ? { mode: 'scale', held: handle, pivot: handle.pivot, grid0, grid: grid0, moved: false }
+      : { mode: 'slide', sx: e.clientX, sy: e.clientY, grid0, grid: grid0, moved: false };
+    drawBattlemap();
+    return;
+  }
 
   if (mapTool === 'select') {
     const token = tokenAtPoint(map, w.x, w.y);
@@ -645,15 +829,23 @@ function onMapPointerMove(e) {
   if (!map) return;
   const w = screenToWorld(e.clientX, e.clientY);
 
+  if (mapGridDrag) {
+    if (mapGridDrag.mode === 'scale') scaleGridDrag(map, mapGridDrag, w);
+    else slideGridDrag(map, mapGridDrag, e);
+    mapGridDrag.moved = true;
+    syncGridHint();
+    drawBattlemap();
+    return;
+  }
+
   if (mapTokenDrag) {
     mapTokenDrag.x = w.x + mapTokenDrag.dx;
     mapTokenDrag.y = w.y + mapTokenDrag.dy;
     mapTokenDrag.moved = true;
-    // A party member carries the light with them, so the fog follows the drag
-    // rather than snapping into place when it is let go. That is the whole
-    // point of dragging a torch-bearer down a corridor.
-    const token = (map.tokens || {})[mapTokenDrag.id];
-    if (token && token.hostility === 'party') fogDirty = true;
+    // **The fog does not follow the drag.** It is rebuilt when the creature is
+    // let go, and not before — see the note on onMapPointerUp(). So the token
+    // moves under the cursor and the dark stays where it was until the move is
+    // a move rather than a look.
     drawBattlemap();
     return;
   }
@@ -662,6 +854,15 @@ function onMapPointerMove(e) {
     mapDrawing.x1 = w.x;
     mapDrawing.y1 = w.y;
     drawBattlemap();
+    return;
+  }
+
+  // Nothing is held: the cursor is what says a corner or an edge of the picture
+  // is a handle before it is grabbed — and which way that one will move — while
+  // everywhere else says it will move the grid bodily.
+  if (mapTool === 'grid') {
+    const handle = gridHandleAtPoint(map, e.clientX, e.clientY);
+    mapCanvas.style.cursor = handle ? gridHandleCursor(handle) : 'move';
   }
 }
 
@@ -669,6 +870,23 @@ function onMapPointerUp(e) {
   if (mapCanvas.hasPointerCapture(e.pointerId)) mapCanvas.releasePointerCapture(e.pointerId);
   const map = viewedMap();
   mapPan = null;
+
+  // The grid is written **once, on release**. Every pointermove has already
+  // been drawn from the pending copy, so the reader has watched the answer the
+  // whole way — but a write per move would be a write per move into a database
+  // every other member of the party is reading.
+  if (mapGridDrag) {
+    const drag = mapGridDrag;
+    mapGridDrag = null;
+    // A click that never moved is not an edit. Without this every stray click
+    // with the tool up would write the grid back to itself, and every member of
+    // the party would be handed a snapshot to redraw for nothing.
+    if (map && drag.moved) updateMapGrid(map.id, drag.grid);
+
+    syncGridHint();
+    drawBattlemap();
+    return;
+  }
 
   if (mapTokenDrag) {
     const drag = mapTokenDrag;
@@ -678,6 +896,11 @@ function onMapPointerUp(e) {
       const snapped = snapToGrid(map, drag.x, drag.y, token ? token.size : 1);
       updateToken(map.id, drag.id, snapped);
     }
+    // **The fog settles here, and only here.** A creature carries the light, so
+    // a fog that followed the drag would let anyone sweep their own token across
+    // the board and read the whole map back out of the shadows without ever
+    // letting go — a look costing nothing, and undoable. Where a creature is put
+    // down is a decision; where it passed through on the way is not.
     fogDirty = true;
     drawBattlemap();
     return;
@@ -712,13 +935,6 @@ const MAP_MIN_SHAPE = 6;
 function commitMapDrawing(map, d) {
   if (!canEditMap()) return;
   const r = drawingRect(d);
-  if (d.tool === 'grid') {
-    // Nothing is drawn on the map by this one - the box was a measurement, and
-    // what it produces is three numbers in the map's grid.
-    const g = gridFromCalibration(map, r);
-    if (g) { updateMapGrid(map.id, g); syncGridHint(); }
-    return;
-  }
   if (d.tool === 'wall-circle') {
     const radius = drawingRadius(d);
     if (radius < MAP_MIN_SHAPE) return;
@@ -751,7 +967,7 @@ function eraseMapPieceAt(map, w) {
 // selection, and a player's strip is the short one that is left.
 const MAP_TOOLS = [
   { id: 'select',      label: 'Select',  hint: 'Move creatures · drag the board to pan',   gm: false },
-  { id: 'grid',        label: 'Grid',    hint: 'Line the grid up: drag a box across a few of the picture’s own squares', gm: true },
+  { id: 'grid',        label: 'Grid',    hint: 'Line the grid up: drag a corner or edge of the map to size the squares, anywhere else to slide them', gm: true },
   { id: 'wall-rect',   label: 'Wall',    hint: 'Drag a rectangle over a wall — it blocks sight', gm: true },
   { id: 'wall-circle', label: 'Pillar',  hint: 'Drag out a circle over a tree or a pillar', gm: true },
   { id: 'fog-hide',    label: 'Obscure', hint: 'Drag a region the players cannot see into', gm: true },
@@ -759,19 +975,24 @@ const MAP_TOOLS = [
   { id: 'erase',       label: 'Erase',   hint: 'Click a wall or a fog edit to remove it',   gm: true },
 ];
 
-// The Grid tool's standing instruction, under the map. A gesture nobody can
-// guess at needs saying once, where it is being done — and the size the grid is
-// set to now beside it, because that is what the drag counts squares against
-// and therefore the number that explains a count coming out wrong.
+// **The Grid tool's own bar, under the map**: what the two gestures are, and
+// what the grid is at this moment. A gesture nobody can guess at needs saying
+// once, where it is being done — and the numbers beside it are the same three
+// the Maps pane has in boxes, so a reader watching the lines move can read what
+// they have arrived at without looking away from the picture.
+//
+// There is nothing to set here. Everything the tool needs is on the map: the
+// corners of the picture, and everywhere else.
 function syncGridHint() {
   const el = document.getElementById('map-grid-hint');
   if (!el) return;
   const map = viewedMap();
-  const on = mapOpen && mapTool === 'grid' && !!map;
+  const on = mapOpen && mapTool === 'grid' && !!map && canEditMap();
   el.classList.toggle('hidden', !on);
   if (!on) return;
-  const g = mapGrid(map);
-  el.textContent = 'Drag a box across whole squares of the picture — the grid takes its size from it. '
+  const g = viewGrid(map);
+  el.textContent = 'Drag a corner or an edge of the map to grow or shrink the squares — the far side stays put. '
+    + 'Drag anywhere else to slide the grid. '
     + 'Now: ' + roundGridValue(g.size) + ' px, offset ' + roundGridValue(g.offsetX)
     + ' / ' + roundGridValue(g.offsetY) + '.';
 }
@@ -793,7 +1014,13 @@ function renderMapToolbar() {
     b.className = 'map-tool' + (t.id === mapTool ? ' active' : '');
     b.textContent = t.label;
     b.title = t.hint;
-    b.addEventListener('click', () => { mapTool = t.id; renderMapToolbar(); drawBattlemap(); });
+    b.addEventListener('click', () => {
+      mapTool = t.id;
+      // The resize cursor belongs to the Grid tool, so it is put down with it.
+      if (mapTool !== 'grid' && mapCanvas) mapCanvas.style.cursor = '';
+      renderMapToolbar();
+      drawBattlemap();
+    });
     tools.appendChild(b);
   });
   syncGridHint();
@@ -863,8 +1090,10 @@ document.addEventListener('keydown', e => {
   if (t && t.matches && t.matches('input, textarea, select')) return;
   if (t && t.isContentEditable) return;
   if (e.key === 'Escape') {
-    // A shape half drawn is what Escape is refusing, not the whole map.
+    // A shape half drawn — or a grid half dragged — is what Escape is refusing,
+    // not the whole map.
     if (mapDrawing) { mapDrawing = null; drawBattlemap(); return; }
+    if (mapGridDrag) { mapGridDrag = null; drawBattlemap(); return; }
     closeBattlemap();
   } else if ((e.key === 'Delete' || e.key === 'Backspace') && mapSelectedTokenId) {
     const map = viewedMap();

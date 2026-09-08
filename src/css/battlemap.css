@@ -171,11 +171,13 @@
 #map-empty .map-empty-icon { font-size: 34px; opacity: 0.5; }
 #map-empty p { font-size: 13px; opacity: 0.75; max-width: 44ch; line-height: 1.6; }
 
-/* What the Grid tool is doing, said where it is being done — and the size the
-   grid is set to now beside it, because that is the number the calibration drag
-   counts squares against. Above the legend rather than beside it: this is a
-   sentence and that is three words, and side by side in a panel a reader has
-   dragged narrow they would fight over the same row. */
+/* What the Grid tool is doing, said where it is being done — the two gestures,
+   and the three numbers they are moving. Above the legend rather than beside it:
+   this is a sentence and that is three words, and side by side in a panel a
+   reader has dragged narrow they would fight over the same row.
+
+   It takes no clicks: everything this tool needs is on the map itself, so the
+   bar is a caption over the board rather than a set of controls on it. */
 #map-grid-hint {
   position: absolute;
   left: 12px;

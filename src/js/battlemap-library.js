@@ -227,9 +227,11 @@ function mapSectionHdr(text) {
 // what may be *stored* has changed.
 //
 // It is still a fiddly job done by eye, though, which is why the real answer to
-// sizing is the **Grid tool** on the map itself: drag a box across a few of the
-// picture's own squares and it works the size out — see calibrateMapGrid() in
-// battlemap-view.js. These boxes are where that answer lands.
+// sizing is the **Grid tool** on the map itself: the picture's own corners and
+// edges are the handles, so pulling one magnifies the grid about the point
+// opposite and dragging anywhere else slides it — see THE GRID'S HANDLES in
+// battlemap-view.js. These boxes are where that answer lands, and the place to
+// type an exact number somebody else has already worked out.
 function buildGridControls(map) {
   const wrap = document.createElement('div');
   wrap.className = 'map-grid-controls';
@@ -253,7 +255,7 @@ function buildGridControls(map) {
     input.min = min; input.max = max;
     // `any` rather than a decimal step: the steppers below are the whole-pixel
     // nudge, and the browser's own validation must not round off an exact size
-    // the calibration drag worked out.
+    // a corner drag worked out.
     input.step = 'any';
     input.value = roundGridValue(g[key]);
     input.title = hint;
@@ -269,8 +271,8 @@ function buildGridControls(map) {
     };
     const cur = () => { const v = parseFloat(input.value); return Number.isFinite(v) ? v : 0; };
     // A stepper nudges by a whole pixel *from wherever the value is*, so a
-    // calibrated 70.42 steps to 69.42 rather than snapping to 69 and throwing
-    // the alignment away.
+    // dragged 70.42 steps to 69.42 rather than snapping to 69 and throwing the
+    // alignment away.
     dec.addEventListener('click', () => set(cur() - 1));
     inc.addEventListener('click', () => set(cur() + 1));
     // On change rather than input: every keystroke would be its own write.
@@ -302,9 +304,9 @@ function buildGridControls(map) {
 
   const hint = document.createElement('p');
   hint.className = 'shop-price-note';
-  hint.textContent = 'Pick the Grid tool on the map and drag a box across a few of the picture’s own '
-    + 'squares to work the size out. Creatures snap to these squares whether the grid is drawn or '
-    + 'not. Hex grids are not built yet.';
+  hint.textContent = 'Pick the Grid tool on the map, then drag a corner or an edge of the map to grow '
+    + 'or shrink the squares — the far side stays put — and drag anywhere else to slide them. '
+    + 'Creatures snap to these squares whether the grid is drawn or not. Hex grids are not built yet.';
   wrap.appendChild(hint);
 
   return wrap;

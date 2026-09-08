@@ -97,56 +97,65 @@ function roundGridValue(v) {
 }
 
 // An offset means the same thing every cell along, so it is kept inside one
-// cell. That is not arithmetic tidiness: it is what stops the calibration drag
-// below writing an offset of 1840 into a box the reader then has to make sense
-// of, when what it means is 24.
+// cell. That is not arithmetic tidiness: it is what stops the drags below
+// writing an offset of 1840 into a box the reader then has to make sense of,
+// when what it means is 24.
 function wrapGridOffset(v, cell) {
   if (!Number.isFinite(v) || !(cell > 0)) return 0;
   return roundGridValue(((v % cell) + cell) % cell);
 }
 
-// **Working the cell size out from a box dragged across the picture's own
-// squares** — the answer to lining a grid up, and the one thing a pair of
-// number boxes is bad at. The box says nothing about how many squares it
-// covers, so the size the grid is *currently* set to is what counts them: a
-// rough guess typed in the panel becomes an exact one, and the longer the drag
-// the more of the guess's error it divides away.
+// **The grid is stretched and slid by dragging the picture**, not by typing
+// numbers at it — see THE GRID'S CORNERS in battlemap-view.js. What lands here
+// is the arithmetic those two gestures are: a scale about a point, and a
+// translation.
+
+// The size a grid may be given. The floor is what mapCellSize() will accept back
+// (a cell of nothing divides), and the ceiling is the number boxes' own, so a
+// dragged size and a typed one cannot disagree about what is allowed.
+const MAP_GRID_MIN_SIZE = 8;
+const MAP_GRID_MAX_SIZE = 600;
+
+function clampGridSize(v) {
+  if (!Number.isFinite(v)) return MAP_GRID_DEFAULT.size;
+  return Math.max(MAP_GRID_MIN_SIZE, Math.min(MAP_GRID_MAX_SIZE, v));
+}
+
+function gridSizeOf(grid) {
+  const s = grid?.size;
+  return Number.isFinite(s) && s >= 4 ? s : MAP_GRID_DEFAULT.size;
+}
+
+// **Scaling the whole grid about one point.** Dragging a corner of the picture
+// stretches the grid from the corner opposite, so the lines are not resized —
+// they are *magnified*, pivot and all. A line at `x` lands at
+// `pivot + (x - pivot) * k`, which for the run of lines the offset names means
+// the offset moves by exactly that and the size multiplies. Nothing else has to
+// be worked out: one transform describes the whole grid, which is why the corner
+// the reader is not touching stays welded to the picture.
 //
-// The two spans are averaged weighted by how many squares each crossed
-// (`(w + h) / (nx + ny)` is exactly that), because a drag five squares wide and
-// one square tall knows five times as much about the width as the height. An
-// axis shorter than half a cell is not measuring anything and is left out
-// entirely — otherwise a deliberately flat drag along a row of squares would
-// average its own zero height in and halve the answer.
-function gridFromCalibration(map, rect) {
-  const cell = mapCellSize(map);
-  const useX = rect.w >= cell * 0.5;
-  const useY = rect.h >= cell * 0.5;
-  if (!useX && !useY) return null;
-
-  let span = 0, cells = 0;
-  if (useX) { span += rect.w; cells += Math.max(1, Math.round(rect.w / cell)); }
-  if (useY) { span += rect.h; cells += Math.max(1, Math.round(rect.h / cell)); }
-  const size = span / cells;
-  if (!(size >= 4) || !Number.isFinite(size)) return null;
-
-  // The corner the drag started from is a grid intersection by construction —
-  // that is what the reader was aiming at — so it is the offset.
+// The applied factor is read back off the *clamped* size rather than used as
+// asked. At the ends of the range the size stops moving, and an offset that went
+// on scaling past it would slide the grid sideways under a hand that was only
+// trying to make the squares bigger.
+function scaleGridAbout(grid, pivot, k) {
+  const base = gridSizeOf(grid);
+  const size = clampGridSize(base * k);
+  const applied = size / base;
   return {
     size: roundGridValue(size),
-    offsetX: wrapGridOffset(rect.x, size),
-    offsetY: wrapGridOffset(rect.y, size),
+    offsetX: wrapGridOffset(pivot.x + (grid.offsetX - pivot.x) * applied, size),
+    offsetY: wrapGridOffset(pivot.y + (grid.offsetY - pivot.y) * applied, size),
   };
 }
 
-// How many squares a calibration box is being read as, for the label drawn on
-// it while it is dragged. Same counting the commit uses, so the number shown is
-// the number acted on.
-function calibrationSpanCells(map, rect) {
-  const cell = mapCellSize(map);
+// Sliding is the same grid moved bodily under the picture: the size is untouched
+// and both offsets take the pointer's delta.
+function slideGridBy(grid, dx, dy) {
+  const cell = gridSizeOf(grid);
   return {
-    x: rect.w >= cell * 0.5 ? Math.max(1, Math.round(rect.w / cell)) : 0,
-    y: rect.h >= cell * 0.5 ? Math.max(1, Math.round(rect.h / cell)) : 0,
+    offsetX: wrapGridOffset(grid.offsetX + dx, cell),
+    offsetY: wrapGridOffset(grid.offsetY + dy, cell),
   };
 }
 
