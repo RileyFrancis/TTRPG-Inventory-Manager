@@ -566,7 +566,7 @@ function drawMoveCostLabel(ctx, map, token, at, r) {
   if (!entry) return;
   const speed = tokenSpeed(token);
   const usedBefore = entry.moveUsed || 0;
-  const distFeet = pixelsToFeet(map, Math.hypot(at.x - mapTokenDrag.ox, at.y - mapTokenDrag.oy));
+  const distFeet = gridManhattanFeet(map, mapTokenDrag.ox, mapTokenDrag.oy, at.x, at.y, token.size);
   const remaining = Math.max(0, speed - usedBefore - distFeet);
   const maxedOut = distFeet >= speed - usedBefore;
   const text = Math.round(distFeet) + ' ft' + (distFeet > 0 ? ' · ' + Math.round(remaining) + ' ft left' : '');
@@ -843,12 +843,14 @@ function onMapPointerMove(e) {
     let nx = w.x + mapTokenDrag.dx;
     let ny = w.y + mapTokenDrag.dy;
     // A token with a tracked budget cannot be dragged past what it has left —
-    // the leash is the straight-line distance from where this drag started,
-    // pulled back onto that line rather than just refused outright.
+    // the leash is the Manhattan (grid) distance from where this drag started,
+    // pulled back onto that line rather than just refused outright. Unsnapped
+    // for a smooth pull rather than a stepped one; what actually gets spent is
+    // always the snapped figure (drawMoveCostLabel, and the spend on release).
     const token = (map.tokens || {})[mapTokenDrag.id];
     const remaining = token ? tokenMoveRemaining(map, token) : null;
     if (remaining !== null) {
-      const distFeet = pixelsToFeet(map, Math.hypot(nx - mapTokenDrag.ox, ny - mapTokenDrag.oy));
+      const distFeet = gridManhattanFeetRaw(map, mapTokenDrag.ox, mapTokenDrag.oy, nx, ny);
       if (distFeet > remaining) {
         const k = remaining / distFeet;
         nx = mapTokenDrag.ox + (nx - mapTokenDrag.ox) * k;
@@ -906,9 +908,10 @@ function onMapPointerUp(e) {
       const token = (map.tokens || {})[drag.id];
       const snapped = snapToGrid(map, drag.x, drag.y, token ? token.size : 1);
       updateToken(map.id, drag.id, snapped);
-      // Measured against the pre-snap, already-clamped point — snapping can
-      // nudge a fraction past it, not worth re-checking the budget over.
-      if (token) spendTokenMovement(map, token, pixelsToFeet(map, Math.hypot(drag.x - drag.ox, drag.y - drag.oy)));
+      // Whole cells, start to end — gridManhattanFeet() snaps both points
+      // itself, so this agrees exactly with the squares the token actually
+      // crossed on the board.
+      if (token) spendTokenMovement(map, token, gridManhattanFeet(map, drag.ox, drag.oy, drag.x, drag.y, token.size));
     }
     // The fog settles here, and only here: a fog that followed the drag would
     // let anyone sweep their token across the board and read the whole map back

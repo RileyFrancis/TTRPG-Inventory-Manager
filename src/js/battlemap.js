@@ -62,11 +62,31 @@ function mapCellSize(map) {
 
 // This app assumes the standard 5-foot square — nothing about a map says
 // otherwise, and it is the unit a character's Speed stat is already written
-// in. Used to turn a drag's pixel distance into feet for movement tracking.
+// in.
 const MAP_FEET_PER_CELL = 5;
 
-function pixelsToFeet(map, px) {
-  return px / mapCellSize(map) * MAP_FEET_PER_CELL;
+// Movement is measured on the grid a creature actually stands on, not the
+// picture underneath it: Manhattan distance between the cells a drag starts
+// and ends in (a diagonal step costs both axes, not the shorter straight line
+// between them), snapped through the same snapToGrid() a token's real
+// position is always in — so the answer is always a whole number of squares,
+// never a fraction of one. See the MOVEMENT section of
+// battlemap-initiative.js.
+function gridManhattanFeet(map, x0, y0, x1, y1, sizeCells) {
+  const cell = mapCellSize(map);
+  const p0 = snapToGrid(map, x0, y0, sizeCells);
+  const p1 = snapToGrid(map, x1, y1, sizeCells);
+  const cells = Math.round(Math.abs(p1.x - p0.x) / cell) + Math.round(Math.abs(p1.y - p0.y) / cell);
+  return cells * MAP_FEET_PER_CELL;
+}
+
+// The same distance, unsnapped — continuous rather than stepped, so a live
+// drag in progress can be pulled back smoothly instead of jumping cell to
+// cell. Only for that: what is actually shown and spent is always the snapped
+// figure above.
+function gridManhattanFeetRaw(map, x0, y0, x1, y1) {
+  const cell = mapCellSize(map);
+  return (Math.abs(x1 - x0) + Math.abs(y1 - y0)) / cell * MAP_FEET_PER_CELL;
 }
 
 // A grid figure is fractional, stored to two places — somebody else's picture is
