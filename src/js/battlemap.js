@@ -185,6 +185,10 @@ function onBattlemapChanged() {
   syncLeftPanel();      // a first map makes the GM's Maps tab appear
   syncMapButton();
   onBattlemapDataChanged(); // battlemap-view.js — redraws, or closes a map that went away
+  // Against the party's actual map, not whichever one a GM has open — see
+  // syncMyTurnBorder() in battlemap-initiative.js. Runs even off the map view,
+  // since the turn border is meant to reach a reader looking at their sheet.
+  syncMyTurnBorder();
 }
 
 // =============================================================================

@@ -60,6 +60,14 @@
 </head>
 <body>
 
+<!-- Glows around the whole viewport while it is the reader's turn in a battle
+     map's initiative order — a fixed overlay, not part of #app, so it lays over
+     everything and never displaces a thing. Toggled by syncMyTurnBorder() in
+     src/js/battlemap-initiative.js off the same question the Pass Turn button
+     asks, so a player who has wandered off the map view still sees it is their
+     move. -->
+<div id="turn-border" aria-hidden="true"></div>
+
 <!-- ===== SVG FILTER DEFS =====
      The torn edge of the paper. feTurbulence makes noise, feDisplacementMap
      pushes the pixels of whatever it is applied to around by that noise — so
@@ -428,23 +436,30 @@
         </div>
         <div id="map-stage">
           <canvas id="map-canvas"></canvas>
-          <!-- The turn order, over the top left of the board. Collapsed it says
-               only whose turn it is; expanded it is the whole order. Built by
+          <!-- The turn order, over the top left of the board, with the way to
+               pass the active turn beside it. Collapsed it says only whose
+               turn it is; expanded it is the whole order. Built by
                renderInitiativePanel() in src/js/battlemap-initiative.js. -->
-          <div id="map-initiative" class="hidden">
-            <div class="init-head">
-              <button id="init-toggle" class="init-toggle" type="button" aria-expanded="true">&#9662;</button>
-              <span id="init-round">Round 1</span>
-              <div id="init-actions"></div>
+          <div id="map-init-row">
+            <div id="map-initiative" class="hidden">
+              <div class="init-head">
+                <button id="init-toggle" class="init-toggle" type="button" aria-expanded="true">&#9662;</button>
+                <span id="init-round">Round 1</span>
+                <div id="init-actions"></div>
+              </div>
+              <ol id="init-list"></ol>
+              <!-- The player's own way into the fight, so rolling initiative does
+                   not mean leaving the board to find the sheet. `data-roll` is
+                   the sheet's own attribute and dice.js's own gesture pair reads
+                   it, so this is the same roll rather than a copy of it. -->
+              <div id="init-footer" class="hidden">
+                <button id="init-roll-own" class="btn-sm" type="button" data-roll="initiative">Roll Initiative</button>
+              </div>
             </div>
-            <ol id="init-list"></ol>
-            <!-- The player's own way into the fight, so rolling initiative does
-                 not mean leaving the board to find the sheet. `data-roll` is
-                 the sheet's own attribute and dice.js's own gesture pair reads
-                 it, so this is the same roll rather than a copy of it. -->
-            <div id="init-footer" class="hidden">
-              <button id="init-roll-own" class="btn-sm" type="button" data-roll="initiative">Roll Initiative</button>
-            </div>
+            <!-- Ends the active turn and hands it to the next entry. Shown only
+                 while it is the reader's own turn (or, for the GM, a monster
+                 group's) — myInitiativeTurn() in battlemap-initiative.js. -->
+            <button id="init-pass-btn" class="btn-sm hidden" type="button">Pass Turn</button>
           </div>
           <div id="map-empty" class="hidden">
             <span class="map-empty-icon">&#128506;</span>

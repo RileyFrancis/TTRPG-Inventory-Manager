@@ -9,11 +9,20 @@
    active one, rather than a second and shorter panel being drawn that could
    disagree with the first. */
 
-#map-initiative {
+/* The panel and the Pass Turn button sit side by side as one unit, so the
+   button rides wherever the panel's own top-left placement puts it rather than
+   carrying a second copy of that position. */
+#map-init-row {
   position: absolute;
   top: 12px;
   left: 12px;
   z-index: 4;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+#map-initiative {
   width: 208px;
   max-height: calc(100% - 90px);
   display: flex;
@@ -24,6 +33,19 @@
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
   overflow: hidden;
   font-size: 12px;
+}
+
+/* Ends the active turn. Drawn in the secondary accent — the same colour the
+   sitewide turn border glows in — so the two read as one signal. */
+#init-pass-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  color: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent-soft) 55%, var(--border2));
+}
+#init-pass-btn:hover {
+  border-color: var(--accent-soft);
+  background: color-mix(in srgb, var(--accent-soft) 14%, var(--panel));
 }
 
 /* The head is the one row that is always there: the round, the collapse
@@ -201,6 +223,26 @@
 /* With no fight running there is nothing to collapse and nothing to step
    through — the GM keeps the panel only as the door to the first roll. */
 #map-initiative.empty { width: 190px; }
+
+/* =============================================================================
+   THE TURN BORDER
+   ============================================================================= */
+/* A fixed overlay the full size of the viewport, not part of #app, so it lays
+   over the whole site and displaces nothing. Lit while it is the reader's turn
+   — see myInitiativeTurn() / syncMyTurnBorder() in battlemap-initiative.js —
+   regardless of which view they are actually looking at. `inset 0 0 20px` is a
+   blur, not a hard-edged ring: it reaches 20px in from every edge, fading with
+   the blur's own falloff from ~0.5 opacity at the rim to nothing. */
+#turn-border {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0;
+  box-shadow: inset 0 0 20px 0 color-mix(in srgb, var(--accent-soft) 50%, transparent);
+  transition: opacity 0.25s;
+}
+body.my-turn #turn-border { opacity: 1; }
 
 /* =============================================================================
    THE GROUP ROLL DIALOG

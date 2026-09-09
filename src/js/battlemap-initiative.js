@@ -105,12 +105,10 @@ function clearInitiative(mapId) {
   initiativeRef(mapId).remove();
 }
 
-// Stepping is the GM's. Wrapping past the end is the next round — the only place
-// `round` ever changes.
-function stepInitiative(mapId, dir) {
-  if (!canEditMap() || !firebaseDb) return;
-  const map = mapById(mapId);
-  if (!map) return;
+// Wrapping past the end is the next round — the only place `round` ever
+// changes. Shared by the GM's step buttons and Pass Turn; the two differ only
+// in who is allowed to call it.
+function advanceInitiativeTurn(map, dir) {
   const order = initiativeOrder(map);
   if (!order.length) return;
   const init = mapInitiative(map);
@@ -121,7 +119,42 @@ function stepInitiative(mapId, dir) {
   let round = init.round ?? 1;
   if (next >= order.length) round += 1;
   if (next < 0) round = Math.max(1, round - 1);
-  initiativeRef(mapId).update({ turn: order[wrapped].id, round });
+  initiativeRef(map.id).update({ turn: order[wrapped].id, round });
+}
+
+// Stepping either way, to any entry, is the GM's — running the fight.
+function stepInitiative(mapId, dir) {
+  if (!canEditMap() || !firebaseDb) return;
+  const map = mapById(mapId);
+  if (!map) return;
+  advanceInitiativeTurn(map, dir);
+}
+
+// Whoever the active turn belongs to may end it and hand it to the next entry —
+// not gated by canEditMap() the way stepInitiative is, since passing your own
+// turn is not running the fight, only leaving it. See CLAUDE.md § Initiative for
+// why a GM's monster group has no uid to match: the GM speaks for it instead.
+function myInitiativeTurn(map) {
+  if (!map || !initiativeRunning(map)) return false;
+  const active = initiativeActiveEntry(map);
+  if (!active) return false;
+  if (canEditMap()) return active.kind !== 'pc';
+  return active.kind === 'pc' && !!active.uid && active.uid === ownPlayerId();
+}
+
+function passInitiativeTurn(mapId) {
+  if (!firebaseDb) return;
+  const map = mapById(mapId);
+  if (!map || !myInitiativeTurn(map)) return;
+  advanceInitiativeTurn(map, 1);
+}
+
+// The sitewide glow (see initiative.css). Driven off the same question as Pass
+// Turn's visibility, but against the party's actual map (mapForViewer()) rather
+// than whichever one a GM happens to have open — a player who has wandered off
+// to their sheet must still be told it is their move.
+function syncMyTurnBorder() {
+  document.body.classList.toggle('my-turn', myInitiativeTurn(mapForViewer()));
 }
 
 // =============================================================================
@@ -310,6 +343,7 @@ function renderInitiativePanel() {
   // started (the GM's + and the player's Roll Initiative both live in it).
   const map = typeof mapViewIsShowing === 'function' && mapViewIsShowing() ? viewedMap() : null;
   panel.classList.toggle('hidden', !map);
+  document.getElementById('init-pass-btn').classList.toggle('hidden', !map || !myInitiativeTurn(map));
   if (!map) return;
 
   const running = initiativeRunning(map);
@@ -484,6 +518,11 @@ document.getElementById('init-toggle').addEventListener('click', () => {
 });
 
 document.getElementById('init-roll-btn').addEventListener('click', confirmInitiativeRoll);
+
+document.getElementById('init-pass-btn').addEventListener('click', () => {
+  const map = viewedMap();
+  if (map) passInitiativeTurn(map.id);
+});
 
 // The board's Roll Initiative, wired the way the sheet's roll targets are:
 // dice.js owns the gesture, this only says which roll it is.
