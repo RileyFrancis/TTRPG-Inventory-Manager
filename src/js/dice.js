@@ -124,7 +124,7 @@ function poolTotal(pool) {
 // than being special-cased to a single d20. For 1d20 that is exactly the rule
 // as written; for the tray's 3d6 it is the only reading of "advantage" that
 // means anything, and having one rule means the two can never disagree.
-function performRoll({ label, faces = 20, count = 1, mod = 0, mode = 'normal', parts = [] }) {
+function performRoll({ label, faces = 20, count = 1, mod = 0, mode = 'normal', parts = [], kind = '' }) {
   count = Math.max(1, Math.min(20, parseInt(count, 10) || 1));
   mod   = Math.max(-99, Math.min(99, parseInt(mod, 10) || 0));
   if (!ROLL_MODES[mode]) mode = 'normal';
@@ -151,11 +151,19 @@ function performRoll({ label, faces = 20, count = 1, mod = 0, mode = 'normal', p
     id: ++rollSeq,
     label: label || count + 'd' + faces,
     faces, count, mod, mode, dice, dropped, keptIndex, parts,
+    // **What the roll was for**, where anything is waiting on the answer. Only
+    // initiative is, today. It is deliberately not in the chat payload: what a
+    // roll *was* is the roller's own business, and the log already carries the
+    // label that says it in words.
+    kind,
     total: poolTotal(dice) + mod,
   };
 
   showOwnRoll(roll);    // the middle of the screen, then the corner
   postRollToChat(roll); // and the table, when there is one
+  // …and the turn order, if this was the roll that joins one. A no-op away from
+  // a battle map, which is why it is a call rather than a branch.
+  noteRollForInitiative(roll);
   return roll;
 }
 
@@ -1040,7 +1048,9 @@ function sheetRollSpec(key) {
     return { label: a.label + ' Check', faces: 20, count: 1, mod: abilityModOf(id), parts: [ability(id)] };
   }
   if (kind === 'initiative') {
-    return { label: 'Initiative', faces: 20, count: 1, mod: initiativeBonus(), parts: [ability('dex')] };
+    // The one roll with a consequence beyond the log: on a battle map it is
+    // what puts this character into the turn order. See battlemap-initiative.js.
+    return { label: 'Initiative', faces: 20, count: 1, mod: initiativeBonus(), parts: [ability('dex')], kind: 'initiative' };
   }
   return null;
 }

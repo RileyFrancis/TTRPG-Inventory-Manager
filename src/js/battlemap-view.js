@@ -191,6 +191,7 @@ function onMapViewShown() {
     fogDirty = true;
     renderMapToolbar();
     drawBattlemap();
+    renderInitiativePanel();
   }
   syncGridHint();
 }
@@ -202,7 +203,9 @@ function onMapViewHidden() {
   mapOpen = false;
   mapPan = mapTokenDrag = mapDrawing = mapGridDrag = null;
   mapSelectedTokenId = null;
+  setInitiativeHover(null);
   syncGridHint();
+  renderInitiativePanel();   // which, with the board gone, is what hides it
 }
 
 // Everything arriving from Firebase lands here — a creature somebody else
@@ -218,6 +221,7 @@ function onBattlemapDataChanged() {
   fogDirty = true;
   renderMapToolbar();
   drawBattlemap();
+  renderInitiativePanel();
 }
 
 // =============================================================================
@@ -411,6 +415,10 @@ function ensureMapCanvas() {
   mapCanvas.addEventListener('pointerup', onMapPointerUp);
   mapCanvas.addEventListener('pointercancel', onMapPointerUp);
   mapCanvas.addEventListener('dblclick', onMapDoubleClick);
+  // The cursor leaving the board is the end of a hover, and nothing else would
+  // say so: pointermove stops arriving rather than arriving with nothing under
+  // it, so the last creature would stay lit in the panel indefinitely.
+  mapCanvas.addEventListener('pointerleave', () => setInitiativeHover(null));
   mapCanvas.addEventListener('wheel', onMapWheel, { passive: false });
   // The right button pans, so the browser's own menu would land on every pan.
   mapCanvas.addEventListener('contextmenu', e => e.preventDefault());
@@ -542,6 +550,9 @@ function drawMapFog(ctx, b) {
 
 function drawMapTokens(ctx, map) {
   const cell = mapCellSize(map);
+  // Whose turn it is, and what the reader is pointing at in the turn order —
+  // worked out once for the frame rather than asked per creature.
+  const marks = initiativeMarks(map);
   mapTokens(map).forEach(token => {
     if (!canEditMap() && hiddenTokenIds.has(token.id)) return;
     const at = tokenDrawPos(token);
@@ -568,6 +579,25 @@ function drawMapTokens(ctx, map) {
       ctx.lineWidth = Math.max(1.5, r * 0.08);
       ctx.stroke();
       ctx.setLineDash([]);
+    }
+
+    // **The turn order, drawn on the board.** A tracker beside a map is two
+    // lists of the same fight, and a reader should never have to work out which
+    // name is which creature — so the creature whose turn it is wears the
+    // panel's own accent, and whatever the cursor is over in either place is
+    // lit in both. Hover is white where the turn is gold, and solid where the
+    // selection ring is dashed, so three different answers never look alike.
+    const mark = marks.get(token.id);
+    if (mark) {
+      const lw = Math.max(2, r * (mark === 'active' ? 0.16 : 0.1));
+      ctx.beginPath();
+      ctx.arc(at.x, at.y, r + lw * 1.6, 0, Math.PI * 2);
+      ctx.strokeStyle = mark === 'active' ? 'rgba(255, 196, 64, 0.95)' : 'rgba(255, 255, 255, 0.9)';
+      ctx.lineWidth = lw;
+      ctx.shadowColor = ctx.strokeStyle;
+      ctx.shadowBlur = r * 0.5;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
     }
 
     if (token.icon) {
@@ -907,9 +937,13 @@ function onMapPointerMove(e) {
     return;
   }
 
-  // Nothing is held: the cursor is what says a corner or an edge of the picture
-  // is a handle before it is grabbed — and which way that one will move — while
-  // everywhere else says it will move the grid bodily.
+  // Nothing is held: whatever creature is under the cursor is lit in the turn
+  // order, which is the board's half of the panel's hover. It is asked on every
+  // move, so it is `noteMapTokenHover()`'s business to notice that the answer
+  // has not changed and do nothing — a redraw per pointermove for the same
+  // answer is exactly what this map does not do.
+  noteMapTokenHover(map, (tokenAtPoint(map, w.x, w.y) || {}).id || null);
+
   if (mapTool === 'grid') {
     const handle = gridHandleAtPoint(map, e.clientX, e.clientY);
     mapCanvas.style.cursor = handle ? gridHandleCursor(handle) : 'move';

@@ -56,6 +56,7 @@
   <link rel="stylesheet" href="src/css/home.css">
   <link rel="stylesheet" href="src/css/campaigns.css">
   <link rel="stylesheet" href="src/css/battlemap.css">
+  <link rel="stylesheet" href="src/css/initiative.css">
 </head>
 <body>
 
@@ -427,6 +428,17 @@
         </div>
         <div id="map-stage">
           <canvas id="map-canvas"></canvas>
+          <!-- The turn order, over the top left of the board. Collapsed it says
+               only whose turn it is; expanded it is the whole order. Built by
+               renderInitiativePanel() in src/js/battlemap-initiative.js. -->
+          <div id="map-initiative" class="hidden">
+            <div class="init-head">
+              <button id="init-toggle" class="init-toggle" type="button" aria-expanded="true">&#9662;</button>
+              <span id="init-round">Round 1</span>
+              <div id="init-actions"></div>
+            </div>
+            <ol id="init-list"></ol>
+          </div>
           <div id="map-empty" class="hidden">
             <span class="map-empty-icon">&#128506;</span>
             <p>No map is in play. The Game Master puts one out from the <strong>Maps</strong> tab.</p>
@@ -1206,6 +1218,33 @@
   </div>
 </div>
 
+<!-- ===== INITIATIVE MODAL =====
+     The GM's group roll: tick any number of creatures, one d20 is rolled for
+     the lot of them, and they take one place in the order between them. See
+     src/js/battlemap-initiative.js. -->
+<div id="initiative-modal" class="modal hidden">
+  <div class="modal-box narrow">
+    <h2>Roll Initiative</h2>
+    <p class="modal-note">Everyone ticked rolls once, together, and shares a place in the order.</p>
+    <div class="field">
+      <span class="field-label">Creatures</span>
+      <div id="init-creature-list"><!-- built by renderInitiativeModal() --></div>
+    </div>
+    <label class="field">
+      <span>Name in the order</span>
+      <input type="text" id="init-group-name" maxlength="40" placeholder="Goblins">
+    </label>
+    <label class="field">
+      <span>Modifier</span>
+      <input type="number" id="init-group-mod" min="-30" max="30" step="1" value="0">
+    </label>
+    <div class="modal-footer">
+      <button id="init-roll-btn" class="btn-primary">Roll</button>
+      <button class="cancel-btn btn-sm">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== LOGIN MODAL ===== -->
 <div id="login-modal" class="modal hidden">
   <div class="modal-box narrow">
@@ -1540,6 +1579,10 @@
 <script src="src/js/battlemap.js"></script>
 <script src="src/js/battlemap-library.js"></script>
 <script src="src/js/battlemap-view.js"></script>
+<!-- After the view: the panel is drawn over the board and the board asks it
+     what to mark on each creature. Its one caller outside the map is dice.js,
+     which reaches it at runtime rather than at load. -->
+<script src="src/js/battlemap-initiative.js"></script>
 <!-- After party.js: chat rides on the same campaign subscription the roster does. -->
 <script src="src/js/chat.js"></script>
 <!-- After chat.js: a roll is said in the log, and every other player's roll

@@ -91,6 +91,7 @@ tools/              Standalone dev helpers (not part of the app)
 | `battlemap.js` | Battle maps: the model, the Firebase seam, and line of sight |
 | `battlemap-library.js` | The GM's Maps pane, and the import / creature dialogs |
 | `battlemap-view.js` | The map view: the camera, the canvas, the fog, the pointer |
+| `battlemap-initiative.js` | The turn order: the model, the panel, the GM's group roll |
 | `tooltip.js` | Hover tooltip |
 | `main.js` | `init()` and the single call to it |
 
@@ -120,6 +121,7 @@ that owns the element wins.
 | `chat.css` | The sidebar's Chat pane, its messages and composer, and a roll said in it |
 | `dice.css` | The flying number, the corner stack, the wheel, the hover card, the tray |
 | `battlemap.css` | The map button, the map view, and the GM's library pane |
+| `initiative.css` | The turn order panel over the board, and its group-roll dialog |
 | `tooltip.css` | The hover tooltip |
 | `stash.css` | The stash (items needing placement) and the container tabs |
 | `coins.css` | The multi-denomination cost input and the coin purse |
@@ -152,7 +154,8 @@ state.folderAssign    { [templateId]: folderId }    (overrides only; '__unfiled'
 state.folderCollapsed { [folderId]: true }
 state.itemSort    'rarity' | 'name' | 'weight'      (Browse-list sort order)
 state.shops       { [shopId]: Shop }                (the party's shops, from Firebase)
-state.battlemap   { activeId, maps{} }              (the party's battle maps, from Firebase)
+state.battlemap   { activeId, maps{} }              (the party's battle maps, from Firebase;
+                                                     a map's `initiative` is the turn order)
 state.leftTab     'equip' | 'shop' | 'map'          (which left-panel pane shows)
 state.shopOpenId  shopId | null                     (null = the list of shops)
 state.mapLibraryOpenId  mapId | null                (null = the list of maps)
@@ -1191,6 +1194,109 @@ rather than a preference. Two things make it possible.
   value. The bar under the map is not that: it says what the two gestures are and
   reads the same three numbers back, so a reader watching the lines move never
   has to look away from the picture.
+
+### Initiative
+
+A fight happens **somewhere**. So the turn order lives with the map it is being
+fought on — `parties/<code>/battlemap/maps/<mapId>/initiative`, beside that map's
+walls and creatures — rather than under the party. `src/js/battlemap-initiative.js`.
+
+```
+initiative
+  round   1, 2, 3 …
+  turn    <entryId>          whose turn it is, named rather than numbered
+  entries { <id>: { id, kind, name, score, at, uid?, tokens?, icon?, hostility? } }
+```
+
+Three things fall out of that placement and none of them had to be built: **"has
+this player rolled already?"** is answered by *this map's* entries, which is
+exactly the question — a player who rolled in the cellar rolls again in the
+courtyard, because that is a different fight; it rides the subscription that
+already carries the roster, the shops, the chat and the board, so it needs no
+second listener and no new database rule; and it is thrown away with the map.
+
+- **The turn is an entry id, never an index.** The order is not a fixed list — a
+  player late to roll drops into the middle of it mid-fight, and the GM can take
+  a group out — so an index would silently come to mean a different creature. A
+  name goes on meaning the same one, or stops meaning anything at all, and
+  `initiativeActiveEntry()` heals *that* by falling back to the top of the order
+  rather than pointing at somebody who has left the fight.
+- **The order is score, then the moment of the roll, then the id.** The
+  tie-break is arbitrary but *stable*, which is the only property that matters:
+  every client sorts the same list the same way without asking anyone.
+- **A player joins by rolling Initiative on their sheet.** It is an ordinary
+  roll — it flies to the corner and is said in the chat log like any other — and
+  joining the order is the extra thing it does when the party is standing on a
+  map. One hook, `noteRollForInitiative()`, called from `performRoll()` for every
+  roll the app makes and interested in exactly one of them (`kind: 'initiative'`,
+  the only thing `kind` on a roll is for; it is deliberately not in the chat
+  payload, since the log already carries the label that says it in words).
+  - **Your own first roll, and only that.** *Own*, because a GM reading a
+    player's sheet rolls as the GM — rolls are attributed to the account
+    everywhere in dice.js — so an entry made from that would be keyed to the
+    wrong person (`liveStateIsOwnCharacter()`, the same guard the save file
+    uses). *First*, because rolling twice must not let anyone pick the better
+    number; the roll still happens and is still said out loud, it simply does
+    not move them. The GM takes an entry out if a roll needs doing again.
+- **The GM rolls for the board in groups.** Nobody rolls six goblins one at a
+  time, and a table does not want six goblin lines in the order: tick any number
+  of creatures, **one d20 is rolled for the lot of them**, and they share one
+  place. The modifier is typed in the dialog because this app has no monster
+  statistics to read one from. It goes through `performRoll()` like everything
+  else, so a GM's roll for the ambush flies, lands in the corner and is said in
+  the log exactly as a player's is.
+  - Creatures already in the order are not offered again — a creature has one
+    place in the turn order, and offering it twice would be offering to break
+    that.
+  - The suggested name is the creatures' shared name ("Goblin"), or the plainest
+    word true of a mixed handful. **The count is deliberately not in it**: the
+    row draws it as a badge, so a name carrying it too reads "Goblin ×3 ×3", and
+    a GM who typed their own name would have to keep its number in step with a
+    group the board can change under them.
+- **An account's creatures are not all its character.** A player's entry names a
+  *uid* rather than a token — so moving, deleting or adding a token leaves them
+  the same person in the order — and finds their creature on the board through
+  `ownerUid`. But a GM stamps their own uid on every monster they drop, which is
+  what `ownerUid` is for, so the match is `ownerUid` **and** party hostility
+  (`initiativeEntryClaims()`). Without that second half a GM who also plays a
+  character finds their entry speaking for the entire ambush: every goblin
+  unavailable to roll because it is "already in the order", and hovering one
+  lighting the GM's own name.
+- **Running the fight is the GM's**, like the terrain and the fog: a turn order
+  everyone can advance is one nobody is keeping. Wrapping past the end is the
+  next round, which is the only place `round` ever changes — so it counts rounds
+  rather than being typed at. A player may still take *themselves* out of the
+  order, which is the rule creatures already follow: yours is yours, the rest is
+  the GM's.
+
+**The panel** sits over the top left of the board, opposite the legend and the
+grid hint. **Collapsed it says only whose turn it is** — the one thing a fight
+needs on screen at all times — and expanded it is the whole order. Both are the
+same list: collapsing hides the rows that are not active in CSS, rather than
+drawing a second and shorter panel that could disagree with the first. Whether
+it is collapsed is session-only, like the sheet's folded sections and for the
+same reason.
+
+- A **GM sees it with no fight running**, because it is the door to the first
+  roll; a player does not, because for them it would be a box with nothing in it
+  and nothing to press.
+- **Hovering either half lights the other**, and one piece of state serves both
+  directions (`initiativeHoverId`, an *entry* id) — which is what makes them
+  incapable of disagreeing. A name in a list means nothing to a reader who
+  cannot find the creature, and a creature on a crowded board means nothing if
+  you cannot tell when it acts. The board's half is asked on every pointermove,
+  so `setInitiativeHover()` returns early when the answer has not changed; the
+  rows are then re-marked in place rather than rebuilt, or the cursor would be
+  taken off whatever it was over.
+- **The turn is drawn on the creature too**, in the panel's own accent, and the
+  hover in white — so the two lists are read as one fight, and the turn, the
+  hover and the map's dashed selection ring are never three answers that look
+  alike. `initiativeMarks()` works them out once per frame rather than per
+  creature.
+- A row's glyph is read off the **live token** rather than the entry: a player
+  never told us what their creature looks like, they placed it.
+- The panel inlines hostility colours, so it is re-rendered from
+  `rerenderThemedContent()` — the rule anything baking a palette colour follows.
 
 ### The left panel and its tabs
 

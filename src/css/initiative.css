@@ -1,0 +1,231 @@
+/* =============================================================================
+   INITIATIVE — the turn order over the top left of the board
+   =============================================================================
+   A panel laid over the picture, so it is the one thing on the map view that is
+   both above the canvas and takes pointer events. It sits opposite the legend
+   and the grid hint at the bottom, and clear of the toolbar above.
+
+   Collapsed and expanded are the same list: `.collapsed` hides every row but the
+   active one, rather than a second and shorter panel being drawn that could
+   disagree with the first. */
+
+#map-initiative {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 4;
+  width: 208px;
+  max-height: calc(100% - 90px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 6px;
+  border: 1px solid var(--border2);
+  background: color-mix(in srgb, var(--panel) 93%, transparent);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  font-size: 12px;
+}
+
+/* The head is the one row that is always there: the round, the collapse
+   toggle, and — for a GM — the buttons that run the fight. */
+.init-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px 5px 8px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  border-bottom: 1px solid var(--border);
+}
+
+#init-round {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.init-toggle {
+  flex: 0 0 auto;
+  width: 16px;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--text-dim);
+  transition: color 0.15s;
+}
+.init-toggle:hover { color: var(--accent); }
+
+#init-actions {
+  display: flex;
+  gap: 3px;
+  flex: 0 0 auto;
+}
+
+.init-btn {
+  width: 20px;
+  height: 20px;
+  font-size: 12px;
+  line-height: 1;
+  border-radius: 3px;
+  color: var(--text-dim);
+  border: 1px solid var(--border2);
+  background: var(--panel);
+  transition: color 0.15s, border-color 0.15s;
+}
+.init-btn:hover { color: var(--accent); border-color: var(--accent); }
+.init-btn.danger:hover { color: var(--danger); border-color: currentColor; }
+
+#init-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* A row is a creature's place in the fight: the colour of what it is down the
+   left, its name, and the number it rolled. The number is the reason the panel
+   exists, so it is the one thing in it set in tabular figures — a column of
+   scores that jitters as it updates is a column nobody can read down. */
+.init-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 7px 5px 9px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  border-left: 3px solid var(--hc, var(--border2));
+  cursor: default;
+}
+.init-row:last-child { border-bottom: none; }
+
+.init-icon {
+  flex: 0 0 auto;
+  width: 15px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.init-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text);
+}
+
+.init-count {
+  margin-left: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+.init-score {
+  flex: 0 0 auto;
+  min-width: 2.5ch;
+  text-align: right;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+/* **Whose turn it is.** The accent, and the same accent the creature wears on
+   the board — one colour for one fact, so the panel and the picture are read as
+   one thing. */
+.init-row.active {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.init-row.active .init-name,
+.init-row.active .init-score { color: var(--text); font-weight: 700; }
+
+.init-row.active::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+/* Hovering either half lights both. White where the turn is gold, because they
+   are different answers and land on the same row often. */
+.init-row.hover { background: color-mix(in srgb, var(--text) 12%, transparent); }
+.init-row.active.hover { background: color-mix(in srgb, var(--accent) 26%, transparent); }
+
+.init-remove {
+  flex: 0 0 auto;
+  width: 14px;
+  font-size: 10px;
+  line-height: 1;
+  color: transparent;
+  transition: color 0.15s;
+}
+/* Kept out of the way until the row is under the cursor: it is a rare gesture
+   next to a number that is read constantly. */
+.init-row:hover .init-remove { color: var(--text-dim); }
+.init-remove:hover { color: var(--danger); }
+
+.init-empty {
+  padding: 8px 9px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+/* Collapsed: only whose turn it is. The head stays, because the round number
+   and the way back open are the rest of what a glance wants. */
+#map-initiative.collapsed .init-row:not(.active) { display: none; }
+#map-initiative.collapsed .init-row.active { border-bottom: none; }
+/* With no fight running there is nothing to collapse and nothing to step
+   through — the GM keeps the panel only as the door to the first roll. */
+#map-initiative.empty { width: 190px; }
+
+/* =============================================================================
+   THE GROUP ROLL DIALOG
+   ============================================================================= */
+#init-creature-list {
+  max-height: 190px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--field);
+}
+
+.init-pick {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 45%, transparent);
+}
+.init-pick:last-child { border-bottom: none; }
+.init-pick:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+
+.init-pick input[type=checkbox] { width: 13px; height: 13px; flex: 0 0 auto; }
+
+.init-pick-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--hc, var(--border2));
+}
+
+.init-pick-icon { flex: 0 0 auto; font-size: 13px; line-height: 1; }
+
+.init-pick-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text);
+}

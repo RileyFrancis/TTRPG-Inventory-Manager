@@ -73,6 +73,7 @@ function rerenderThemedContent() {
   clearHostilityColorCache();
   renderMapPanel();
   drawBattlemap();
+  renderInitiativePanel();   // its rows are edged in the hostility colours too
 
   // Repaint the details panel in place — deliberately not via
   // show*Details(), which would also yank the user to the Details tab.
