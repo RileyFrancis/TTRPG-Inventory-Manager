@@ -409,6 +409,7 @@ document.getElementById('map-confirm-btn').addEventListener('click', () => {
 let creatureModalTarget = null; // { mapId, tokenId } — a null tokenId is a new one
 let creatureModalIcon = CREATURE_ICONS[0];
 let creatureModalHostility = 'hostile';
+let creatureModalOwnerUid = ''; // '' = a custom marker of the GM's own; else a player's uid
 let creatureModalPos = null;    // where on the map it was asked for
 
 function openCreatureModal(mapId, tokenId, pos) {
@@ -422,11 +423,14 @@ function openCreatureModal(mapId, tokenId, pos) {
   // A GM reaching for this is nearly always adding a monster; a player is
   // nearly always adding something of their own.
   creatureModalHostility = (token && token.hostility) || (isMapGM() ? 'hostile' : 'party');
+  // Preselect the player it already belongs to — an owner outside today's
+  // roster (or none) reads as Custom, the GM's own.
+  creatureModalOwnerUid = (token && token.ownerUid && state.party.players?.[token.ownerUid]) ? token.ownerUid : '';
 
   document.getElementById('creature-modal-title').textContent = token ? 'Edit Creature' : 'New Creature';
   document.getElementById('creature-name-input').value = (token && token.name) || '';
   document.getElementById('creature-confirm-btn').textContent = token ? 'Save' : 'Place';
-  document.getElementById('creature-delete-btn').classList.toggle('hidden', !(token && canRemoveToken(token)));
+  document.getElementById('creature-delete-btn').classList.toggle('hidden', !(token && canControlToken(token)));
 
   const sizeSel = document.getElementById('creature-size-select');
   sizeSel.innerHTML = '';
@@ -439,9 +443,48 @@ function openCreatureModal(mapId, tokenId, pos) {
   });
   sizeSel.value = String((token && token.size) || 1);
 
+  renderCreatureOwner();
   renderCreatureHostility();
   renderCreatureIcons();
   showModal('creature-modal');
+}
+
+// The GM's alone — handing a marker straight to a player instead of keeping it
+// as one of their own. Hidden for anyone else: a player's own placements are
+// always their own (addToken() only honours this field from the GM).
+function renderCreatureOwner() {
+  const field = document.getElementById('creature-owner-field');
+  const seg = document.getElementById('creature-owner');
+  const gm = isMapGM();
+  field.classList.toggle('hidden', !gm);
+  if (!gm) return;
+
+  seg.innerHTML = '';
+  const options = [{ uid: '', name: 'Custom' }].concat(
+    Object.entries(state.party.players ?? {}).map(([uid, p]) => ({ uid, name: p.name || 'Player' }))
+  );
+  options.forEach(opt => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'seg-btn' + (opt.uid === creatureModalOwnerUid ? ' active' : '');
+    b.textContent = opt.name;
+    b.addEventListener('click', () => {
+      creatureModalOwnerUid = opt.uid;
+      if (opt.uid) {
+        // Picking a player is almost always for their own marker.
+        creatureModalHostility = 'party';
+        const nameInput = document.getElementById('creature-name-input');
+        if (!nameInput.value.trim()) {
+          const p = state.party.players[opt.uid];
+          nameInput.value = (p?.character?.name || p?.name || '').slice(0, 40);
+        }
+      }
+      renderCreatureOwner();
+      renderCreatureHostility();
+      renderCreatureIcons();
+    });
+    seg.appendChild(b);
+  });
 }
 
 function renderCreatureHostility() {
@@ -489,6 +532,10 @@ document.getElementById('creature-confirm-btn').addEventListener('click', () => 
   const name = document.getElementById('creature-name-input').value.trim().slice(0, 40);
   const size = parseFloat(document.getElementById('creature-size-select').value) || 1;
   const fields = { name, size, icon: creatureModalIcon, hostility: creatureModalHostility };
+  // Only the GM's picker ever touches this — and always explicitly, so
+  // choosing Custom on a token that used to be a player's actually hands it
+  // back rather than silently leaving the old owner in place.
+  if (isMapGM()) fields.ownerUid = creatureModalOwnerUid || (ownPlayerId() ?? '');
 
   if (tokenId) {
     // The footprint may have changed, so it re-snaps: a Large creature centres

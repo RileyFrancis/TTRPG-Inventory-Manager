@@ -484,17 +484,30 @@ function drawMapTokens(ctx, map) {
     ctx.save();
     ctx.globalAlpha = dim ? 0.5 : 1;
 
+    const hostilityLW = Math.max(2, r * 0.14);
     ctx.beginPath();
     ctx.arc(at.x, at.y, r, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(16, 12, 8, 0.82)';
     ctx.fill();
-    ctx.lineWidth = Math.max(2, r * 0.14);
+    ctx.lineWidth = hostilityLW;
     ctx.strokeStyle = color;
     ctx.stroke();
 
+    // A player's own marker — the visual half of the ownership rule that
+    // gates who may drag it (canControlToken()). A ring, not a fill, so it
+    // never fights the hostility colour for the same pixels.
+    const ownedByPlayer = tokenOwnedByPlayer(token);
+    if (ownedByPlayer) {
+      ctx.beginPath();
+      ctx.arc(at.x, at.y, r + hostilityLW * 0.9, 0, Math.PI * 2);
+      ctx.lineWidth = Math.max(1.5, r * 0.09);
+      ctx.strokeStyle = 'rgba(168, 96, 255, 0.95)';
+      ctx.stroke();
+    }
+
     if (token.id === mapSelectedTokenId) {
       ctx.beginPath();
-      ctx.arc(at.x, at.y, r + ctx.lineWidth, 0, Math.PI * 2);
+      ctx.arc(at.x, at.y, r + hostilityLW + (ownedByPlayer ? r * 0.13 : 0), 0, Math.PI * 2);
       ctx.setLineDash([r * 0.3, r * 0.22]);
       ctx.strokeStyle = '#fff';
       ctx.lineWidth = Math.max(1.5, r * 0.08);
@@ -785,9 +798,13 @@ function onMapPointerDown(e) {
     const token = tokenAtPoint(map, w.x, w.y);
     if (token) {
       mapSelectedTokenId = token.id;
-      // ox/oy stay put for the whole gesture — x/y follow the cursor and are
-      // not a stable place to measure this drag's own distance from.
-      mapTokenDrag = { id: token.id, x: token.x, y: token.y, ox: token.x, oy: token.y, dx: token.x - w.x, dy: token.y - w.y, moved: false };
+      // Selecting is free (it is how you reach Edit); dragging is not — only
+      // the GM or whoever owns the token may move it. ox/oy stay put for the
+      // whole gesture: x/y follow the cursor and are not a stable place to
+      // measure this drag's own distance from.
+      if (canControlToken(token)) {
+        mapTokenDrag = { id: token.id, x: token.x, y: token.y, ox: token.x, oy: token.y, dx: token.x - w.x, dy: token.y - w.y, moved: false };
+      }
       renderMapToolbar();
       drawBattlemap();
       return;
@@ -985,9 +1002,9 @@ function syncGridHint() {
     + ' / ' + roundGridValue(g.offsetY) + '.';
 }
 
-// Bottom right of the board: the reader's own remaining movement, when they
-// have a marker on it and it is on a tracked budget — see the MOVEMENT section
-// of battlemap-initiative.js. Hidden for a GM (their creatures have no speed
+// The reader's own remaining movement this turn, when they have a marker on
+// the board and it is on a tracked budget — see the MOVEMENT section of
+// battlemap-initiative.js. Hidden for a GM (their creatures have no speed
 // stat) and before there is anything to track it against.
 function renderMapSpeedIndicator() {
   const el = document.getElementById('map-speed');
@@ -997,7 +1014,9 @@ function renderMapSpeedIndicator() {
   const remaining = token ? tokenMoveRemaining(map, token) : null;
   el.classList.toggle('hidden', remaining === null);
   if (remaining === null) return;
-  el.textContent = Math.round(remaining) + ' / ' + tokenSpeed(token) + ' ft';
+  const speed = tokenSpeed(token);
+  document.getElementById('map-speed-remaining').textContent = Math.round(remaining);
+  document.getElementById('map-speed-total').textContent = '/' + speed + ' ft';
 }
 
 function renderMapToolbar() {
@@ -1043,7 +1062,7 @@ function renderMapToolbar() {
     edit.textContent = 'Edit ' + (selected.name || 'Creature');
     edit.addEventListener('click', () => openCreatureModal(map.id, selected.id, null));
     acts.appendChild(edit);
-    if (canRemoveToken(selected)) {
+    if (canControlToken(selected)) {
       const rm = document.createElement('button');
       rm.className = 'btn-sm danger';
       rm.textContent = 'Remove';
@@ -1096,7 +1115,7 @@ document.addEventListener('keydown', e => {
   } else if ((e.key === 'Delete' || e.key === 'Backspace') && mapSelectedTokenId) {
     const map = viewedMap();
     const token = map ? (map.tokens || {})[mapSelectedTokenId] : null;
-    if (token && canRemoveToken(token)) {
+    if (token && canControlToken(token)) {
       removeToken(map.id, token.id);
       mapSelectedTokenId = null;
       renderMapToolbar();

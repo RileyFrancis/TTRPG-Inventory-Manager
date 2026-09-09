@@ -265,7 +265,11 @@ function updateMapGrid(mapId, patch) {
 function addToken(mapId, token) {
   if (!canAddCreature() || !firebaseDb) return null;
   const id = newPieceId('tok');
-  mapRef(mapId, 'tokens/' + id).set({ ...token, id, ownerUid: ownPlayerId() ?? '' });
+  // Ordinarily a marker belongs to whoever placed it — but the GM may hand one
+  // straight to a player (creature-owner-field in the creature modal), which is
+  // why `token.ownerUid` is honoured first and only for the GM.
+  const ownerUid = (isMapGM() && token.ownerUid) ? token.ownerUid : (ownPlayerId() ?? '');
+  mapRef(mapId, 'tokens/' + id).set({ ...token, id, ownerUid });
   return id;
 }
 
@@ -274,9 +278,18 @@ function updateToken(mapId, tokenId, patch) {
   mapRef(mapId, 'tokens/' + tokenId).update(patch);
 }
 
-// Removed by whoever put it there, or by the GM.
-function canRemoveToken(token) {
+// Removed, or dragged (see onMapPointerDown in battlemap-view.js), by whoever
+// put it there, or by the GM. Pacing, like everything else a token permits —
+// see CLAUDE.md § Party membership.
+function canControlToken(token) {
   return canEditMap() || (token.ownerUid && token.ownerUid === ownPlayerId());
+}
+
+// The account behind a token's ownerUid is one of the party's players (as
+// opposed to the GM, or nobody) — what the purple ring on the board means, and
+// half of what canControlToken() gates.
+function tokenOwnedByPlayer(token) {
+  return !!(token && token.ownerUid && state.party.players && state.party.players[token.ownerUid]);
 }
 
 function removeToken(mapId, tokenId) {

@@ -68,6 +68,16 @@
      move. -->
 <div id="turn-border" aria-hidden="true"></div>
 
+<!-- The reader's own remaining movement this turn — pinned to the top right of
+     the screen itself, not the board, and peeking off its edge on purpose: the
+     bottom-right corner inside the map view already belongs to the dice
+     rolls. Not part of #app for the same reason #turn-border is not. Built by
+     renderMapSpeedIndicator() in src/js/battlemap-view.js. -->
+<div id="map-speed" class="hidden">
+  <span id="map-speed-remaining">0</span>
+  <span id="map-speed-total">/0 ft</span>
+</div>
+
 <!-- ===== SVG FILTER DEFS =====
      The torn edge of the paper. feTurbulence makes noise, feDisplacementMap
      pushes the pixels of whatever it is applied to around by that noise — so
@@ -472,11 +482,10 @@
             <span class="map-legend-item" style="--lc:var(--hostility-party)"><span class="map-legend-dot"></span>Party</span>
             <span class="map-legend-item" style="--lc:var(--hostility-neutral)"><span class="map-legend-dot"></span>Neutral</span>
             <span class="map-legend-item" style="--lc:var(--hostility-hostile)"><span class="map-legend-dot"></span>Hostile</span>
+            <!-- A second, orthogonal ring — who may drag it, not whose side
+                 it's on. Purple to stay clear of every hostility colour. -->
+            <span class="map-legend-item" style="--lc:#a860ff"><span class="map-legend-dot"></span>Player-owned</span>
           </div>
-          <!-- The reader's own remaining movement this turn, opposite the
-               legend. Built by renderMapSpeedIndicator() in
-               src/js/battlemap-view.js. -->
-          <div id="map-speed" class="hidden"></div>
         </div>
       </div>
 
@@ -1224,6 +1233,14 @@
       <span>Name (optional)</span>
       <input type="text" id="creature-name-input" maxlength="40" placeholder="e.g. Dire Wolf">
     </label>
+    <!-- The GM's alone: hand the marker straight to a player instead of
+         keeping it as one of their own. Hidden for anyone else — a player's
+         own placements are always their own. Built by renderCreatureOwner()
+         in src/js/battlemap-library.js. -->
+    <div class="field" id="creature-owner-field">
+      <span class="field-label">For</span>
+      <div id="creature-owner" class="segmented"></div>
+    </div>
     <label class="field">
       <span>Size</span>
       <select id="creature-size-select"><!-- built from CREATURE_SIZES --></select>

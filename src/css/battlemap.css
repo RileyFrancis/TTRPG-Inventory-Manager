@@ -223,23 +223,46 @@
   background: rgba(16, 12, 8, 0.82);
 }
 
-/* The reader's own remaining movement, opposite the legend — a matched pair of
-   readouts on the two bottom corners. See renderMapSpeedIndicator() in
-   battlemap-view.js. */
+/* The reader's own remaining movement this turn — a badge pinned to the
+   screen's own top-right corner (see index.html, near #turn-border), not the
+   board's: the bottom-right corner inside the map view already belongs to the
+   dice rolls (#dice-history, in inventory.css). Peeking off the edge on
+   purpose — a full circle sitting flush on-screen would read as a button, this
+   reads as a badge. Kept clear of #header (min-height 58px) rather than
+   layered over its Party/Settings buttons; pointer-events stay off since the
+   sidebar panel runs underneath this same corner. Content is pulled down and
+   left, clear of the clipped corner. */
 #map-speed {
-  position: absolute;
-  right: 12px;
-  bottom: 12px;
-  padding: 6px 10px;
-  border-radius: 5px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  font-variant-numeric: tabular-nums;
-  color: var(--text);
-  background: color-mix(in srgb, var(--panel) 88%, transparent);
-  border: 1px solid var(--border);
+  position: fixed;
+  top: 62px;
+  right: -20px;
+  z-index: 40;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 20px 4px 4px;
+  background: radial-gradient(circle at 38% 35%, var(--accent-soft), var(--accent) 78%);
+  border: 2px solid var(--border2);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  color: var(--on-accent);
   pointer-events: none;
+}
+#map-speed-remaining {
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+#map-speed-total {
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.3;
+  opacity: 0.85;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ─── THE GM'S LIBRARY PANE ──────────────────────────────── */
