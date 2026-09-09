@@ -232,14 +232,14 @@
    — see myInitiativeTurn() / syncMyTurnBorder() in battlemap-initiative.js —
    regardless of which view they are actually looking at. `inset 0 0 20px` is a
    blur, not a hard-edged ring: it reaches 20px in from every edge, fading with
-   the blur's own falloff from ~0.5 opacity at the rim to nothing. */
+   the blur's own falloff from ~0.7 opacity at the rim to nothing. */
 #turn-border {
   position: fixed;
   inset: 0;
   z-index: 9999;
   pointer-events: none;
   opacity: 0;
-  box-shadow: inset 0 0 20px 0 color-mix(in srgb, var(--accent-soft) 50%, transparent);
+  box-shadow: inset 0 0 20px 0 color-mix(in srgb, var(--accent-soft) 70%, transparent);
   transition: opacity 0.25s;
 }
 body.my-turn #turn-border { opacity: 1; }
