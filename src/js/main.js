@@ -3,9 +3,6 @@
 // =============================================================================
 'use strict';
 
-// =============================================================================
-// VERSION
-// =============================================================================
 // The number itself lives in the `VERSION` file at the project root — one line,
 // nothing else, so bumping a release never means opening a source file.
 //

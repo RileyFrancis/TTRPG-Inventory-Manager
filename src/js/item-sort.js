@@ -3,25 +3,10 @@
 // =============================================================================
 'use strict';
 
-// =============================================================================
-// SORTING
-// =============================================================================
-// Like the folders, the sort order describes the *catalogue view*, not the
-// character: it is this browser's own preference, so it lives in its own
-// localStorage key and never enters the save file or party data.
-//
-// Every mode is a *chain* of keys, not a single one. Sorting purely by weight
-// would scatter a folder's rarities at random inside each weight; naming the
-// tie-breakers keeps the list stable and readable whichever mode is picked.
-// The default — rarity, then name, then weight — is the order the list has
-// always used, now with weight settling the last ties.
-//
-// Each key has one fixed direction — rarity best-first (that is what "sort by
-// rarity" means for loot), name and weight ascending — and the reverse toggle
-// negates the *whole chain* rather than just the leading key, so the list a
-// reader sees is exactly the one they had, upside down. Flipping only the
-// primary key would leave the tie-breakers running the other way and shuffle
-// items that never moved.
+// The Browse list's sort order — a catalogue-view preference, its own
+// localStorage key, never saved or synced. Every mode is a chain of keys, not
+// one, so ties stay stable; the reverse toggle negates the whole chain, not just
+// the leading key. See CLAUDE.md § Browse-list sorting.
 
 const ITEM_SORT_KEY = 'dnd_inventory_sort';
 

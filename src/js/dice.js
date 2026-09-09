@@ -1,35 +1,15 @@
 // =============================================================================
-// DICE — rolling, and the four places a roll is seen
+// DICE — rolling, and the places a roll is seen
 // =============================================================================
 'use strict';
 
-// A roll is one event with three audiences, and each wants a different amount
-// of it:
-//
-//   you            the number, large, in the middle of the screen — it spins,
-//                  settles, then flies to the corner and joins your last three
-//   the table      a line in the chat log, because a roll is a thing *said*
-//   everyone else  a speech bubble over your tab, so a roll is noticed without
-//                  anyone having to be looking at the log
-//
-// And a fourth, which is you again a moment later: **hovering a corner chip
-// opens the whole working** — every die, the one advantage threw away, and each
-// score and proficiency that made up the modifier.
-//
-// **There is no `parties/<code>/rolls`.** A roll *is* a chat message — one with
-// a `kind` of `'roll'` and the numbers carried beside the sentence — and that
-// is the whole of the plumbing. The log is already ordered by the server,
-// already subscribed by everyone holding the code, already capped at a sane
-// tail, and already stamps the speaker's name on each line rather than looking
-// it up when it is drawn. A second collection would need every one of those
-// properties again and would still have to be interleaved with the conversation
-// to be read in order. So the bubbles over the tabs ride that subscription too:
-// `noteRollFeed()` is called from it, and nothing in this file talks to Firebase
-// except `postRollToChat()`.
-//
-// Which is also why rolling **works with no campaign at all**. The big number
-// and the corner stack are local; the two audiences that are other people
-// simply do not happen without a table to be at.
+// A roll has three audiences: the roller (the big tumbling number, then a corner
+// chip whose hover shows the whole working), the table (a line in the chat log),
+// and everyone else (a bubble over the roller's tab). There is no rolls
+// collection — a roll IS a chat message with `kind: 'roll'`, so it inherits the
+// log's server ordering, single subscription and capped tail. Nothing here talks
+// to Firebase except `postRollToChat()`; rolling works with no campaign at all.
+// See CLAUDE.md § Dice.
 
 // =============================================================================
 // THE MODEL

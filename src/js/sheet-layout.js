@@ -3,61 +3,19 @@
 // =============================================================================
 'use strict';
 
-// Every section of the sheet below the identity block is a *widget*, and where
-// the widgets sit is a **tree of splits** rather than a list. That is the whole
-// idea, and it is what answers the question a flat list cannot: when does a
-// section run the full width, and when is it stopped by a neighbour?
+// Each sheet section is a widget; where the widgets sit is a tree of splits, not
+// a list. A widget has no width of its own — it fills its slot, and the drop
+// chooses which slot, so a section's extent is set by the depth it was dropped
+// at. A node is `{ t:'w', id, size }` or `{ t:'s', dir:'row'|'col', size, kids[] }`.
 //
-//   A widget has no width of its own. It fills its slot, and the *drop* chooses
-//   which slot — so a section's extent is decided by the depth it was dropped
-//   at, not by a number stored on it.
+//   col[ Proficiencies, row[ Abilities, col[ Combat, HP ] ] ]
 //
-// Drop a section on the sheet's own top edge and it becomes a band across
-// everything. Drop it on the top edge of Combat, which is sharing a row with
-// Abilities, and it spans that column only — stopped by Abilities, because the
-// slot it split was Combat's, and Combat's slot is half a row. Same gesture,
-// two answers, and neither of them is configured anywhere.
-//
-//   col[ Proficiencies,
-//        row[ Abilities, col[ Combat, HP ] ] ]
-//
-//   +======================================+
-//   |  Identity                   (pinned) |
-//   +======================================+
-//   |  Proficiencies         (full width)  |
-//   +------------------+-------------------+
-//   |  Abilities       |  Combat           |
-//   |  & Skills        +-------------------+
-//   |                  |  Hit Points       |
-//   +------------------+-------------------+
-//
-// **The identity block is pinned above all of it, and is not in the tree.**
-// Whose sheet this is heads the page; it cannot be dragged away and nothing can
-// be dropped above it. There is no `pinned` flag in the model to honour, and no
-// special case in the drag: it simply lives outside `#sheet-layout` in
-// index.html, `SHEET_WIDGET_IDS` is read from the store inside, and every hit
-// test is scoped to the tree. A section that is not in the tree cannot be moved
-// by a thing that only moves the tree — so `sanitizeSheetLayout` drops an
-// `identity` node left in a layout stored before this, exactly as it drops any
-// other id it does not recognise, and the sheet heals itself on load.
-//
-// **Horizontal splits share space; vertical ones stack at their natural
-// height.** The asymmetry is deliberate, and it is the document underneath
-// asserting itself: the sheet is a scrolling page of paper — `.paper-sheet` is
-// content-sized so its torn edge hugs what is drawn on it (see character.css) —
-// and a page has a width but not a height. So a row's children divide its width
-// by the shares in `size`, and get a draggable seam between them; a column's
-// children are simply as tall as their contents, and have no seam, because
-// there is no fixed height for them to divide. Forcing one would only clip a
-// section or leave a hole under it.
-//
-// **The layout is this browser's furniture, not the character's.** Like the
-// theme, the panel widths and the browse folders, it describes how *you* read a
-// sheet rather than anything about who is on it — and a GM paging through the
-// party must keep their own arrangement rather than adopting each player's. So
-// it lives in its own localStorage key, is not in the save file, and is never
-// synced. That is also why a read-only sheet is still rearrangeable: moving a
-// section writes nothing to the character.
+// The JS writes only `--share` on a node; sheet-layout.css spends it per the
+// parent's direction — horizontal splits share width and get a draggable seam,
+// vertical ones stack at natural height. The identity block is pinned outside
+// `#sheet-layout` and is not in the tree. The layout is this browser's furniture
+// (own localStorage key, not saved, not synced) — so a read-only sheet is still
+// rearrangeable. See CLAUDE.md § The sheet's layout.
 
 const SHEET_LAYOUT_KEY = 'dnd_inventory_sheet_layout';
 

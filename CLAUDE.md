@@ -1,17 +1,20 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code (claude.ai/code) when working in this repository.
+[ARCHITECTURE.md](ARCHITECTURE.md) is the shorter map; this file is the rationale
+behind each subsystem and which parts are load-bearing.
 
 ## Running the App
 
-No build step. Serve the project root over HTTP (required for `localStorage` and correct MIME types):
+No build step. Serve the project root over HTTP (needed for `localStorage` and
+correct MIME types):
 
 ```bash
 python3 -m http.server 8787
 # then open http://localhost:8787
 ```
 
-Opening `index.html` directly as a `file://` URL works but is not recommended.
+`file://` works but is not recommended — `.env` and `data/*.csv` may not load.
 
 ## Architecture
 
@@ -19,48 +22,45 @@ No framework, no bundler, no dependencies. Static files served as-is:
 
 ```
 index.html          Static shell — every DOM element referenced by JS, with stable IDs
-VERSION             The app version, one line — bump by hand when deploying
+VERSION             App version, one line — bump by hand when deploying
 src/css/*.css       All styles, one file per concern
 src/js/*.js         Application logic, one file per concern
-data/items.csv      Default item database
-data/item_dtypes.csv  Reference only — the allowed values for each items.csv column
+data/items.csv      Default item database, loaded at startup
+data/_item_dtypes.csv  Reference only — the allowed values for each items.csv column
 data/classes.json   The classes the app knows, and the features each grants
 data/species.json   The species the app knows, and the traits each grants
-img/                Image assets (the tiled paper texture)
+img/                Image assets (icon set, paper texture)
+functions/          Cloudflare Pages Function serving Firebase keys on a deploy
 tools/              Standalone dev helpers (not part of the app)
 ```
 
-- **`index.html`** — The script block at the bottom lists every JS file **in load order**.
-  Adding a new file means adding a `<script>` tag there, in the right position.
-- **`src/css/`** — One file per concern, like `src/js/`. `index.html`'s `<head>` lists
-  every one **in cascade order**; adding a file means adding a `<link>` there, in the
-  right position, and order changes are cascade changes. `tokens.css` must stay first —
-  it defines every colour and geometry custom property the other files read, and carries
-  the map of the whole set in its header. CSS custom properties drive the theme
-  (`--cell`, `--cols`, rarity colors). Item rarity coloring is purely CSS via the
-  `rarity-<name>` class + `--rc` variable inheritance.
-- **`src/js/`** — Plain classic scripts sharing globals; **not** ES modules. There are no
-  `import`/`export` statements — a `function` or `const` declared at the top level of one
-  file is visible to all later files. Each file carries its own `'use strict';` (strict mode
-  is per-script). Top-level code (element lookups, `addEventListener` calls) runs at load
-  time in file order, so order changes are behavior changes.
+- **`index.html`** — the script block at the bottom lists every JS file **in load
+  order**; adding a file means adding a `<script>` tag in the right position.
+- **`src/css/`** — one file per concern. `index.html`'s `<head>` lists every one
+  **in cascade order**; order changes are cascade changes. `tokens.css` must stay
+  first — it defines every colour and geometry custom property. Item rarity
+  colouring is purely CSS via the `rarity-<name>` class + `--rc` inheritance.
+- **`src/js/`** — plain classic scripts sharing globals, **not** ES modules. No
+  `import`/`export`: a top-level `function` or `const` in one file is visible to
+  all later files. Each file has its own `'use strict';`. Top-level code runs at
+  load time in file order, so order changes are behaviour changes.
 
 ### JS file map
 
 | File | Contents |
 |------|----------|
 | `items.js` | CSV parsing → `DEFAULT_ITEMS` (`loadDefaultItems`) |
-| `constants.js` | `CELL`, `GRID_COLS`, `RARITY_META`, `RARITY_ORDER`, `EQUIP_SLOTS` |
+| `constants.js` | `CELL`, `GRID_COLS`, `RARITY_META`, `RARITY_ORDER`, `getDefaultEquipLayout` |
 | `state.js` | The `state` object and convenience accessors |
 | `folders.js` | Browse-list folders: model, per-browser persistence, folder modals |
-| `item-sort.js` | The Browse list's sort order: the modes, their persistence, the sort menu |
+| `item-sort.js` | The Browse list's sort order: modes, persistence, sort menu |
 | `shapes.js` | `rotateShapeCW`, `getRotatedShape`, shape cell/bbox math |
-| `grid.js` | Fit tests, place/remove, `rebuildGrid`, id generation |
+| `grid.js` | Fit tests, place/remove, `rebuildGrid`, id generation, deferred resize |
 | `render-grid.js` | `renderGrid`, `renderAllItems` |
 | `render-sidebar.js` | `renderItemList`, details panel |
 | `render-stats.js` | Header weight / encumbrance readout |
 | `drag-ghost.js` | Ghost element (`initGhostEl`, `moveGhost`, `highlightCells`) |
-| `drag-scroll.js` | Edge auto-scroll: a held drag near a panel's edge pulls it along |
+| `drag-scroll.js` | Edge auto-scroll for held drags near a panel's edge |
 | `interaction-placing.js` | PLACING mode |
 | `interaction-drag.js` | DRAGGING mode + R-key rotation |
 | `interaction-context.js` | Item clicks, context menu |
@@ -68,67 +68,67 @@ tools/              Standalone dev helpers (not part of the app)
 | `helpers.js` | Shared formatting + lookup helpers |
 | `persistence.js` | `saveState`, `loadState`, `exportItemsCSV` |
 | `theme.js` | Light/dark palette switching + the settings modal |
-| `appearance.js` | The accent colour, its per-theme resolution, and the hue wheel |
-| `panels.js` | Side-panel resize handles, collapse, and reopen buttons |
+| `appearance.js` | The accent colour, its per-theme resolution, the hue wheel |
+| `panels.js` | Side-panel resize handles, collapse, reopen buttons |
 | `firebase-config.js` | Parses `.env` → `FIREBASE_CONFIG` (`null` when absent) |
-| `party.js` | Firebase party sync + party UI |
-| `campaigns.js` | Campaigns: the bookmark model, entering and leaving, the home section |
+| `party.js` | Firebase party sync + party UI + presence |
+| `campaigns.js` | Campaigns: the bookmark model, entering/leaving, the home section |
 | `auth.js` | Firebase sign-in, the login modal, the Settings account row |
 | `cloud-save.js` | Mirrors the save file to `users/<uid>/save` while signed in |
-| `character-tabs.js` | Per-character tabs above the inventory + sheet/inventory switch |
-| `characters.js` | The account's roster of characters, the class-levels model, and the home screen |
-| `character-setup.js` | The Character Setup modal: name, species, background, and the class rows |
+| `character-tabs.js` | Per-character tabs + sheet/inventory switch |
+| `characters.js` | The account's roster, the class-levels model, the home screen |
+| `character-setup.js` | The Character Setup modal: name, species, background, class rows |
 | `character-sheet.js` | Page one of the 2024 sheet: abilities, skills, combat stats |
-| `sheet-layout.js` | The sheet's sections as widgets: the split tree, drag-to-tile, seams |
-| `class-features.js` | The class registry, and the sheet's Class Features section |
-| `species-traits.js` | The species registry, and the sheet's Species Traits section |
-| `markdown.js` | Markdown to HTML for the written sections, and the sanitizer |
+| `sheet-layout.js` | The sheet's sections as widgets: split tree, drag-to-tile, seams |
+| `class-features.js` | The class registry, and the Class Features section |
+| `species-traits.js` | The species registry, and the Species Traits section |
+| `markdown.js` | Markdown → HTML for the written sections, and the sanitizer |
 | `sheet-prose.js` | Backstory & Appearance: the editor/preview swap |
 | `equipment.js` | Equip slots, layout editor, equip/unequip |
 | `shop.js` | The left panel's tabs, GM shop editor, player shopfront, paying |
 | `chat.js` | The campaign's chat log, and the sidebar's Chat pane |
-| `dice.js` | Rolling: the tumbling number, the corner stack, the advantage wheel, the tray |
-| `battlemap.js` | Battle maps: the model, the Firebase seam, and line of sight |
-| `battlemap-library.js` | The GM's Maps pane, and the import / creature dialogs |
-| `battlemap-view.js` | The map view: the camera, the canvas, the fog, the pointer |
-| `battlemap-initiative.js` | The turn order: the model, the panel, the GM's group roll |
+| `dice.js` | Rolling: the tumbling number, corner stack, advantage wheel, tray |
+| `battlemap.js` | Battle maps: the model, the Firebase seam, line of sight |
+| `battlemap-library.js` | The GM's Maps pane, the import / creature dialogs |
+| `battlemap-view.js` | The map view: camera, canvas, fog, pointer |
+| `battlemap-initiative.js` | The turn order: model, panel, the GM's group roll |
 | `tooltip.js` | Hover tooltip |
 | `main.js` | `init()` and the single call to it |
 
 ### CSS file map
 
-Loaded in this order. A rule's file is its subject; where two could claim it, the one
-that owns the element wins.
+Loaded in this order. A rule's file is its subject; where two could claim it, the
+one that owns the element wins.
 
 | File | Contents |
 |------|----------|
 | `tokens.css` | Both palettes, `--cell` / `--cols`, and the map of this set |
-| `base.css` | Reset, body, the grain overlay, type, form controls, buttons, `.hidden` |
+| `base.css` | Reset, body, grain overlay, type, form controls, buttons, `.hidden` |
 | `icons.css` | The `img/icon` PNGs as `.ico` glyphs, masked over `currentColor` |
 | `layout.css` | The app shell: header, weight bar, main split, panel resizing |
 | `inventory.css` | The torn sheet, grid cells, placed items, the drag ghost |
-| `sidebar.css` | The right panel: browse list, folders, details, context and sort menus |
+| `sidebar.css` | The right panel: browse list, folders, details, context/sort menus |
 | `modals.css` | Modal chrome, and the shape editor inside the item editor |
-| `character.css` | The character tabs, and page one of the 2024 character sheet |
+| `character.css` | The character tabs, and page one of the 2024 sheet |
 | `character-setup.css` | The sheet's gear button, and the class rows in the setup modal |
-| `sheet-layout.css` | The sheet's split containers, resize seams, and drop feedback |
-| `class-features.css` | The feature cards, corner badges, and the Markdown inside a description — for Class Features *and* Species Traits |
-| `sheet-prose.css` | The written sections: the bar, the editor, and the rendered prose |
+| `sheet-layout.css` | The sheet's split containers, resize seams, drop feedback |
+| `class-features.css` | Feature cards, corner badges, Markdown in a description — Class Features *and* Species Traits |
+| `sheet-prose.css` | The written sections: the bar, the editor, the rendered prose |
 | `party.css` | Party header badge, the sidebar Party tab, kick |
-| `campaigns.css` | The home screen's Campaigns section, its cards, and the campaign modal |
+| `campaigns.css` | The home screen's Campaigns section, its cards, the campaign modal |
 | `equipment.css` | The equip rack, the left-panel tabs, the layout editor |
-| `shop.css` | The GM shop editor, the player shopfront, and their modals |
-| `chat.css` | The sidebar's Chat pane, its messages and composer, and a roll said in it |
-| `dice.css` | The flying number, the corner stack, the wheel, the hover card, the tray |
-| `battlemap.css` | The map button, the map view, and the GM's library pane |
-| `initiative.css` | The turn order panel over the board, and its group-roll dialog |
+| `shop.css` | The GM shop editor, the player shopfront, their modals |
+| `chat.css` | The sidebar's Chat pane, its messages and composer, a roll said in it |
+| `dice.css` | The flying number, corner stack, wheel, hover card, tray |
+| `battlemap.css` | The map button, the map view, the GM's library pane |
+| `initiative.css` | The turn order panel over the board, its group-roll dialog |
 | `tooltip.css` | The hover tooltip |
 | `stash.css` | The stash (items needing placement) and the container tabs |
 | `coins.css` | The multi-denomination cost input and the coin purse |
-| `settings.css` | The settings modal, the theme picker, and the info pages |
+| `settings.css` | The settings modal, the theme picker, the info pages |
 | `appearance.css` | The Appearance page's colour rows and the hue wheel |
 | `auth.css` | The sign-in modal, the Settings account row, cloud conflict |
-| `home.css` | The home button, the roster page, and the character cards |
+| `home.css` | The home button, the roster page, the character cards |
 
 ### State model (`src/js/state.js`)
 
@@ -136,31 +136,29 @@ that owns the element wins.
 state.character   { id, name, race, abilities{str…cha}, background, alignment,
                     xp, size, ac, speed,
                     hp{…}, hitDice{…}, deathSaves{…}, inspiration,
-                    saveProf{}, skillProf{}, armorTraining{}, weaponProf,
-                    toolProf,
+                    saveProf{}, skillProf{}, armorTraining{}, weaponProf, toolProf,
                     classLevels[{ name, level, subclass }],  (the classes, authoritative)
-                    classes[], level, subclass, strength }   (mirrors of the two above)
-                                                          (the whole thing: the working copy)
+                    classes[], level, subclass, strength }   (mirrors of the above)
 state.characters  { [charId]: { character, instances, equipped, equipLayout, db } }
 state.activeCharacterId  charId                     (which slot the working copy is)
 state.campaigns   { [code]: { code, name, role, characterId, gmName,
                               memberCount, lastPlayed } }   (bookmarks, in the save)
-state.screen      'app' | 'home'                    (the roster page is in front of the app)
+state.screen      'app' | 'home'
 state.grid        2D array [row][col] → instanceId | null
 state.instances   { [instanceId]: { id, templateId, rotation, row, col, stackCount } }
 state.db          { [templateId]: ItemTemplate }   (default + custom items)
-state.folders     [{ id, name }]                    (Browse-list folders, ordered)
+state.folders     [{ id, name }]
 state.folderAssign    { [templateId]: folderId }    (overrides only; '__unfiled' = no folder)
 state.folderCollapsed { [folderId]: true }
-state.itemSort    'rarity' | 'name' | 'weight'      (Browse-list sort order)
-state.shops       { [shopId]: Shop }                (the party's shops, from Firebase)
-state.battlemap   { activeId, maps{} }              (the party's battle maps, from Firebase;
+state.itemSort    'rarity' | 'name' | 'weight'
+state.shops       { [shopId]: Shop }                (party's shops, from Firebase)
+state.battlemap   { activeId, maps{} }              (party's maps, from Firebase;
                                                      a map's `initiative` is the turn order)
-state.leftTab     'equip' | 'shop' | 'map'          (which left-panel pane shows)
+state.leftTab     'equip' | 'shop' | 'map'
 state.shopOpenId  shopId | null                     (null = the list of shops)
 state.mapLibraryOpenId  mapId | null                (null = the list of maps)
-state.auth        { user, ready }                   (signed-in account, or null)
-state.view        'inventory' | 'sheet' | 'map'     (which view the middle panel shows)
+state.auth        { user, ready }
+state.view        'inventory' | 'sheet' | 'map'
 state.mode        'idle' | 'placing' | 'dragging'
 state.placing     { templateId, rotation }
 state.dragging    { instanceId, anchorRow, anchorCol, origRow, origCol, origRotation }
@@ -168,108 +166,88 @@ state.dragging    { instanceId, anchorRow, anchorCol, origRow, origCol, origRota
 
 ### Grid geometry
 
-- 15 columns fixed (`GRID_COLS`), rows = `strength × 3` (three equal zones).
-  Strength is 0–30, so a grid of no rows at all is a legal state
-- Cell size = 44 px (`CELL` constant)
-- Zone 0–(str-1): Normal carry; zone str–(2·str-1): Encumbered; zone 2·str–(3·str-1): Heavily Encumbered
-- `state.grid` is the authoritative occupancy map; placed-item `<div>`s are purely visual and are rebuilt by `renderAllItems()`
-- **The grid can shrink under the items on it.** Strength going down takes rows
-  away, and editing a container template's `containerRows` / `containerCols`
-  does the same inside a pack. `rebuildGrid()` therefore fit-tests every
-  instance before re-placing it and calls `unplaceInstance()` on whatever no
-  longer fits, which drops it into that grid's Needs Placement list. Skipping
-  the re-place without clearing `row` / `col` is not a safe shortcut: the item
-  keeps a position off the end of the grid, occupies no cell, and is drawn
-  where `#inventory-grid`'s `overflow: hidden` clips it — invisible and
-  unclickable, while `totalCarriedWeight()` goes on charging for it.
-- **A Strength typed on the sheet resizes the grid only when the reader goes
-  back to the inventory** (`markGridSizeDirty()` / `rebuildGridIfSizeDirty()` in
-  `grid.js`, marked from `commitSheetEdit()` and settled by
-  `syncCharacterViewUI()`). A number box is edited a keystroke at a time, so the
-  way from 8 to 16 runs through an empty box (0 rows) and then 1 (three rows) —
-  and rebuilding on each would empty the pack onto the Needs Placement list.
-  **That is not undone by finishing the number**, because the ejection cleared
-  every `row` / `col` on the way past. So the resize waits for the number the
-  reader settled on.
-  - Nothing is inconsistent while it waits: `state.grid` and the instances in it
-    still agree, the grid is just still sized for the previous Strength. Only
-    `state.character.strength` has run ahead, and its one live reader is the
-    header's weight readout — numbers, not cells, and right to preview the edit.
+- 15 columns fixed (`GRID_COLS`); rows = `strength × 3` (three equal zones).
+  Strength is 0–30, so a grid of no rows is legal.
+- Cell size = 44px (`CELL`).
+- Zone 0–(str-1): Normal carry; str–(2·str-1): Encumbered; 2·str–(3·str-1):
+  Heavily Encumbered.
+- `state.grid` is the authoritative occupancy map; placed-item `<div>`s are
+  purely visual and rebuilt by `renderAllItems()`.
+- **The grid can shrink under the items on it** — Strength going down, or editing
+  a container template's `containerRows`/`containerCols`. `rebuildGrid()`
+  fit-tests every instance before re-placing it and calls `unplaceInstance()` on
+  whatever no longer fits (dropping it into that grid's Needs Placement list).
+  Skipping the re-place without clearing `row`/`col` is unsafe: the item then
+  occupies no cell, is clipped invisible by `#inventory-grid`'s `overflow:
+  hidden`, and `totalCarriedWeight()` still charges for it.
+- **The deferred resize.** A Strength typed on the sheet resizes the grid only
+  when the reader goes back to the inventory (`markGridSizeDirty()` /
+  `rebuildGridIfSizeDirty()` in `grid.js`, marked from `commitSheetEdit()`,
+  settled by `syncCharacterViewUI()`). A number box passes through 0 and 1 on the
+  way from 8 to 16; rebuilding on each keystroke would eject the whole pack, and
+  finishing the number does not undo it (the ejection cleared every `row`/`col`).
+  - Nothing is inconsistent while it waits: `state.grid` and its instances still
+    agree; only `state.character.strength` has run ahead, read only by the
+    header's weight readout.
   - The flag is cleared in **`initGrid()`**, not only in
-    `rebuildGridIfSizeDirty()`, so a rebuild from any other cause (a boot, a
-    character swap, a party sync) also satisfies the pending resize rather than
-    leaving a stale flag to fire a second identical rebuild.
-  - A save taken before the reader returns keeps each item's `row` / `col`, and
-    the `rebuildGrid()` in `init()` settles it on the next load — once, on a
-    finished number.
+    `rebuildGridIfSizeDirty()`, so a rebuild from any cause (boot, character swap,
+    party sync) also satisfies the pending resize.
+  - A save taken before the reader returns keeps each item's `row`/`col`, and the
+    `rebuildGrid()` in `init()` settles it on the next load.
 
 ### Item shapes
 
-Shapes are 2D arrays of `0`/`1`. Weight = count of `1`s (1 lb per cell). `rotateShapeCW` rotates 90° clockwise; instances store a `rotation` index (0–3) and `getRotatedShape(baseShape, rotation)` applies it. Stackable items always use `[[1]]` and carry a `stackSize` — how many units fit in that one cell, so each unit weighs `1 / stackSize`. `stackSize` absent or `1` means the item does not stack. Read it through `stackSizeOf` / `isStackable` / `unitWeight` in `helpers.js`, never off the template directly: those helpers also translate the pre-`stackSize` `stackable` + `weightEach` pair still present in old saves and party data.
+Shapes are 2D arrays of `0`/`1`. Weight = count of `1`s (1 lb per cell).
+`rotateShapeCW` rotates 90° clockwise; instances store a `rotation` index (0–3)
+and `getRotatedShape(baseShape, rotation)` applies it. Stackable items always use
+`[[1]]` and carry a `stackSize` — how many units fit in that one cell, so each
+unit weighs `1 / stackSize`. `stackSize` absent or `1` means the item does not
+stack. Read it through `stackSizeOf` / `isStackable` / `unitWeight` in
+`helpers.js`, never off the template directly — those helpers also translate the
+pre-`stackSize` `stackable` + `weightEach` pair still present in old saves and
+party data.
 
 ### Side panels
 
 Both side panels resize by the handle on their inner border (`panels.js`), and
-fold away entirely when dragged narrower than `PANEL_COLLAPSE_AT`, leaving a
-round reopen button in that corner. Widths and collapsed flags are this
-*browser's* window furniture, so like the theme and the folders they live in
-their own key (`dnd_inventory_panels`) and never enter the save file or party
-data.
+fold away when dragged narrower than `PANEL_COLLAPSE_AT`, leaving a round reopen
+button. Widths and collapsed flags are this *browser's* window furniture — like
+the theme and folders they live in their own key (`dnd_inventory_panels`) and
+never enter the save file or party data.
 
 - Widths are CSS custom properties (`--equip-w` / `--sidebar-w`) set on `#app`;
   `:root` holds the defaults. One class per side (`equip-collapsed` /
-  `sidebar-collapsed`) hides the panel *and* its handle, shows the reopen
-  button, and pads `#character-tabs` clear of it.
-- Collapse happens live from the raw cursor position, not on release, so
-  dragging back out brings the panel straight back without the button.
-- `.panel-resizer` **must stay `position: relative`**. It straddles the seam on
-  negative margins, and `#inventory-panel` is positioned and later in the DOM —
-  unpositioned, the handle's `z-index` does nothing and the inventory panel eats
-  the clicks on half of it.
+  `sidebar-collapsed`) hides the panel *and* its handle, shows the reopen button,
+  and pads `#character-tabs` clear of it.
+- Collapse happens live from the raw cursor position, not on release.
+- `.panel-resizer` **must stay `position: relative`** — it straddles the seam on
+  negative margins, and unpositioned its `z-index` does nothing, so the
+  positioned `#inventory-panel` eats the clicks on half of it.
 
 ### Campaigns
 
-A party used to be a *session*: six letters, alive while somebody held them, and
-forgotten the moment everyone closed their tab. A **campaign** is the *table* —
-it has a name, it has a Game Master, it remembers who plays in it and which
-character each of them brings, and it is still there next Tuesday. The model is
-`src/js/campaigns.js`; the live session under it is still `party.js`.
-
-**It is not a bigger party. It is the same party with one thing fixed.**
+A **campaign** is a persistent party: it has a name, a Game Master, and remembers
+who plays in it and which character each brings. The model is
+`src/js/campaigns.js`; the live session under it is `party.js`.
 
 > A roster entry is keyed by the player's **account uid**, not by a per-join
 > session id.
 
-That single change is the whole of the duplicate-player fix, and everything else
-here falls out of it. The old `generatePlayerId()` minted a fresh `p_…` key on
-every join. Nothing was wrong with the id — it was the **lifetime** that was
-wrong: a session id names a *connection*, and a roster is not a list of
-connections, it is a list of *people*. So closing the tab and coming back wrote a
-second node, and the GM watched one player become two — one greyed out forever,
-one live, both equally real as far as the roster could tell. There was no cleanup
-to write, either, because nothing distinguished that ghost from a player who had
-genuinely stepped away for a minute.
+That single change is the whole of the duplicate-player fix: keyed by the
+account there is nowhere for a duplicate to be, a rejoin lands on the node you
+already had, and the roster can be *read* as membership — a list that outlives
+every session in it. `ownPlayerId()` is the one way to ask.
 
-Keyed by the account there is **nowhere for a duplicate to be**. A rejoin lands
-on the node you already had: `connected` flips back to true, and the character,
-the shop reveals aimed at you and the GM's current selection all still point at
-the same place. It is also what lets the roster be *read* as membership — a list
-that outlives every session in it, which is what makes a campaign possible at
-all. `ownPlayerId()` is the one way to ask.
-
-- **The GM is the exception, deliberately.** Their node is `parties/<code>/gm` —
-  one node rather than a keyed collection — so it never had this problem. Their
-  uid is recorded in it and in `meta.gmUid`, which is how a campaign remembers
-  who runs it.
-- It also retires the shop-reveal caveat: `shop.players` is keyed by the same
-  ids, so a reveal no longer goes dark on a player who reloaded.
-  `shop.playerNames` stays as a fallback for reveals written under the old keys.
+- **The GM is the exception, deliberately.** Their node is `parties/<code>/gm`
+  (one node, not a keyed collection). Their uid is recorded there and in
+  `meta.gmUid`, which is how a campaign remembers who runs it.
 - **Legacy `p_…` entries** are swept on join by `sweepLegacySelfEntries()`,
-  matched on the typed name — which is all such an entry carries that identifies
-  anyone, and precisely why the scheme had to change. Best-effort: a leftover it
-  misses is still one Kick away, and this is the last release that can make one.
+  matched on the typed name. Best-effort; a leftover it misses is one Kick away.
+- Shop reveals: `shop.players` is keyed by the same uids and survives a rejoin.
+  `shop.playerNames` stays as a name-match fallback for reveals written under the
+  old per-session keys.
 
-**Two halves, and neither is a copy of the other.**
+**Two halves, neither a copy of the other:**
 
 ```
 parties/<code>/          in Firebase — the campaign. Shared, authoritative.
@@ -283,57 +261,40 @@ state.campaigns[code]    in the save file — this account's *bookmark*.
 ```
 
 - The bookmark answers only what the home screen must know **before** it has
-  spoken to Firebase: that you have a seat somewhere, roughly what it looks like,
-  and which character sits in it. Everything cached in it is refreshed from the
-  party itself once connected (`noteCampaignMeta` / `noteCampaignRoster`, driven
-  by party.js's two subscriptions).
+  spoken to Firebase. Everything cached in it is refreshed from the party
+  (`noteCampaignMeta` / `noteCampaignRoster`, driven by party.js's subscriptions).
 - **Nothing reads the bookmark to decide anything that matters.**
-  `enterCampaign()` asks the *party* whether you are its GM (`meta.gmUid`) rather
-  than believing the `role` written locally — a bookmark is this browser's
-  memory, the party is the fact, and a GM signing in on a new machine must still
-  land in the right chair.
-- Neither refresh calls `debouncedSync()`. They fire on every roster snapshot,
-  and a save apiece to cache a head count would be a great deal of writing for a
-  number nobody is waiting on; the next real edit carries them.
-- It rides in the **save payload** (v3) rather than a Firebase index of its own,
-  so it follows the account across browsers for free — cloud-save.js already
-  mirrors exactly this — and needs no second set of database rules. The cost is
-  that a campaign is not discoverable until you have typed its code once, which
-  is the same as it ever was.
+  `enterCampaign()` asks the *party* whether you are its GM (`meta.gmUid`), not
+  the local `role` — so a GM signing in on a new machine still lands right.
+- Neither refresh calls `debouncedSync()` — they fire on every roster snapshot;
+  the next real edit carries them.
+- It rides in the **save payload** (v3), so it follows the account across
+  browsers for free (cloud-save.js already mirrors it) with no new database
+  rules. Cost: a campaign is not discoverable until you have typed its code once.
 
-**Leaving the session is not leaving the campaign.** Closing the tab, or pressing
-Leave Party, ends the connection and nothing else — the roster entry stays, which
-is the entire point. `leaveCampaign()` is the separate, deliberate act that gives
-up the seat, and for a **GM it deletes the campaign outright**: a record with
-nobody running it is dead, so pretending otherwise would leave players holding a
-code into nothing. A kick reaches both halves of the same fact — the entry goes
-*and* `handleRemovedFromParty()` drops the bookmark, or the card left behind
-would be an invitation back into a table you have been removed from.
+**Leaving the session is not leaving the campaign.** Closing the tab or pressing
+Leave Party ends the connection only — the roster entry stays. `leaveCampaign()`
+is the separate act that gives up the seat, and for a **GM it deletes the
+campaign outright** (a record with nobody running it is dead). A kick reaches
+both halves: the entry goes *and* `handleRemovedFromParty()` drops the bookmark.
 
-**The section sits above Your Characters** on the home screen, because it is the
-larger question: which table comes before which character, and a player arriving
-for a session is reaching for the campaign. A campaign card is literally a
-`.char-card` with two extra pieces, so the two grids read as one page rather than
-as two ideas of what a card is. Clicking one enters it — switching to the
-remembered character *first*, so the roster entry is right the first time rather
-than published wrong and corrected.
+**The section sits above Your Characters** on the home screen. A campaign card is
+a `.char-card` with two extra pieces. Clicking one enters it, switching to the
+remembered character *first* so the roster entry is right the first time.
 
-**One door in.** The campaign modal (create / join, in the shape the party
-modal's role tabs already had) is opened from the home screen *and* from the
-sidebar's Party tab, so the two can never offer different ideas of how you get
-into a game. Everything still goes through `requireAuth()`: the buttons stay
-live when signed out and ask for the account when pressed, rather than being
-disabled beside a note pointing at a door that cannot be opened.
+**One door in.** The campaign modal (create / join) is opened from the home
+screen *and* the sidebar's Party tab, so the two can never differ. Everything
+goes through `requireAuth()` — the buttons stay live when signed out and ask for
+the account when pressed.
 
-**Known gap.** A party created before this — one with no `meta.gmUid` — reads as
-having no GM, so its original GM would rejoin as a player. Those parties were
-session-scoped and unbookmarkable, so nothing can click into one; they die with
-the session they were made in.
+**Known gap.** A party created before this — no `meta.gmUid` — reads as having no
+GM. Those parties were session-scoped and unbookmarkable, so nothing can click
+into one; they die with the session they were made in.
 
 ### The sidebar's tabs
 
-The right panel shows the tabs that belong to **what the inventory panel is
-currently showing**, because the two answer one question:
+The right panel shows the tabs that belong to what the inventory panel is
+showing:
 
 ```
 inventory view    Browse · Details · Party
@@ -341,112 +302,70 @@ sheet view        Chat · Dice · Party
 map view          Chat · Dice · Party      (the same three, deliberately)
 ```
 
-Reading an item's stats beside a grid of items is the whole point of the Details
-pane; reading them beside a character sheet is a panel from the wrong app. Party
-is in **both** — who you are playing with is true of either view — which is why
-`SIDEBAR_TAB_VIEW` in `modals.js` is a map with a null in it rather than two flat
-lists.
+Party is in **both**, which is why `SIDEBAR_TAB_VIEW` in `modals.js` is a map
+with a null in it rather than two flat lists.
 
 - **`sidebarView()` is not `state.view`.** A GM who deselects a player keeps
-  `state.view === 'sheet'` while the panel falls back to their placeholder, and
-  reading the raw field there would strand them on Chat and Dice — with no
-  **Browse**, which is the pane they stock shops by dragging out of. It reproduces
-  the `showSheet` test `syncCharacterViewUI()` already uses for `.sheet-view`, so
-  the two halves of the screen cannot disagree about what is being shown.
-- **The battle map answers `'sheet'` rather than earning a third row.** What
-  this asks is not "which view is up" but "which panes belong beside it", and
-  beside a board that is Chat, Dice and Party — the table's own three. A third
-  row would be three names for two answers.
+  `state.view === 'sheet'` while the panel shows their placeholder; reading the
+  raw field would strand them on Chat/Dice with no **Browse** (the pane they
+  stock shops from). It reproduces the `showSheet` test `syncCharacterViewUI()`
+  uses for `.sheet-view`.
+- **The battle map answers `'sheet'`** rather than earning a third row — the
+  question is "which panes belong beside it", and that is Chat, Dice, Party.
 - **Asking for a tab is asking for the view it lives in.** A shop entry clicked
-  while reading your character sheet calls `switchTab('details')`, and the honest
-  answer is to show the item — which means going where items are shown. That one
-  line in `switchTab()` is why every existing caller (`render-sidebar.js`,
-  `shop.js`, `leaveParty()`) kept working untouched.
-- **Only the sheet can be refused**, and that is all `hasViewedCharacter()` was
-  ever guarding in `switchTab()`: a GM with nobody picked has no character to
-  show one of. Asked of an *inventory* pane it refuses a move that is always
-  possible — which is how a GM standing on the battle map with no player
-  selected found **Browse** unreachable, the pane they stock shops out of.
-- `activateSidebarTab()` is the plain DOM half — light one button, show one pane
-  — and `syncSidebarTabs()` calls *it* rather than `switchTab()`, so the two
-  cannot recurse into each other.
-- A view switch must never leave the active tab hidden, so `syncSidebarTabs()`
-  falls back to the first visible one. Driven from `syncCharacterViewUI()`, the
-  same single entry point the character tabs and the left panel use.
+  from the character sheet calls `switchTab('details')`; the honest answer is to
+  show the item, which means going where items are shown. That one line in
+  `switchTab()` is why every existing caller kept working untouched.
+- **Only the sheet can be refused** (`hasViewedCharacter()` in `switchTab()`) — a
+  GM with nobody picked has no character to show one of. Asked of an inventory
+  pane it would refuse a move that is always possible.
+- `activateSidebarTab()` is the plain DOM half (light one button, show one
+  pane); `syncSidebarTabs()` calls *it*, not `switchTab()`, so the two cannot
+  recurse. `syncSidebarTabs()` falls back to the first visible tab if a view
+  switch hid the active one. Driven from `syncCharacterViewUI()`.
 
 ### Chat
 
-Talk belongs to the **table**, not to a character — the same argument the shops
-make — so it lives at `parties/<code>/chat` and everyone holding the code reads
-one log. `src/js/chat.js`.
+Talk belongs to the **table**: `parties/<code>/chat`, one log for everyone
+holding the code. `src/js/chat.js`.
 
 ```
 parties/<code>/chat/<pushId>   { uid, name, text, at }
 ```
 
-- A **push id**, not a key of our own devising: RTDB's are ordered by server time
-  and unique across clients with no coordination, which is exactly what a
-  transcript needs and the one thing a client-minted id cannot promise. They sort
-  lexicographically into chronological order, and the renderer sorts them
-  explicitly rather than trusting object key order.
-- A **read-through cache** like `state.shops`, refreshed by a subscription that
-  rides along with the roster (`subscribeToChat`, called from
-  `subscribeToParty`). Nothing about it is in the save file — a conversation is
-  not part of a character, and every member holds the same copy.
-- Only `limitToLast(200)` is subscribed. A campaign that has run a year should
-  not cost a year of messages to open a tab.
-- **`name` is stamped on the message, not looked up when it is drawn.** Who said
-  a thing is a fact about the moment it was said, so renaming a character — or
-  leaving the campaign altogether — must not rewrite or blank the history. Same
-  reason a shop entry snapshots its template. It is the *account's* name, because
-  chat is between players and a GM has no character to be named by.
+- A **push id**, not a client-minted one: RTDB's are ordered by server time and
+  unique across clients with no coordination. The renderer sorts them explicitly.
+- A **read-through cache** like `state.shops`, refreshed by `subscribeToChat`
+  (called from `subscribeToParty`). Nothing about it is in the save file.
+- Only `limitToLast(200)` (`CHAT_HISTORY`) is subscribed.
+- **`name` is stamped on the message, not looked up when drawn** — who said a
+  thing is a fact about the moment it was said. It is the *account's* name.
 - **`textContent`, never `innerHTML`, and markdown.js is deliberately not
-  involved.** The sanitizer is for prose that asked to be formatted; a chat line
-  did not, so it is not parsed at all and there is nothing to escape. This is the
-  one pane where another player's typing lands in your browser every few seconds.
-- **Pinned-to-bottom is measured, not assumed.** A message arriving must not yank
-  a reader out of history they scrolled up to read, nor strand them above the
-  newest line when they were following along; sending is always an intent to
-  follow. `onChatTabShown()` renders rather than only scrolling, because the
-  first time the tab is shown the pane has never been drawn at all.
-- **Your own lines hang right, everyone else's hang left** — name, timestamp and
-  bubble together. `.chat-msg` is a column whose cross-axis alignment picks the
-  edge, so both children shrink to their content and hug that side, and
-  `.chat-msg-head` reverses for your own so the *name* is the part against the
-  edge either way. Two things this needs to work: a `max-width` on the bubble,
-  since one allowed to fill the panel is on both sides at once, and the accent
-  edge crossing to the right with it — a thick rule on the left of a right-hung
-  bubble points back at nothing. The text *inside* stays left-aligned in both
-  cases: it is the bubble that moves, and ragged-left prose is harder to read.
-- **A roll is a message too**, `kind: 'roll'`, carrying the numbers beside the
-  sentence — see *Dice* below for why there is no second collection. chat.js
-  draws it as a card rather than a bubble and works only from the payload,
-  never from the sentence; `rollMessageBody()` is the whole of that.
-- The composer deliberately survives `body.party-readonly`: reading another
-  player's sheet is read-only, but talking to them is not.
-- With no campaign — or signed out — the pane says so instead of offering an
-  input that could only talk to itself.
-
-The **Dice** tab is the tray — a count, a modifier and one button per face.
-See *Dice* below.
+  involved** — a chat line did not ask to be formatted. This is the one pane
+  where another player's typing lands in your browser every few seconds.
+- **Pinned-to-bottom is measured, not assumed** — a new message must not yank a
+  reader out of scrolled-up history, nor strand them above the newest line.
+  Sending is always an intent to follow. `onChatTabShown()` renders rather than
+  only scrolling (the first time, the pane has never been drawn).
+- **Your own lines hang right, everyone else's hang left.** `.chat-msg` is a
+  column whose cross-axis alignment picks the edge; `.chat-msg-head` reverses for
+  your own so the name is against the edge either way. Needs a `max-width` on the
+  bubble and the accent edge crossing to the right with it. Text inside stays
+  left-aligned.
+- **A roll is a message too** (`kind: 'roll'`) — see *Dice*. chat.js draws it as
+  a card, working only from the payload; `rollMessageBody()` is the whole of that.
+- The composer survives `body.party-readonly` — reading another player's sheet is
+  read-only, but talking to them is not.
+- With no campaign (or signed out) the pane says so.
 
 ### Dice
 
-A roll is **one event with three audiences**, and each of them wants a different
-amount of it. `src/js/dice.js`.
+A roll is **one event with three audiences**: the roller (the big tumbling
+number, then a corner chip whose hover opens the whole working), the table (a
+line in the chat log), and everyone else (a bubble over the roller's tab).
+`src/js/dice.js`.
 
-```
-you            the number, large, in the middle of the screen — it spins,
-               settles, then flies to the corner and joins your last three
-the table      a line in the chat log, because a roll is a thing said
-everyone else  a speech bubble over your tab, so a roll is noticed without
-               anyone having to be looking at the log
-you, again     hovering a corner chip opens the whole working — every die,
-               the one advantage threw away, and each score behind the modifier
-```
-
-**There is no `parties/<code>/rolls`.** A roll *is* a chat message — one with a
-`kind` of `'roll'` and the numbers carried beside the sentence:
+**There is no `parties/<code>/rolls`.** A roll *is* a chat message:
 
 ```
 parties/<code>/chat/<pushId>
@@ -455,429 +374,251 @@ parties/<code>/chat/<pushId>
     roll: { label, total, mode, faces, count, mod, dice[], dropped[] } }
 ```
 
-**`parts` is deliberately not in that payload.** It is what the *sheet* knew at
-the moment of the roll — which ability, off what score, which proficiency — and
-it exists for the hover card on your own corner chips. Nobody else is offered
-that card, so shipping every roller's ability scores into a shared log would be
-a payload nothing reads.
+The log is already ordered by the server, subscribed by everyone, capped, and
+name-stamped — a rolls collection would need all of that again and would still
+have to be interleaved with the conversation to read in order. So the tab
+bubbles ride the chat subscription too: `noteRollFeed()` is called from it, and
+nothing in dice.js talks to Firebase except `postRollToChat()`. Rolling
+therefore **works with no campaign at all** — the big number and corner stack
+are local; `canChat()` makes the other two audiences silently not happen.
 
-That is the whole of the plumbing, and it is the load-bearing decision here. The
-log is already ordered by the server, already subscribed by everyone holding the
-code, already capped at a sane tail, and already stamps the speaker's name on
-each line rather than looking it up when it is drawn. A rolls collection would
-need every one of those properties again — and would still have to be
-interleaved with the conversation to be read in order, because "Marta rolled a
-2" and "we should go back" are the same conversation. So the tab bubbles ride
-the chat subscription too: `noteRollFeed()` is called from it, and nothing in
-dice.js talks to Firebase except `postRollToChat()`.
+- **`parts` is deliberately not in the payload** — it is what the sheet knew at
+  roll time (which ability, off what score, which proficiency), for the hover
+  card on your *own* corner chips. Nobody else is offered that card.
+- **`text` is written anyway**, as the plain sentence ("🎲 13 Arcana · 1d20 (9) +
+  4"), for anything reading the log that does not know what a roll is. The
+  renderer never reads it — `rollMessageBody()` works from the payload alone.
+- **Nothing about a roll is in the save file.** `rollHistory` is session-only.
 
-Which is also why rolling **works with no campaign at all**. The big number and
-the corner stack are local; the two audiences that are other people simply do
-not happen without a table to be at, and `canChat()` — the same gate an ordinary
-line goes through — is what makes that silent rather than an error.
-
-**`text` is written anyway**, as the plain sentence ("🎲 13 Arcana · 1d20 (9) +
-4"). Anything reading the log without knowing what a roll is — an older client, a
-copy-paste, an export written later — gets the sentence rather than a blank
-line. The renderer never reads it: `rollMessageBody()` works from the payload
-alone, so a client that draws the card and one that only shows text can never
-disagree about the total.
-
-**Nothing about a roll is in the save file.** `rollHistory` is session-only, like
-the chat log and for the same reason: what you rolled is not part of a character,
-and nobody wants it restored next Tuesday.
-
-**The tumble.** The number arrives spinning: other plausible values, arriving
-fast and then further and further apart, before it locks onto the real one and
-holds still. The whole business runs a **random 1–3 seconds**, because a die you
-can time to the millisecond has no suspense in it, and the same beat every time
-turns into a delay to sit through rather than a result to wait for.
+**The tumble.** The number arrives spinning through other plausible values, then
+locks on. Runs a **random 1–3 seconds** (a fixed beat becomes a delay to sit
+through).
 
 - The values shown on the way past are made by **rolling the same pool again**,
-  not picked out of a range — so a `3d6 + 2` never flashes a 4 it could not have
-  produced, and a d100 tumbles through three digits like a d100.
-- The gap between one number and the next is eased on `t²`, so almost all of the
-  slowing happens at the very end, where it is suspense rather than a wait.
-- A `setTimeout` chain rather than `requestAnimationFrame`: a background tab
-  stops painting and stops rAF entirely, and a roll thrown in one still has to
-  land in the corner rather than hang there forever. Throttled timers make the
-  tumble slower and coarser in a tab nobody is looking at, which is exactly what
-  should happen to it.
-- **Nothing is allowed to give the answer away early.** The detail line is held
-  back until the answer is final — not merely until the dice stop, which for an
-  advantage roll is two beats earlier — because it names every die and says
-  which was dropped. `visibility`, not `display`, so the flier does not change
-  height when it arrives.
-- **The crit colour waits too, and that is the whole of the `.settled` gate.**
-  The class is on the flier from the moment it is built, but a number that turns
-  green as it appears has announced it is a 20 before it has finished deciding
-  to be one — the suspense given away in the first frame. `:not(.dropped)` keeps
-  it off the die that lost, however good that die was.
-- Two class names, not one: **`locked` is when the dice stop and `settled` is
-  when the answer is final.** For a straight roll they are the same instant; for
-  an advantage roll two numbers land together and only one of them then wins.
-  The little beat as a number stops belongs to the first, and the detail line
-  and the crit colour to the second.
+  so a `3d6 + 2` never flashes a value it could not produce.
+- The gap between numbers eases on `t²` — almost all the slowing is at the end.
+- A `setTimeout` chain, not `requestAnimationFrame` — a background tab stops
+  rAF entirely, and a roll thrown in one must still land.
+- **Nothing gives the answer away early.** The detail line is held until the
+  answer is final (`visibility`, not `display`, so height does not change). The
+  crit colour waits too — that is the whole of the `.settled` gate;
+  `:not(.dropped)` keeps it off the die that lost.
+- Two class names: **`locked`** = the dice stopped; **`settled`** = the answer is
+  final. Same instant for a straight roll; two beats apart for advantage.
 - The waiting chip is `pointer-events: none` as well as invisible, or hovering
-  where it will land would open the working — the whole answer — while the
-  number is still tumbling towards it.
-- **A second roll supersedes the first.** Two numbers tumbling over each other
-  in the middle of the screen is unreadable, so `flyRoll()` finishes any flier
-  still in the air: no flight, no fade, the number simply appears in the chip
-  that was already waiting for it.
+  where it will land would open the working while the number is still tumbling.
+- **A second roll supersedes the first** — `flyRoll()` finishes any flier still
+  in the air (no flight, no fade).
 
-**An advantage roll tumbles two numbers, side by side.** Both spin, both stop,
-both stand there for a beat — and then the loser greys out and shrinks where it
-is while the winner slides into the middle and becomes the roll. It is the same
-1–3 seconds a straight roll takes: the two extra beats come *out of* the tumble
-rather than being added after it.
+**An advantage roll tumbles two numbers side by side.** Both spin, both stop,
+both stand for a beat, then the loser greys and shrinks while the winner slides
+to the middle. Same 1–3 seconds — the extra beats come *out of* the tumble.
 
-- **Both figures are whole totals**, pool plus modifier, not bare dice. So the
-  number that wins is the number that flies to the corner, and the reader never
-  watches one figure turn into a different one.
-- **Each number's box is fixed for the whole roll**, at the widest total the
-  pool can reach (`totalBoxWidth()`, in `ch`, with tabular figures so a `ch`
-  really is one digit). A tumbling total runs through one, two and three digits,
-  and a box that grew with it would shove its neighbour sideways on every tick —
-  two numbers jittering away from each other are far harder to read than two
-  numbers changing. It is a *fixed* width rather than a minimum, so a font whose
-  digits are not truly tabular overruns evenly either side of centred text
-  instead of starting the jitter again. It holds the label and the detail line
-  still underneath, too.
-- **They are drawn in the order they were rolled**, which is what `keptIndex` is
-  for. Drawing the kept one first would put the winner on the left every single
-  time — the answer given away before either number has stopped moving. It is
-  local to the flier and deliberately not in the chat payload.
-- The loser is greyed and shrunk rather than removed: what advantage *did* is
-  only legible if the thing it discarded is still there beside what it kept. It
-  goes altogether once the winner leaves for the corner.
-- **It shrinks away from its neighbour**, anchored to its outer edge, because
-  the winner is sliding into the middle of the row at the same moment — which
-  for wide numbers means straight through where the loser used to be. At
-  **exactly a half** the clearance comes out as half the row's gap and stays
-  there whatever the digits, since the width cancels; at 0.62 it was
-  `gap/2 − 0.12w`, comfortable for two digits and gone by three.
-- The lock beat's keyframes own `transform` while they run, and `transform` is
-  what the resolve then needs — so the beat is scoped to end at `settled` on a
-  paired roll. A straight roll keeps the unscoped version, because there
-  `settled` follows `locked` in the same breath and the beat would be cut off
-  before it played.
-- **Both halves move by transform only**, so the row never reflows and the
-  flier's box — which the flight is measured against a moment later — does not
-  shift under it.
-- `centreWinner()` reads **`offsetLeft` / `offsetWidth`, never
-  `getBoundingClientRect()`**. The rect is the *transformed* one, and these
-  elements sit under the entrance tumble, which scales the whole inner block:
-  read through a rect the answer comes back multiplied by whatever the tumble
-  happened to be at, and the tumble only reliably finishes before this runs by a
-  couple of hundred milliseconds. Offsets are layout values — the same answer
-  whatever is being done to the pixels above them.
-- It is measured rather than computed because the two numbers are as wide as
-  their own digits. That leaves one race worth guarding: a roll thrown in the
-  first moment of a page view measures in the *fallback* font, and digit widths
-  differ enough to leave the winner visibly off centre. Nothing else here waits
-  on fonts; that one measurement re-runs on `document.fonts.ready`, which is
-  already resolved every time after the first.
+- **Both figures are whole totals** (pool + modifier), so the number that wins is
+  the number that flies to the corner.
+- **Each number's box is fixed for the whole roll** at the widest total the pool
+  can reach (`totalBoxWidth()`, in `ch`, tabular figures) — a box that grew with
+  the digit count would shove its neighbour on every tick.
+- **Drawn in roll order** (`keptIndex`) — drawing the kept one first would put
+  the winner on the left every time.
+- The loser is greyed and shrunk, not removed — advantage is only legible if
+  what it discarded is still there. It shrinks **away from its neighbour** (the
+  winner is sliding through where it was); at exactly a half the clearance is
+  `gap/2` whatever the digits.
+- The lock beat's keyframes own `transform`, which the resolve then needs — so
+  the beat is scoped to end at `settled` on a paired roll. A straight roll keeps
+  the unscoped version.
+- **Both halves move by transform only** — the row never reflows, so the flier's
+  box (measured a moment later for the flight) does not shift.
+- `centreWinner()` reads **`offsetLeft`/`offsetWidth`, never
+  `getBoundingClientRect()`** — the rect is the transformed one, and these
+  elements sit under the entrance tumble which scales the block. Offsets are
+  layout values. It re-runs on `document.fonts.ready` for the first-view race
+  where digit widths measure in the fallback font.
 
-**The flight.** The chip is put into the corner *first* and held invisible
-(`.roll-chip.landing`), and the flier is then aimed at where it actually landed.
+**The flight.** The chip is put into the corner *first*, held invisible
+(`.roll-chip.landing`), and the flier is aimed at where it actually landed —
+measuring the real destination is the only way the flight ends exactly on it.
 
-> Measuring the real destination is the only way the flight can end exactly on
-> it. A computed guess drifts the moment the panel is resized, the stash
-> appears, or a third chip pushes the stack up.
+- The flier is built **at rest** (`translate(-50%, -50%)` only) — the entrance
+  tumble lives on the *inner* element, keeping the flier's own transform free for
+  the flight and its box truthful when measured.
+- `landRoll()` reveals the chip with the same call that removes the flier.
+- `transitionend` fires per property and not at all in a background tab, so the
+  **timeout is the one that counts**.
+- No destination (corner behind the home page, history reset mid-flight) → it
+  fades where it stands.
+- **The wash hangs off the flier, not the inner element** — the flier's
+  transform carries it to the corner, the inner's does the tumble alone, so the
+  number turns and the light behind it does not. Its size is fixed (two lengths,
+  `closest-side`), not `inset`-relative, or it would breathe with the digit
+  count. Its colour is **`--panel`**, not `--bg` (which is locked dark in both
+  palettes and would smudge the parchment).
 
-- The flier is built **at rest** — `translate(-50%, -50%)` and nothing else — so
-  the entrance tumble lives on the *inner* element. That keeps the flier's own
-  transform free for the flight and its bounding box truthful at the moment the
-  flight is measured.
-- `landRoll()` reveals the chip with the same call that removes the flier, so the
-  number is never in two places at once and never in neither.
-- `transitionend` fires per property and never at all if the element is not
-  painted (a background tab), so the **timeout is the one that counts** and the
-  event only ever gets there first.
-- No destination — the corner is behind the home page, or the history was reset
-  mid-flight — and it fades where it stands rather than flying at a rectangle
-  that is not there.
-- **The wash hangs off the flier, not off the inner element**, and that is the
-  whole of what keeps it still while the number tumbles. The two transforms do
-  one job each: the flier's carries both of them to the corner, so the wash
-  travels with the number it is the ground for; the inner's does the entrance
-  tumble alone, so the number turns and the light behind it does not. A spinning
-  disc of light is a different effect, and a much sillier one.
-- Its size is **fixed rather than `inset`-relative**, because the flier's box
-  grows and shrinks with the digit count as the number spins — a wash measured
-  off it would breathe in and out for the whole of the tumble. Two lengths,
-  wider than tall; `closest-side` turns them into the ellipse.
-- Its colour is **`--panel`**, not `--bg`. The label and detail under it are
-  `--text` and `--text-dim`, which are the inks each palette pins its *panels'*
-  lightness against; `--bg` is locked dark in both palettes, so on parchment it
-  laid a dark smudge over the paper and took the detail line with it.
+**The corner** (`#dice-history`) is inside `#inventory-panel` — a roll is the
+*app's* answer, and the middle is where a flung number can come from anywhere.
+Newest at the bottom. `z-index: 7` clears `#gm-placeholder` (5) and the character
+tabs (6); `pointer-events: none` throughout except the three chips, so the stash
+underneath stays clickable. Age (`.age-0` … `.age-2`) drives the fade.
 
-**The corner** (`#dice-history`) is inside `#inventory-panel` because a roll is
-the *app's* answer rather than one panel's, and because the middle is where a
-flung number can be thrown to from anywhere. Newest at the bottom — the
-direction they arrive in, so a new one pushes the older ones up and away rather
-than shunting them down out of the reader's eye. `z-index: 7` clears
-`#gm-placeholder` (5) and the character tabs (6), so a GM sees their rolls too,
-and `pointer-events: none` throughout: it can overlap the stash, and the stash
-stays clickable. Age, not index, drives the fade — `.age-0` … `.age-2` — so the
-stack reads as time without needing a timestamp.
+**The bubbles are a fixed layer**, not children of the tabs (`#character-tabs`
+scrolls sideways and clips overflow). `renderTabBubbles()` is called from the end
+of `renderCharacterTabs()` and re-aims from the tabs each time.
 
-**The bubbles are a fixed layer**, not children of the tabs: `#character-tabs`
-scrolls sideways and clips what overflows it, so a bubble hanging under a tab
-would be sliced off at the strip's own edge. `renderCharacterTabs()` throws its
-buttons away on every roster update, so `renderTabBubbles()` is called from the
-end of it and re-aims from the tabs each time.
+- A bubble is **rebuilt on every roster update**, so its animations start at the
+  point in their lives they have actually reached (negative `animation-delay`
+  runs the entrance forward, the fade is delayed by what is left).
+- The tail points at the **middle of the tab** (`--tail-x`) even when the bubble
+  is clamped sideways to stay on screen.
+- `seenRollIds` is **null until the first snapshot** — joining delivers the whole
+  tail at once and every line in it is history. `resetRollFeed()` puts it back to
+  null when the log is torn down.
+- A GM has no tab, so a GM's roll is dropped from the bubbles (still said in the
+  log).
 
-- A bubble is **rebuilt on every roster update**, so its two animations are
-  started at the point in their lives it has actually reached: a negative
-  `animation-delay` runs the entrance forward to where it should already be, and
-  the fade is delayed by whatever is left. Without that a presence heartbeat
-  landing mid-life would replay the pop and reset the countdown to leave.
-- The tail points back at the **middle of the tab** (`--tail-x`) even when the
-  bubble has been clamped sideways to stay on screen, so it never points at the
-  wrong player.
-- `seenRollIds` is **null until the first snapshot**. Joining a campaign delivers
-  the whole tail at once and every line in it is history; a bubble per line would
-  be a wall of them for rolls made hours ago. `resetRollFeed()` puts it back to
-  null when the log is torn down, or the next campaign's tail reads as live.
-- A GM has no tab, so a GM's roll has nothing to point at and is dropped. Their
-  rolls are said in the log like everyone else's.
+**Advantage, on a held press.** Press and hold any modifier or die and two
+options open either side of the cursor; slide onto one and let go. Letting go in
+the middle rolls straight, so the gesture costs an ordinary click nothing.
+**Disadvantage left, advantage right.**
 
-**Advantage, on a held press.** Press and hold any modifier or any die and two
-options open either side of the cursor; slide onto one and let go to roll it
-that way. Letting go without leaving the middle rolls straight, so the gesture
-costs an ordinary click nothing — which is the whole reason it is a hold rather
-than a modifier key or a third button beside each of the sheet's twenty-five
-roll targets. **Disadvantage is on the left and advantage on the right**,
-because that is where they are on a number line and there is nothing else to go
-on.
+- The wheel opens after a short hold **or** as soon as the pointer moves 9px.
+- The pointer is **captured on the button that started it**.
+- **Advantage rolls the whole pool twice and keeps the better total** — for 1d20
+  that is the rule as written; for the tray's 3d6 it is the only meaningful
+  reading. The discarded pool is kept as `dropped`.
+- **The wheel is small on purpose**, opening on the cursor and nudged only as far
+  as needed to stay on screen — every pixel of nudge is a lie about where the hub
+  is. So the caption under it ("Adv" / "Dis" / "Straight roll") carries the
+  words. Its reach is declared once in the CSS (`--wheel-w`, `--wheel-gap`,
+  `--wheel-h`) and read back by `openRollWheel()`.
+- `lastPointerRollAt` stops the browser's post-press `click` from rolling twice.
+  It is stamped even on an **abandoned** gesture (Escape, cancelled pointer). A
+  click with no pointer sequence before it is a keyboard one and is the only kind
+  let through.
 
-- The wheel opens after a short hold **or** as soon as the pointer moves nine
-  pixels, whichever comes first. The second is what keeps a decisive flick from
-  feeling ignored while the timer is still counting.
-- The pointer is **captured on the button that started it**, because the options
-  are further away than the button is wide and the gesture must survive the
-  cursor leaving it.
-- **Advantage rolls the whole pool twice and keeps the better total**, rather
-  than being special-cased to a single d20. For 1d20 that is exactly the rule as
-  written; for the tray's 3d6 it is the only reading of "advantage" that means
-  anything, and one rule means the two cannot disagree. The discarded pool is
-  kept as `dropped` — it is what makes both the hover card and the flier's pair
-  of numbers legible.
-- **The wheel is small on purpose, and the caption under it is why it can be.**
-  It opens *on* the cursor and is nudged only as far as it must be to stay on
-  screen — but every pixel of nudge is a pixel between the cursor and the hub
-  the gesture is measured against, which is a lie about where the middle is. A
-  die at the right-hand edge of the window has barely fifty pixels beside it, so
-  the two options carry "Adv" and "Dis" and the word that removes all doubt sits
-  centred under the hub, where there is always room. It reads "Straight roll"
-  with neither picked, because letting go in the middle is a choice rather than
-  the absence of one.
-- The wheel's reach is declared **once, in the CSS** (`--wheel-w`,
-  `--wheel-gap`, `--wheel-h`) and read back by `openRollWheel()` to work out the
-  clamp. Written out in the JS as well, the two would drift the first time an
-  option's width changed.
-- `lastPointerRollAt` is what stops the `click` the browser delivers after the
-  press from rolling a second time. It is stamped even when a gesture is
-  **abandoned** — Escape, or a cancelled pointer — because that click still
-  arrives and must not roll what Escape just refused. A click with no pointer
-  sequence in front of it is a keyboard one, and is the only kind let through:
-  that is what keeps every roll target reachable from the keyboard.
+**The working, on hover.** Hovering a corner chip opens the whole roll: every die
+face, the pool advantage discarded (struck through), and each score and
+proficiency behind the modifier as its own raw number.
 
-**The working, on hover.** A total is an answer with its reasoning thrown away,
-and the reasoning is exactly what gets argued about at a table. So hovering a
-chip in the corner opens the whole of it: every die face, the pool advantage
-discarded (struck through — it was rolled, it is real, and it did not count),
-and each score and proficiency that went into the modifier as its own raw
-number.
+- **`parts` is collected at roll time**, not worked out on hover — the sheet
+  moves.
+- The container stays `pointer-events: none`; only the three chips take events.
+- A card, not a `title` — a native tooltip cannot strike through the discarded
+  die.
 
-- This is why **`parts` is collected at roll time** rather than worked out on
-  hover. The sheet moves: a level gained or a proficiency ticked between the
-  roll and the hover would otherwise rewrite the history of a roll already made.
-- It is the one part of the corner that takes a pointer event — the container
-  stays `pointer-events: none`, so the only thing between the reader and the
-  stash underneath is three small chips.
-- A card, not a `title`: the content is a table, and a native tooltip cannot
-  strike through the die that was thrown away, which is the one thing an
-  advantage roll needs shown.
+**What can be rolled.** Every sheet target says what it is in one `data-roll`
+attribute (`skill:arcana`, `save:dex`, `ability:cha`, `initiative`), read by
+`sheetRollSpec()`. The **modifier is never stored on the element** — it is asked
+of the sheet when the press is let go. `parts` is that same answer taken apart.
 
-**What can be rolled.** Every target on the sheet says what it is in one
-`data-roll` attribute (`skill:arcana`, `save:dex`, `ability:cha`, `initiative`),
-read by `sheetRollSpec()` and nothing else. The **modifier is never stored on the
-element** — it is asked of the sheet when the press is *let go*, so a roll cannot
-be made with a number the sheet has since moved on from. `parts` is that same
-answer taken apart, and only the sheet can supply it.
+- A prof row is **two** buttons: the dot (changes proficiency) and the
+  name-plus-modifier (rolls it).
+- **Not gated by `isReadOnly()`** — rolling writes nothing, and the roll is
+  attributed to the *account* that clicked, so a GM rolling a player's Perception
+  is honest and useful.
+- The tray's seven faces are built from `DICE_FACES`; count and modifier are read
+  when a face is clicked, so the tray keeps no state.
+- **A crit is a natural 20 or 1 on a single d20, and only there** — read off the
+  **kept** die; colour *and* the word in the detail line.
+- The Adv/Dis tag is **one pill across four surfaces** (chip, bubble, chat card,
+  flier), built by `rollModePill()`. It lives in dice.css even inside a chat
+  message.
 
-- A prof row is now **two** buttons: the dot, which changes what the character is
-  proficient in, and the name-plus-modifier, which rolls it. One button doing
-  both could only ever guess which was meant.
-- **Deliberately not gated by `isReadOnly()`.** Rolling writes nothing to the
-  character, and the roll is attributed to the *account* that clicked it rather
-  than to the sheet it was read off — so a GM rolling a player's Perception is
-  both honest and useful.
-- The tray's seven faces are built from `DICE_FACES`, the same argument the
-  sheet's ability groups make. Its count and modifier are read at the moment a
-  face is clicked, so the tray keeps no state of its own to fall out of step
-  with its own boxes.
-- **A crit is a natural 20 or a natural 1 on a single d20, and only there.**
-  Three d20s summed have no such thing, and calling one of them a crit would be
-  a lie the sheet told. It is read off the **kept** die, which is the one that
-  counted, and it is colour *and* the word in the detail line, never colour
-  alone.
-- The Adv / Dis tag is **one pill across four surfaces** — the chip, the bubble,
-  the chat card and the flier — built by `rollModePill()`, so a mode cannot end
-  up shown four different ways. It lives in dice.css even where it sits inside a
-  chat message, because dice.js is what builds it.
-
-**The label is what the roll was about, and the number leads it everywhere:**
-"14 Arcana", not "Arcana: 14". The total is the large thing in all three places
-and the label rides beside or beneath it, so a roll is recognisable as the same
-event whether it is crossing the screen, sitting in the corner, or being read
-back in the log.
+**The label leads the number everywhere:** "14 Arcana", not "Arcana: 14".
 
 ### Presence — the green dot
 
 The dot beside a roster entry is green **iff that person has the app open on this
-campaign right now**. That is a claim about the present, so it cannot be written
-once and left: every way a session can end has to reach it, including the ways
-that run none of our code. `startPresence()` / `endPresence()` /
-`isPlayerOnline()` in `party.js` are the whole of it.
+campaign right now**. `startPresence()` / `endPresence()` / `isPlayerOnline()` in
+`party.js`.
 
 **Two facts, not one.** `connected` is what the client last claimed; `lastSeen`
-is when it last claimed it. A dot needs both, so a claim with no heartbeat behind
-it lapses on its own rather than lying indefinitely. The heartbeat is 40s and a
-claim goes stale at 105s — about two and a half missed beats, so one dropped
-write does not blink somebody out.
+is when. A claim with no heartbeat behind it lapses on its own. Heartbeat 40s,
+stale at 105s (~2.5 missed beats).
 
-- **`onDisconnect` is armed from `.info/connected`, not once at join.** RTDB
+- **`onDisconnect` is armed from `.info/connected`, not once at join** — RTDB
   *consumes* the handler when it fires and does not re-arm it, so a single wifi
-  blip used to spend it: the tab actually closed hours later then wrote nothing,
-  and the seat stayed lit forever. `.info/connected` fires on every
-  (re)connection, so the handler is replaced each time it is spent.
-- **`connected: true` is written inside the handler's `.then()`**, never before
-  it. A drop landing between the two would otherwise leave a live seat with
-  nothing watching it.
+  blip used to spend it. `.info/connected` fires on every (re)connection.
+- **`connected: true` is written inside the handler's `.then()`**, never before —
+  a drop between the two would leave a live seat with nothing watching it.
 - **`endPresence()` writes the `false` itself**, before cancelling the handler.
-  Cancelling alone used to be the whole of `leaveParty()`'s teardown — survivable
-  when a rejoin minted a fresh key and orphaned the old node, but once a seat is
-  keyed by account and *persists* (see *Campaigns*), Leave Session, switching
-  campaigns and signing out each left a green dot on an empty chair.
+  Once a seat is keyed by account and *persists*, cancelling alone leaves a green
+  dot on an empty chair.
 - **`lastSeen` is stamped by the server and read against the server's clock**
-  (`.info/serverTimeOffset`). A client an hour out on its own clock would
-  otherwise call everyone offline, or nobody.
-- **The heartbeat is deliberately not folded into `syncPartyState()`.** That
-  writes to whichever node is being *edited*, which for a GM is one of the
-  players — stamping `lastSeen` there would light a player up because the GM is
-  reading their sheet. `beatPresence()` only ever touches `partySelfRef`.
-- **An entry with no `lastSeen` at all reads as offline.** Every client that
-  could be connected now writes one on connect and every beat after, so a seat
-  without one is a record left behind by a session that ended before any of this
-  worked — which is exactly the stuck-green entry it fixes.
-- **A claim lapses by the passage of time, and time is not an event Firebase
-  wakes us for.** With no snapshot arriving, a silently-killed client's dot would
-  stay lit until something else happened to redraw the panel — so
-  `startPresenceSweep()` re-checks every 15s for as long as a session is open. It
-  compares a signature first and redraws **only when an answer actually
-  changed**, because it must not rebuild the roster under the reader's cursor
-  four times a minute for nothing.
-- The panel and the character tabs both ask `isPlayerOnline()`. Two dots for one
-  fact must not be able to disagree.
+  (`.info/serverTimeOffset`).
+- **The heartbeat is not folded into `syncPartyState()`** — that writes to
+  whichever node is being edited, which for a GM is one of the players.
+  `beatPresence()` only ever touches `partySelfRef`.
+- **An entry with no `lastSeen` at all reads as offline** — it is a record left
+  behind by a session that ended before any of this worked.
+- **`startPresenceSweep()` re-checks every 15s** for as long as a session is
+  open — a claim lapses by the passage of time, which is not an event Firebase
+  wakes us for. It compares a signature first and redraws only when an answer
+  changed.
+- The panel and the character tabs both ask `isPlayerOnline()`.
 
 ### Party membership
 
-The roster under `parties/<code>/players` is the membership list — see
-*Campaigns* above for why it is keyed by account and therefore outlives a
-session — and the GM is the only one who can shorten it: a **Kick** button on
-each entry in the Party panel.
+The roster under `parties/<code>/players` is the membership list, keyed by
+account (see *Campaigns*). The GM is the only one who can shorten it: a **Kick**
+button on each Party-panel entry.
 
-- **Removing the entry is the whole operation.** There is no "you were kicked"
-  flag to write, read and clean up: a player's client sees itself gone from the
-  roster snapshot and leaves. `sawSelfInRoster` is what tells a removal apart
-  from a first snapshot that has not arrived yet, and it is set at join time
-  because we wrote the entry ourselves.
-- The kicked player loses nothing. Their roster entry was always a *copy* of a
-  save that lives in their own browser and their own account.
-- `partySelfRef` exists so `leaveParty()` can **cancel the onDisconnect**.
-  Uncancelled, closing the tab later would write `connected: false` back into a
-  party we have left — resurrecting a player the GM has just removed. For the
-  same reason a kicked client sweeps its own node once it has stopped syncing:
-  a sync already in flight lands as an `update()` on a missing path, which
-  writes it back.
-- The GM's own view is handed back first if they were looking at the player they
-  are removing, so nobody is left editing a sheet that is no longer in the party.
-- Like reveal, this is **pacing, not security**: a kicked player who reads the
-  database directly can still write to `parties/<code>`. If the rules ever gate
-  that path, membership belongs in them.
+- **Removing the entry is the whole operation** — no "you were kicked" flag. A
+  player's client sees itself gone from the roster snapshot and leaves.
+  `sawSelfInRoster` (set at join) tells a removal from a not-yet-arrived first
+  snapshot.
+- The kicked player loses nothing — their roster entry was always a *copy*.
+- `partySelfRef` exists so `leaveParty()` can **cancel the onDisconnect** —
+  uncancelled, closing the tab later would write `connected: false` back into a
+  party we have left. A kicked client also sweeps its own node once it stops
+  syncing (a sync in flight lands as an `update()` on a missing path and
+  recreates it).
+- The GM's own view is handed back first if they were looking at the kicked
+  player.
+- This is **pacing, not security** — a kicked player who reads the database
+  directly can still write to `parties/<code>`.
 
 ### Shops
 
-A shop belongs to the *table*, not to a character: the GM builds it in advance,
-reveals it when the party walks in, and everyone who can see it draws from one
-shared pile of stock — a sword bought by one player is gone for the rest.
+A shop belongs to the *table*: the GM builds it, reveals it, and everyone who can
+see it draws from one shared pile of stock.
 
-- Firebase is therefore the only copy. `state.shops` is a read-through cache of
-  `parties/<code>/shops`, refreshed by the same subscription that carries the
-  roster (`subscribeToShops`, called from `subscribeToParty`), and every GM edit
-  writes straight there. **Nothing about a shop is in the save file** — a shop is
-  not part of a character, and the GM's copy is the only one.
+- `state.shops` is a read-through cache of `parties/<code>/shops`, refreshed by
+  `subscribeToShops` (from `subscribeToParty`). **Nothing about a shop is in the
+  save file.**
 - **Stock is claimed by an RTDB `transaction()` before anything leaves the
-  buyer's purse.** That is the whole point of the feature: two players hitting
-  Buy on the last sword together, one wins, the loser is told and is not charged.
-  Coins move only after `committed`.
-- **Reveal is pacing, not security.** `shopVisibleToMe()` filters unrevealed
-  shops on the client; a player who reads the database directly can still see a
-  draft. Making that real would mean parking drafts under a GM-only path and
-  moving a shop between paths on reveal — the audience list has the same
-  caveat. If the rules ever gate `parties/<code>`, add `shops` to them.
-- Reveal is stored as `revealed` + `audience` (`'all' | 'select'`) + a
-  `players` map, keyed by player id. That id is now the account uid and survives
-  a rejoin (see *Campaigns*), so the live case needs nothing extra. `playerNames`
-  is kept beside it and matched as a fallback for reveals written under the old
-  per-session ids, where the name the GM ticked is the only half of the choice
-  that survived.
-- Stock arrives two ways — the picker modal and a card **dragged out of Browse**
-  — and both go through `addItemsToShop()`. An item already on the shelf gains
-  one to its count rather than a second line. The drag is the folder-header
-  pattern again: `getShopDropTargetAtPoint` is a bounding-rect test that
-  `buildItemCard` checks *before* the grid, so a drop over the shop stocks the
-  item instead of trying to place one in an inventory a GM may not even have.
-  On a shop's own page the whole pane is the target; in the list each row is,
-  so several shops can be filled without opening any.
-- **Two prices per line.** The *base* is what the GM typed (or the item's own
-  cost); `shop.priceModifier` — whole percent, absent means 100 — then scales
-  every base together, so a hard season is one number rather than a pass over
-  the stock list. `shopEntryBasePrice()` is what the entry editor edits;
-  `shopEntryPrice(shop, entry)` / `shopEntryPriceCp()` is what the listing, the
-  buy dialog and the purse all use, so the two can never disagree, and winding
-  the markup back to 100 restores exactly what was typed. Scaling happens in
-  copper and never rounds a real cost away to nothing. Players see only the
-  scaled price — the markup is the GM's control, not a label on the shelf.
-- A stock entry snapshots the whole item as **JSON in `template`**, so a shop can
-  stock something the buyer has never owned and a later edit to the GM's
-  catalogue cannot change a listing under the players. A string for the reason
-  `cloud-save.js` uses one: RTDB drops nulls and empty objects and templates are
-  full of both. `resolveShopTemplate()` matches the snapshot against the buyer's
-  own `state.db` by id then by name before registering it as a custom item, so
-  buying a second longsword does not fork the catalogue.
-- `qty` of `-1` (`SHOP_UNLIMITED`) is a bottomless entry. It is a sentinel rather
-  than a null because RTDB drops nulls.
-- Paying is real: `planPayment()` spends the **smallest** coins first — that
-  sheds loose change and leaves the big coins whole — and when what is left to
-  pay is smaller than any coin still in the purse, breaks one and gives change.
-  It refuses rather than swallowing a difference it cannot hand back. It only
-  plans; `applyPayment()` moves the coins through the same
-  `addCoinsToInventory` / `removeCoinsFromInventory` the purse buttons use, so
-  coins come off the grid as well as the stash and the weight stays honest.
+  buyer's purse** — two players hitting Buy on the last sword, one wins, the
+  loser is told and not charged. Coins move only after `committed`.
+- **Reveal is pacing, not security** (`shopVisibleToMe()` filters on the client).
+- Reveal is stored as `revealed` + `audience` (`'all' | 'select'`) + a `players`
+  map keyed by account uid. `playerNames` is a name-match fallback for reveals
+  written under the old per-session ids.
+- Stock arrives two ways — the picker modal and a card **dragged out of Browse** —
+  both through `addItemsToShop()` (an item already on the shelf gains one to its
+  count). The drag is the folder-header pattern: `getShopDropTargetAtPoint` is a
+  bounding-rect test `buildItemCard` checks *before* the grid.
+- **Two prices per line.** The *base* is what the GM typed (or the item's cost);
+  `shop.priceModifier` (whole percent, absent = 100) scales every base together.
+  `shopEntryBasePrice()` is what the editor edits; `shopEntryPrice(shop, entry)`
+  / `shopEntryPriceCp()` is what the listing, buy dialog and purse use. Scaling
+  is in copper and never rounds a real cost to nothing. Players see only the
+  scaled price.
+- A stock entry snapshots the whole item as **JSON in `template`** (a string,
+  because RTDB drops nulls and empty objects and templates are full of both).
+  `resolveShopTemplate()` matches the snapshot against the buyer's own `state.db`
+  by id then name before registering it as a custom item.
+- `qty` of `-1` (`SHOP_UNLIMITED`) is a bottomless entry (a sentinel, not null).
+- Paying is real: `planPayment()` spends the **smallest** coins first and breaks
+  a coin for change when what is left is smaller than any coin in the purse. It
+  refuses rather than swallow a difference it cannot hand back. `applyPayment()`
+  moves coins through the same `addCoinsToInventory` / `removeCoinsFromInventory`
+  the purse buttons use.
 
 ### Battle maps
 
-A map belongs to the **table**, exactly as a shop and the chat log do. The GM
-keeps a library of them, puts one in play, and reveals it when the party walks
-in; everyone holding the code then draws the same board, the same creatures on
-it and the same walls between them. Three files: `battlemap.js` is the model,
-the Firebase seam and the geometry; `battlemap-library.js` is the GM's pane and
-the two dialogs; `battlemap-view.js` is the map itself.
+A map belongs to the **table**, like a shop and the chat log. Three files:
+`battlemap.js` (model, Firebase seam, geometry), `battlemap-library.js` (GM's
+pane, dialogs), `battlemap-view.js` (the map itself).
 
 ```
 parties/<code>/battlemap/activeId          which map the party is on
@@ -889,317 +630,152 @@ parties/<code>/battlemap/maps/<mapId>
     masks:  { <id>: { id, mode:'hide'|'show', x, y, w, h } } }
 ```
 
-- **Nothing about a map is in the save file.** A map is not part of a character
-  and the GM's copy is the only one — `state.battlemap` is a read-through cache
-  refreshed by the subscription that already carries the roster, the shops and
-  the chat (`subscribeToBattlemap`, called from `subscribeToParty`). It rides
-  under `parties/<code>` with them, so it needs no new database rule.
-- **Reveal is pacing, not security**, and so is the fog — same caveat the shops
-  carry, and worth restating because a fog of war *looks* like a boundary. Both
-  are computed and drawn on the reader's own machine from data every member can
-  read; somebody reading the database directly sees the whole board. Making
-  either real would mean the GM's client publishing a per-player view.
-- There is **no map without a campaign**, and that is not a gap: a battle map is
-  a thing a table stands round. The corner button is simply absent.
+- **Nothing about a map is in the save file.** `state.battlemap` is a
+  read-through cache refreshed by `subscribeToBattlemap` (from
+  `subscribeToParty`).
+- **Reveal is pacing, not security**, and so is the fog — both are computed and
+  drawn on the reader's own machine from data every member can read.
+- There is **no map without a campaign** — the corner button is simply absent.
 
 **Every coordinate in the model is in the picture's own pixels.** Never screen
-pixels, never cells.
+pixels, never cells — the camera is this browser's furniture and the grid moves
+under the tokens whenever the GM nudges it. Image pixels are the one frame every
+client already agrees on. `mapBounds()` reads the *stored* `w`/`h`, not the
+`<img>`'s.
 
-> The camera is this browser's furniture and the grid moves under the tokens
-> whenever the GM nudges it to line up. A token stored in either frame would
-> move the instant somebody else zoomed, or the GM shifted the grid a pixel.
-
-Image pixels are the one frame every client already agrees on, because they come
-with the picture. `mapBounds()` reads the *stored* `w`/`h` rather than the
-`<img>`'s, which are not known until it loads and are not what the coordinates
-were written in.
-
-**The picture is stored with the map**, as a data URL, rather than pointed at: a
-link rots, a file on one person's disk is not a map anybody else can open, and
-this project has no file storage of its own. That is a real cost — the picture
-is the whole of a map's weight — so an imported file is scaled to
-`MAP_IMAGE_MAX_DIM` and re-encoded as JPEG on the way in. A **link** the browser
-will not let us redraw (a host that refuses its pixels cross-origin) is kept as
-the link, which still works as a picture but cannot be shrunk.
+**The picture is stored with the map**, as a data URL — a link rots and the app
+has no file storage. An imported file is scaled to `MAP_IMAGE_MAX_DIM` and
+re-encoded as JPEG. A **link** the browser will not redraw cross-origin is kept
+as the link (works as a picture, cannot be shrunk).
 
 #### The fog
 
-Worked out as a **polygon per party member**, not as a grid of lit cells: a map
-is a picture rather than a lattice, the grid can be moved under it, and a shadow
-that stepped in whole squares would be a different game's fog.
+Worked out as a **polygon per party member**, not a grid of lit cells.
 
-- `computeVisionPolygon()` casts a fan of rays and stops each at the nearest
-  wall. The sweep alone leaves a scalloped shadow — a polygon can only turn
-  where a ray landed — so `visionAngles()` also aims **three rays at every
-  corner**, one either side by a hair. The straddling pair is what makes a
-  shadow's edge a straight line: one ray stops on the box, its twin carries on
-  past it. A circle gets its two tangents, which is where its shadow's edge is.
-- **Every angle is normalized into `[0, 2π)` before that list is sorted, and
-  that one line is the difference between a shadow and no shadow.** The rays are
-  named two ways: `Math.atan2` answers in `(-π, π]` and the uniform fan is
-  written out over `[0, 2π)`. Sorted raw, the two numberings interleave — the
-  corner rays aimed above the source land at the *front* of the list and the
-  sweep rays covering that same arc land at the *back* — so the polygon is
-  walked across that arc twice, once with the corner detail and once at 2°
-  resolution, and the coarse pass paints straight over the shadow the first one
-  cut. It reads as geometry that does not match the object casting it, because
-  half of it is not the object's geometry at all. Measured on a single
-  rectangle with the source stepped over the whole map, **170 of 357 probes
-  taken directly behind the wall came back lit**; normalized, none do.
-- Near-identical angles are then dropped, so the polygon carries no zero-length
-  edges for a fill rule to guess about. The threshold is well under
-  `VISION_NUDGE`, or it would collapse the straddling pair the corners depend
-  on.
-- A wall **containing** the source is skipped. A token nudged onto the circle
-  the GM drew round a tree should not go blind, and there is no reading of
-  "inside the obstacle" that gives a useful answer.
+- `computeVisionPolygon()` casts a fan of rays, each stopping at the nearest
+  wall. `visionAngles()` also aims **three rays at every corner** (one either
+  side by a hair) — the straddling pair is what makes a shadow's edge a straight
+  line. A circle gets its two tangents.
+- **Every angle is normalized into `[0, 2π)` before that list is sorted, and that
+  one line is the difference between a shadow and no shadow** — `Math.atan2`
+  answers in `(-π, π]` and the uniform fan is written over `[0, 2π)`; sorted raw,
+  the two numberings interleave and the coarse pass paints over the shadow the
+  corner rays cut.
+- Near-identical angles are dropped (threshold well under `VISION_NUDGE`).
+- A wall **containing** the source is skipped.
 - The result is one **offscreen canvas** at the picture's resolution (capped by
-  `FOG_MAX_DIM`), black where the party cannot see. It is then read twice —
-  drawn over the board, and sampled under each creature — so **what is hidden
-  and what is dark are one answer** and cannot disagree. A creature is on screen
-  if any of five probes across its disc lands in the light.
-- **The edge of a shadow is not a line.** Light falls off, eyes are not cameras,
-  and a hard black boundary crossing a picture of a room reads as a polygon
-  rather than as dark — so every hole the vision cuts, and every region the GM
-  paints, is drawn through a canvas `blur()`.
-  - It is applied to the **shapes as they are cut**, never to the finished
-    canvas. Blurring the whole thing would soften the fog's own outer boundary,
-    and that boundary is the edge of the map — where the dark has to stay solid,
-    or the board would end in a glow of half-light leaking in from beyond the
-    picture.
+  `FOG_MAX_DIM`), black where the party cannot see. Read twice — drawn over the
+  board, and sampled under each creature (5 probes across its disc) — so what is
+  hidden and what is dark are **one answer**.
+- **The edge of a shadow is not a line** — every hole the vision cuts, and every
+  GM-painted region, is drawn through a canvas `blur()`.
+  - Applied to the **shapes as they are cut**, never the finished canvas —
+    blurring the whole thing would soften the fog's own outer boundary (the edge
+    of the map, where the dark must stay solid).
   - The radius is a **fraction of the map's longer side** (`FOG_BLUR_FRACTION`,
-    under a hundredth), not a number of pixels: softness then reads the same on
-    a small map and a large one, and it is measured against the thing the reader
-    is looking at rather than against the fog canvas, whose resolution is an
-    implementation detail of `FOG_MAX_DIM`. About half a square of penumbra on a
-    normal map.
-  - **The GM's own regions are softened alike.** A hand-drawn Obscure is still a
-    claim about what can be seen, and the one place on the board where the dark
-    kept a drawn edge would be exactly the place the eye went to.
-  - **It costs the creature test nothing.** A half-alpha threshold on a soft edge
-    is the middle of the ramp, which is where the hard edge used to be — so a
-    creature on the boundary is judged as before, and one in the new penumbra by
-    whether it is more in the light than out.
-  - `fogBlurFilter()` **feature-detects and hands back `null`** where a browser
-    has no canvas filters, and buildFog then draws exactly what it always did. A
-    crisp edge is a worse shadow, not a broken one.
-- Order matters at the end of `buildFog()`: vision cuts holes in the dark, a
-  **Reveal** region cuts one too, and an **Obscure** region is painted last.
-  "I have decided you cannot see this" is the strongest claim on the map.
-- **A map with nobody on it has no fog at all.** With no party member to see out
-  of, the arithmetic says nothing is visible — and a board that opens entirely
-  black the first time it is used reads as broken rather than as dark. Fog
-  begins the moment somebody is standing there to cast it.
-- The GM sees the fog as a **wash** (0.45) rather than a wall, and hidden
-  creatures dimmed rather than gone: they have to see both what the players
-  cannot see *and* what is standing in it.
-- **The fog settles when a creature is let go, and not before.** A party member
-  carries the light, so a fog that followed the drag would hand anyone a free
-  look at the whole board: sweep your own token down every corridor, read what
-  the shadows give back, and let go where you started, having moved nothing and
-  learnt everything. Where a creature is *put down* is a decision the table can
-  see; where it passed through on the way is not. So `fogDirty` is set in
-  `onMapPointerUp()` alone — the token moves under the cursor and the dark stays
-  where it was. The rebuild is about 10ms on a deliberately extreme map (40
-  walls, 30 creatures, 6 sources), so the cost was never the argument either
-  way.
-- One player seeing what another sees falls straight out of the fog being a
-  **union** rather than a per-viewer answer, which is what a table sitting round
-  one board actually does.
+    under 1/100), so softness reads the same on any map size.
+  - The GM's own regions are softened alike.
+  - Costs the creature test nothing — a half-alpha threshold on a soft edge is
+    the middle of the ramp, where the hard edge used to be.
+  - `fogBlurFilter()` **feature-detects and returns `null`** where a browser has
+    no canvas filters; buildFog then draws a crisp edge (a worse shadow, not a
+    broken one).
+- Order at the end of `buildFog()`: vision cuts holes, a **Reveal** region cuts
+  one, an **Obscure** region is painted last.
+- **A map with nobody on it has no fog at all** — with no member to see out of,
+  the arithmetic says nothing is visible, and an all-black board reads as broken.
+- The GM sees the fog as a **wash** (0.45) and hidden creatures dimmed, not gone.
+- **The fog settles when a creature is let go, and not before** (`fogDirty` set
+  in `onMapPointerUp()` alone) — a fog that followed the drag would hand anyone a
+  free look down every corridor. Rebuild is ~10ms on a deliberately extreme map.
+- One player seeing what another sees falls out of the fog being a **union**.
 
 #### The board
 
-- **The board is the third view of the middle panel**, beside the inventory
-  grid and the character sheet: `state.view === 'map'`, and `.map-view` on
-  `#inventory-panel` is the whole of the swap, exactly as `.sheet-view` is.
-  `syncCharacterViewUI()` drives it, like the other two.
-
-  It was a page over the whole app, and that was the wrong shape for it. A
-  board is *where the party is standing*, which is the same question the middle
-  panel already answers — so taking the screen over to show one cost the reader
-  the character tabs above it, the chat and the dice beside it, and, for the
-  GM, the Maps pane holding the very grid controls they were trying to line the
-  board up with. Every one of those is something you want *while* looking at
-  the map, and the grid controls are unusable without it.
-- **It is the one view that is not a view of a character**, and everything odd
-  about it follows from that. It is reached from the corner button and the Maps
-  pane rather than from a tab's menu; a **GM with nobody selected may be on
-  it**, so `#gm-placeholder` — which paints over this whole panel — stands down
-  for `.map-view`; and the sidebar answers `'sheet'` for it (`sidebarView()`),
-  because beside a board the useful panes are Chat, Dice and Party, the table's
-  own three. Browse and Details are a list of items to read against a grid of
-  items, which a board is not.
-- **`mapViewIsShowing()` is the one answer both halves of the screen ask**, and
-  it is not `state.view === 'map'`: a map can be pulled out from under the
-  reader — deleted, or un-revealed — and the panel falls back to the grid while
-  the field still says `map`. The same shape as the sheet's
-  `hasViewedCharacter()` caveat, given a function rather than written out twice.
-- **`onMapViewShown()` does nothing unless the map was not already up.** It is
-  called on every pass through `syncCharacterViewUI()`, which a party roster
-  snapshot drives — and setting the canvas size clears it while rebuilding the
-  toolbar throws away whatever button the cursor was over. Neither belongs on a
-  presence heartbeat. A panel resize is the `ResizeObserver`'s job and a data
-  change is `onBattlemapDataChanged()`'s.
-- **Closing hands back the view you came from** (`mapReturnView`), and the
-  camera is framed per *map* rather than per arrival (`mapFramedId`): a GM who
-  has zoomed into a doorway, glanced at a player's sheet and come back must find
-  the doorway.
-- One `<canvas>`, **drawn on demand**. Not a rAF loop: nothing on a battle map
-  animates on its own, and repainting a 2400px picture sixty times a second to
-  show the same thing is a laptop fan for no reason. Every path that changes
-  what is on screen ends in `drawBattlemap()`.
-- **The camera is not synced.** Where *you* have scrolled to on a shared map
-  says nothing about the map, and a GM zoomed in on a doorway must not drag
-  every player's view along with them. Like the panel widths and the sheet
-  layout — except that it is not even stored, because a map is opened for a
-  fight rather than lived in.
-- **The button is in the bottom left of the middle panel**, opposite the corner
-  rolls land in, and inside `#inventory-panel` for the reason `#dice-history`
-  is: the map is the *app's* answer to "where are we", not one panel's. Same
-  `z-index: 7`, so it clears the GM placeholder and the character tabs. Unlike
-  the dice it takes clicks, so instead of `pointer-events: none` the stash
-  header is padded clear of it (`has-map-btn`) — the move `#character-tabs`
-  already makes for a collapsed panel's reopen button.
-- It is **absent** unless there is a map to open, which for a player means one
-  the GM has both put in play and revealed — and absent again once the map is
-  up, since the way in is not needed from inside.
-- **Opening a map puts the GM's Maps pane in front of them**, and switches the
-  left panel to it. It is the one pane whose subject is the thing now filling
-  the middle of the screen, and the grid controls on it are meant to be turned
-  while watching the picture they are being lined up on.
-- The keyboard is shared now, so the map's own handler ignores a key pressed
-  into an `input`, `textarea` or `select` — the chat composer is beside it.
+- **The third view of the middle panel** (`state.view === 'map'`, `.map-view` on
+  `#inventory-panel`), driven by `syncCharacterViewUI()` like `.sheet-view`.
+- **It is the one view that is not a view of a character**: reached from the
+  corner button and the Maps pane, not a tab menu; a **GM with nobody selected
+  may be on it**, so `#gm-placeholder` stands down for `.map-view`; the sidebar
+  answers `'sheet'` for it.
+- **`mapViewIsShowing()` is the one answer both halves of the screen ask** — not
+  `state.view === 'map'`, because a map can be pulled out from under the reader
+  (deleted, un-revealed) while the field still says `map`.
+- **`onMapViewShown()` does nothing unless the map was not already up** — it is
+  called on every pass through `syncCharacterViewUI()` (a roster snapshot drives
+  it), and setting the canvas size / rebuilding the toolbar must not happen on a
+  presence heartbeat.
+- **Closing hands back the view you came from** (`mapReturnView`); the camera is
+  framed per *map* (`mapFramedId`).
+- One `<canvas>`, **drawn on demand** — every path that changes the screen ends
+  in `drawBattlemap()`.
+- **The camera is not synced** and not even stored.
+- **The button is bottom-left of the middle panel**, inside `#inventory-panel`,
+  `z-index: 7`. Unlike the dice it takes clicks, so the stash header is padded
+  clear of it (`has-map-btn`). Absent unless there is a map to open (for a
+  player, one revealed), and absent once the map is up.
+- **Opening a map puts the GM's Maps pane in front of them** and switches the
+  left panel to it.
+- The map's keyboard handler ignores a key pressed into an `input`, `textarea`
+  or `select` — the chat composer is beside it.
 
 #### Who may do what
 
-- **The GM alone edits the map**: the terrain, the grid, the fog. That is their
-  account of the world, and two people redrawing a wall at once is not a
-  feature. `canEditMap()`.
-- **A creature is anybody's** — a player marking where their familiar went, the
-  GM dropping in a wolf (`canAddCreature()`). Deliberately *not* gated by
-  `isReadOnly()`, which guards a **character**; a token on a shared map is not
-  one. Same argument the dice make about rolling.
-- **A creature is removed by whoever put it there, or by the GM**
-  (`canRemoveToken()`, on the `ownerUid` stamped at creation). The board is
-  shared, but a player sweeping away the GM's ambush is not a shared gesture.
-- Hostility is the token's **whole colour scheme** — green party, yellow
-  neutral, red hostile — so the buttons that choose it are coloured by what they
-  choose. `--hostility-*` are per-theme tokens read through `hostilityColor()`
-  exactly as `rarityColor()` reads the rarities, and baked into a canvas fill
-  and the icon buttons' inline `--hc`; **`rerenderThemedContent()` therefore
-  clears that cache and redraws**, as it must for anything that inlines a
-  palette colour.
-- **Snapping depends on the footprint.** An odd number of cells centres on a
-  square, an even one on the line between two, which is where a Large creature
-  actually sits (`snapToGrid()`). Halving the cell for a Tiny creature would put
-  it in a corner the rules have nothing to say about, so it centres like a
-  Medium one. Editing a creature's size re-snaps it.
-- **Only a square grid is built.** `grid.type` is the seam a hex grid arrives
-  through; the library pane says so rather than leaving a reader guessing.
+- **The GM alone edits the map** (terrain, grid, fog) — `canEditMap()`.
+- **A creature is anybody's** (`canAddCreature()`) — deliberately *not* gated by
+  `isReadOnly()`, which guards a *character*.
+- **A creature is removed by whoever put it there, or the GM** (`canRemoveToken()`,
+  on the `ownerUid` stamped at creation).
+- Hostility is the token's **whole colour scheme** — `--hostility-*` are
+  per-theme tokens read through `hostilityColor()`, baked into a canvas fill and
+  the icon buttons' inline `--hc`, so **`rerenderThemedContent()` clears that
+  cache and redraws**.
+- **Snapping depends on the footprint** (`snapToGrid()`) — an odd cell count
+  centres on a square, an even one on the line between two. Tiny centres like
+  Medium. Editing size re-snaps.
+- **Only a square grid is built** — `grid.type` is the seam a hex grid would
+  arrive through.
 
 #### Lining the grid up
 
-The grid has to land on **somebody else's picture**, and that is a measurement
-rather than a preference. Two things make it possible.
-
-- **The figures are fractional** (`roundGridValue()`, two places). A photographed
-  or exported map is very rarely a whole number of pixels per square, and a size
-  rounded to one is out by up to half a pixel *per square* — invisible on the
-  first and unmissable on the thirtieth, where the grid has walked a full square
-  off the picture. That accumulating drift was the whole of "the grid cannot be
-  made the right size". The steppers still nudge by a whole pixel from wherever
-  the value is, because that is the unit a hand works in; only what may be
-  *stored* changed.
+- **The figures are fractional** (`roundGridValue()`, two places) — a map is
+  rarely a whole number of pixels per square, and rounding accumulates drift of
+  up to half a pixel per square. Steppers still nudge by a whole pixel.
 - **The Grid tool's handles are the picture's own corners and edges.** Pull one
-  and the grid is magnified about the point opposite — a corner about the corner
-  diagonally across, an edge about the middle of the edge facing it — so drag the
-  top left outward and the squares grow while the bottom right stays welded to
-  the map. Drag anywhere else and the whole grid slides. That is the whole tool:
-  `scaleGridAbout()` and `slideGridBy()` in battlemap.js, THE GRID'S HANDLES in
-  battlemap-view.js.
-
-  **A scale about a fixed point answers both halves of the question at once**,
-  which is why there is nothing else to set. A grid on somebody else's picture is
-  "how big is a square" and "where does the run of them start", and the pivot
-  *is* the start: every line lands at `pivot + (line - pivot) * k`, so the offset
-  falls out of the same transform that sets the size. Nothing is counted and
-  nothing is inferred.
-
-  It is also **the longest lever the map has**. A square out by a pixel at one
-  corner is out by twenty at the other, so the far side is where that error is
-  visible and where the drag divides it away — no reader has to be asked how much
-  precision they would like.
-
-  Both earlier versions of this asked for a third thing that was about the *tool*
-  rather than the map: first a box dragged out over the picture and counted into
-  a size — counted at the size the grid was already set to, so a guess corrected
-  itself and could be wrong with nothing on screen to say so — and then a frame
-  whose span the reader had to keep in step with the squares underneath it. The
-  corner of the picture needs neither.
-
-  A corner's magnification is read as **the average of what each axis says** —
-  how far the pointer now stands from the pivot, against how far the handle stood
-  from it — rather than as a distance along the diagonal. Along the diagonal, a
-  map twice as wide as it is tall would let sideways movement do most of the
-  work, and the grid would pull unevenly under the hand.
-
-  **An edge is the same gesture with one axis held back**, and the two kinds of
-  handle differ in exactly that one field (`axis` in `GRID_HANDLE_SPOTS`). A
-  corner is pulled diagonally and both axes have an opinion; an edge is pushed
-  straight in or out, so only the axis it faces is asked and movement *along* the
-  edge counts for nothing. That makes it the finer of the two — a hand wandering
-  sideways across the picture cannot nudge the answer — and it is the handle to
-  reach for when only the size is wrong. The grid still scales about a *point*
-  (the middle of the opposite edge), so the lines move on both axes; it is the
-  reading of the drag that is one-dimensional, not the transform.
-
-  Both live on one rule: `ix` / `iy` run 0 to 1 across the map and the pivot is
-  always `1 - i`, which gives a corner its diagonal and an edge its opposite side
-  without either being written out. The shapes follow the same fact — a corner is
-  a square block, an edge a bar lying along its own edge — so which way a handle
-  moves is legible before it is touched, and the cursor says it again.
-
-  The applied factor is taken from the **clamped** size, not from the factor as
-  asked: at either end of the size range the squares stop growing, and an offset
-  that went on scaling past that point would slide the grid sideways under a hand
-  that was only trying to make the squares bigger.
-- **Sizing and positioning are two gestures, and that is honest.** Scaling
-  preserves where the pivot sits inside its own square, so it can never fix a
-  grid that is the right size in the wrong place — that is what dragging the
-  middle is for. Scale until the squares match, slide until the lines do.
-- **Nothing about the tool is stored.** The handles are drawn while it is up and
-  are not part of the map; there is no frame, no span, and no state to keep in
-  step with a grid that somebody else may be editing.
-- **The grid is written once, on release.** Every pointermove is drawn from a
-  pending copy (`viewGrid()` / `viewCellSize()`), so the reader watches the lines
-  move the whole way — but a write per move is a write per move into a database
-  every other member of the party is reading. A click that never moved writes
-  nothing, and Escape abandons the drag with the stored grid untouched.
-- **The size reached is said at the handle in the reader's hand**, as well as in
-  the bar under the map: mid-drag they are watching the handle and the lines
-  moving under it, not a caption by their knee. The readout is pushed inwards off
-  whichever edges the handle sits on and centred on the one it sits in the middle
-  of, so it is on the board wherever it is drawn.
-- **The left button no longer pans the camera while this tool is up** — it slides
-  the grid, from anywhere, because the grid runs over the whole picture and the
-  whole picture is therefore its middle. The middle and right buttons still pan,
-  as they do under every tool.
-- While the tool is up the grid is drawn **in accent, and drawn whether or not
-  it is switched on for play**: it is the thing being worked on. Turning the
-  grid off to look at the picture and then being unable to line it up is the
-  trap that avoids.
-- The numbers stay in the **Maps pane**, not on the map's toolbar. Opening a map
-  brings that pane up (see *The board*), so they are already beside the picture
-  — and a second set of boxes on the toolbar would be a second editor for one
-  value. The bar under the map is not that: it says what the two gestures are and
-  reads the same three numbers back, so a reader watching the lines move never
-  has to look away from the picture.
+  and the grid magnifies about the point opposite (`scaleGridAbout()`); drag
+  anywhere else and it slides (`slideGridBy()`). A scale about a fixed point
+  answers both "how big is a square" and "where does the run start" at once — the
+  pivot *is* the start (`pivot + (line - pivot) * k`). The far side is the
+  longest lever, where a per-corner error is most visible and the drag divides it
+  away.
+  - A corner's magnification is the **average of what each axis says** (not a
+    diagonal distance, which would let a wide map's sideways movement dominate).
+  - An **edge is the same gesture with one axis held back** (`axis` in
+    `GRID_HANDLE_SPOTS`) — finer, and the handle for when only the size is wrong.
+    It still scales about a point (the middle of the opposite edge).
+  - Both live on one rule: `ix`/`iy` run 0→1 across the map and the pivot is
+    `1 - i`.
+  - The applied factor is taken from the **clamped** size, so at the size limits
+    the offset does not go on scaling and sliding the grid sideways.
+- **Sizing and positioning are two gestures** — scaling preserves where the pivot
+  sits in its square, so it cannot fix a right-size grid in the wrong place.
+- **Nothing about the tool is stored.**
+- **The grid is written once, on release** — every pointermove draws from a
+  pending copy (`viewGrid()` / `viewCellSize()`). A click that never moved writes
+  nothing; Escape abandons the drag.
+- **The size is shown at the handle** as well as in the bar under the map.
+- **The left button slides the grid while this tool is up** (not pan). Middle and
+  right still pan.
+- While the tool is up the grid is drawn **in accent, whether or not it is
+  switched on for play**.
+- The numeric controls stay in the **Maps pane**, which opening a map brings up.
 
 ### Initiative
 
-A fight happens **somewhere**. So the turn order lives with the map it is being
-fought on — `parties/<code>/battlemap/maps/<mapId>/initiative`, beside that map's
-walls and creatures — rather than under the party. `src/js/battlemap-initiative.js`.
+The turn order lives with the map it is fought on —
+`parties/<code>/battlemap/maps/<mapId>/initiative` — so "has this player rolled
+already?" is answered by *this map's* entries, it rides `subscribeToBattlemap`,
+and it is thrown away with the map. `src/js/battlemap-initiative.js`.
 
 ```
 initiative
@@ -1208,827 +784,470 @@ initiative
   entries { <id>: { id, kind, name, score, at, uid?, tokens?, icon?, hostility? } }
 ```
 
-Three things fall out of that placement and none of them had to be built: **"has
-this player rolled already?"** is answered by *this map's* entries, which is
-exactly the question — a player who rolled in the cellar rolls again in the
-courtyard, because that is a different fight; it rides the subscription that
-already carries the roster, the shops, the chat and the board, so it needs no
-second listener and no new database rule; and it is thrown away with the map.
-
-- **The turn is an entry id, never an index.** The order is not a fixed list — a
-  player late to roll drops into the middle of it mid-fight, and the GM can take
-  a group out — so an index would silently come to mean a different creature. A
-  name goes on meaning the same one, or stops meaning anything at all, and
-  `initiativeActiveEntry()` heals *that* by falling back to the top of the order
-  rather than pointing at somebody who has left the fight.
-- **The order is score, then the moment of the roll, then the id.** The
-  tie-break is arbitrary but *stable*, which is the only property that matters:
-  every client sorts the same list the same way without asking anyone.
-- **A player joins by rolling Initiative — from their sheet, or from the board.**
-  It is an ordinary roll — it flies to the corner and is said in the chat log
-  like any other — and joining the order is the extra thing it does when the
-  party is standing on a map. The panel's own **Roll Initiative** button carries
-  the sheet's `data-roll="initiative"` and is wired to the same pair of listeners
-  in dice.js, so it *is* that roll rather than a copy of it: the same modifier
-  off the same sheet, the same flight, the same line in the log, and the same
-  hold-for-advantage every other roll target has. A second button that worked an
-  initiative roll out for itself would be a second answer waiting to disagree
-  with the first.
-  - It is offered exactly when pressing it would do something: **not to a GM**,
-    who has no character in the order and whose button is the +; **not while
-    reading somebody else's sheet**, since the roll would be made off their
-    Dexterity and attributed to your account — the same reason
-    `noteRollForInitiative()` refuses it; and **not once you are in the order**,
-    because rolling again cannot move you.
-  - It sits under the list rather than in the head: it is a labelled button
-    among single glyphs, and it is pressed once a fight where the head's are
-    pressed every turn. It survives collapsing, because a fight you have not
-    rolled into is exactly when the list is likely to be folded away. One hook, `noteRollForInitiative()`, called from `performRoll()` for every
-  roll the app makes and interested in exactly one of them (`kind: 'initiative'`,
-  the only thing `kind` on a roll is for; it is deliberately not in the chat
-  payload, since the log already carries the label that says it in words).
+- **The turn is an entry id, never an index** — the order is not a fixed list (a
+  late roller drops into the middle mid-fight; the GM can remove a group).
+  `initiativeActiveEntry()` heals a dangling turn by falling back to the top.
+- **The order is score, then the moment of the roll, then the id** — an arbitrary
+  but *stable* tie-break, so every client sorts the same list the same way.
+- **A player joins by rolling Initiative** — from their sheet or the board. The
+  panel's **Roll Initiative** button carries the sheet's `data-roll="initiative"`
+  and is wired to the same dice.js listeners, so it *is* that roll (same
+  modifier, flight, log line, hold-for-advantage).
+  - Offered exactly when pressing it would do something: **not to a GM** (whose
+    button is the +), **not while reading someone else's sheet**, **not once you
+    are in the order**.
+  - It sits under the list (a labelled button among glyphs) and survives
+    collapsing.
+- One hook, `noteRollForInitiative()`, called from `performRoll()` for every
+  roll and interested in exactly one (`kind: 'initiative'` — the only thing
+  `kind` on a roll is for; not in the chat payload).
   - **Your own first roll, and only that.** *Own*, because a GM reading a
-    player's sheet rolls as the GM — rolls are attributed to the account
-    everywhere in dice.js — so an entry made from that would be keyed to the
-    wrong person (`liveStateIsOwnCharacter()`, the same guard the save file
-    uses). *First*, because rolling twice must not let anyone pick the better
-    number; the roll still happens and is still said out loud, it simply does
-    not move them. The GM takes an entry out if a roll needs doing again.
-- **The GM rolls for the board in groups.** Nobody rolls six goblins one at a
-  time, and a table does not want six goblin lines in the order: tick any number
-  of creatures, **one d20 is rolled for the lot of them**, and they share one
-  place. The modifier is typed in the dialog because this app has no monster
-  statistics to read one from. It goes through `performRoll()` like everything
-  else, so a GM's roll for the ambush flies, lands in the corner and is said in
-  the log exactly as a player's is.
-  - Creatures already in the order are not offered again — a creature has one
-    place in the turn order, and offering it twice would be offering to break
-    that.
-  - The suggested name is the creatures' shared name ("Goblin"), or the plainest
-    word true of a mixed handful. **The count is deliberately not in it**: the
-    row draws it as a badge, so a name carrying it too reads "Goblin ×3 ×3", and
-    a GM who typed their own name would have to keep its number in step with a
-    group the board can change under them.
-- **An account's creatures are not all its character.** A player's entry names a
-  *uid* rather than a token — so moving, deleting or adding a token leaves them
-  the same person in the order — and finds their creature on the board through
-  `ownerUid`. But a GM stamps their own uid on every monster they drop, which is
-  what `ownerUid` is for, so the match is `ownerUid` **and** party hostility
-  (`initiativeEntryClaims()`). Without that second half a GM who also plays a
-  character finds their entry speaking for the entire ambush: every goblin
-  unavailable to roll because it is "already in the order", and hovering one
-  lighting the GM's own name.
-- **Running the fight is the GM's**, like the terrain and the fog: a turn order
-  everyone can advance is one nobody is keeping. Wrapping past the end is the
-  next round, which is the only place `round` ever changes — so it counts rounds
-  rather than being typed at. A player may still take *themselves* out of the
-  order, which is the rule creatures already follow: yours is yours, the rest is
-  the GM's.
+    player's sheet rolls as the GM (`liveStateIsOwnCharacter()`). *First*,
+    because rolling twice must not let anyone pick the better number — the roll
+    still happens and is still said, it just does not move them.
+- **The GM rolls for the board in groups** — tick any number of creatures, one
+  d20 for the lot, one shared place. The modifier is typed in the dialog (this
+  app has no monster stats). Goes through `performRoll()` like everything else.
+  - Creatures already in the order are not offered again.
+  - The suggested name is the creatures' shared name; **the count is not in it**
+    (the row draws it as a badge).
+- **An account's creatures are not all its character** — a player's entry names a
+  *uid* and finds its creature via `ownerUid`. But a GM stamps their own uid on
+  every monster, so the match is `ownerUid` **and** party hostility
+  (`initiativeEntryClaims()`).
+- **Running the fight is the GM's.** Wrapping past the end is the next round (the
+  only place `round` changes). A player may still take *themselves* out.
 
-**The panel** sits over the top left of the board, opposite the legend and the
-grid hint. **Collapsed it says only whose turn it is** — the one thing a fight
-needs on screen at all times — and expanded it is the whole order. Both are the
-same list: collapsing hides the rows that are not active in CSS, rather than
-drawing a second and shorter panel that could disagree with the first. Whether
-it is collapsed is session-only, like the sheet's folded sections and for the
-same reason.
+**The panel** sits over the top left of the board. **Collapsed it says only whose
+turn it is**; expanded it is the whole order. Both are the same list (collapsing
+hides inactive rows in CSS). Collapsed-ness is session-only.
 
-- **The panel is part of the board, not something a fight brings with it.**
-  Before there is an order it is how one is started — the GM's + and the
-  player's Roll Initiative both live in it — and a reader who had to find a
-  different screen to enter the fight they are looking at would be leaving the
-  board to do it.
-- **Hovering either half lights the other**, and one piece of state serves both
-  directions (`initiativeHoverId`, an *entry* id) — which is what makes them
-  incapable of disagreeing. A name in a list means nothing to a reader who
-  cannot find the creature, and a creature on a crowded board means nothing if
-  you cannot tell when it acts. The board's half is asked on every pointermove,
-  so `setInitiativeHover()` returns early when the answer has not changed; the
-  rows are then re-marked in place rather than rebuilt, or the cursor would be
-  taken off whatever it was over.
-- **The turn is drawn on the creature too**, in the panel's own accent, and the
-  hover in white — so the two lists are read as one fight, and the turn, the
-  hover and the map's dashed selection ring are never three answers that look
-  alike. `initiativeMarks()` works them out once per frame rather than per
-  creature.
-- A row's glyph is read off the **live token** rather than the entry: a player
-  never told us what their creature looks like, they placed it.
-- The panel inlines hostility colours, so it is re-rendered from
-  `rerenderThemedContent()` — the rule anything baking a palette colour follows.
+- **The panel is part of the board, not something a fight brings with it** — the
+  GM's + and the player's Roll Initiative both live in it before there is an
+  order.
+- **Hovering either half lights the other** — one piece of state
+  (`initiativeHoverId`, an *entry* id). The board's half is asked on every
+  pointermove, so `setInitiativeHover()` returns early when the answer is
+  unchanged and re-marks rows in place rather than rebuilding.
+- **The turn is drawn on the creature too**, in the panel's accent; the hover in
+  white. `initiativeMarks()` works them out once per frame.
+- A row's glyph is read off the **live token**, not the entry.
+- The panel inlines hostility colours, so it re-renders from
+  `rerenderThemedContent()`.
 
 ### The left panel and its tabs
 
 The left panel is the equipment rack, plus — for a GM — their own tools. The tab
-strip (`syncLeftPanel()` in `shop.js`) only appears when there are two panes to
-choose between, so a solo player's panel is the bare equipment panel it always was.
+strip (`syncLeftPanel()` in `shop.js`) appears only when there are two panes to
+choose between.
 
-- **A GM has no character**, so the equipment rack is only theirs to look at
-  while a player is picked; with nobody picked the Shop is the whole panel
-  rather than an empty rack of slots. That is `leftTabsAvailable()`, and it is
-  also why the GM's tabs read Shop-then-Equipment while a player's read
-  Equipment-then-Shop: each role's own thing comes first.
-- A player has no Shop tab until a GM reveals one to them, at which point it
-  appears on its own.
-- **Maps is the GM's alone**, and has no player half at all. A player never has
-  a library to keep: the one map that concerns them is the one the party is
-  standing on, and they reach it by the button in the corner of the middle
-  panel. See *Battle maps*.
-- Driven from `syncCharacterViewUI()`, the same single entry point the character
-  tabs use — the two strips answer the same question ("who are we looking at?")
-  and must not disagree.
-- Deliberately **not** `.tab-btn` / `.tab-pane`: those belong to the sidebar, and
-  `switchTab()` toggles every one of them on the page.
+- **A GM has no character**, so with nobody picked the Shop is the whole panel
+  rather than an empty rack (`leftTabsAvailable()`). The GM's tabs read
+  Shop-then-Equipment while a player's read Equipment-then-Shop — each role's own
+  thing first.
+- A player has no Shop tab until a GM reveals one.
+- **Maps is the GM's alone** — a player reaches the one map that concerns them by
+  the corner button.
+- Driven from `syncCharacterViewUI()`.
+- Deliberately **not** `.tab-btn` / `.tab-pane` (those belong to the sidebar, and
+  `switchTab()` toggles every one on the page).
 
 ### Characters and the home screen
 
-An account is a *player*, not a character: one person runs a fighter on Tuesdays
-and a wizard on Fridays and both are theirs. So the save file holds a **roster**,
-`state.characters`, and exactly one slot at a time is live in
-`state.character` / `state.instances` / `state.equipped` / `state.db`.
+The save file holds a **roster**, `state.characters`, and exactly one slot at a
+time is live in `state.character` / `state.instances` / `state.equipped` /
+`state.db`.
 
-- Live state stayed where it always was rather than being read through the
-  roster, because every render path, the grid, the drag machinery and party sync
-  already speak that language. The roster is the *store*; the live fields are the
-  *working copy*. Exactly two functions bridge them and nothing else may:
-  `commitActiveCharacter()` (working copy → slot) and
+- Live state stayed where it always was — every render path, the grid, the drag
+  machinery and party sync already speak that language. The roster is the
+  *store*; the live fields are the *working copy*. Exactly two functions bridge
+  them: `commitActiveCharacter()` (working copy → slot) and
   `loadActiveCharacterIntoLive()` (slot → working copy).
 - `commitActiveCharacter()` runs from `buildSavePayload()`, so every save flushes
-  the character on screen back into its slot first and the two cannot drift.
-- It **refuses** whenever the working copy is not your own character —
-  `liveStateIsOwnCharacter()`. While another member's sheet is up, `state` is
-  theirs; a GM has no character at all and their panel is the placeholder.
-  Committing either would overwrite a character with someone else's inventory,
-  and this guard is the only thing standing between the two. A GM's own character
-  is reloaded from its slot by `leaveParty()`.
+  the character on screen back to its slot first.
+- It **refuses** whenever the working copy is not your own character
+  (`liveStateIsOwnCharacter()`) — another member's sheet, or a GM with none. A
+  GM's own character is reloaded from its slot by `leaveParty()`.
 - The custom item catalogue is per character, so `loadActiveCharacterIntoLive()`
-  rebuilds `state.db` from `DEFAULT_ITEMS` rather than merging — otherwise a
-  character would inherit the custom items of whoever was on screen before.
-- The roster is **never empty**: `ensureCharacter()` mints a fresh character on a
-  first run, and deleting the last one hands back a new one rather than leaving
-  the app with no character to be.
+  rebuilds `state.db` from `DEFAULT_ITEMS` rather than merging.
+- The roster is **never empty** — `ensureCharacter()` mints one on first run, and
+  deleting the last hands back a new one.
 - The home screen is a page in front of the app (`state.screen`, a fixed overlay
-  under the modal backdrop), not a panel inside it — picking a character is what
-  happens before there is an inventory to look at. It carries **two** sections
-  now, campaigns above characters; `renderHomeScreen()` draws both, so no caller
-  has to remember there is more than one. See *Campaigns*.
-- **You leave it by choosing something, not by dismissing it.** There is no Back
-  button: clicking a character opens their inventory and clicking a campaign
-  enters it, which is the same gesture the page is already asking for. Escape
-  still closes it. The one reader with nothing to click is a **GM**, whose
-  character cards are not selectable — their way back is the campaign card for
-  the table they are already running, and `renderHomeScreen()`'s note says so,
-  because it is the only case where the page could otherwise feel like a
-  dead end. `renderHomeScreen()` returns
-  early unless it is showing, so anything that replaces the world can call it
-  freely.
+  under the modal backdrop). It carries **two** sections, campaigns above
+  characters; `renderHomeScreen()` draws both and returns early unless showing.
+- **You leave it by choosing something, not dismissing it** — no Back button;
+  Escape still closes it. The one reader with nothing to click is a **GM**, whose
+  character cards are not selectable; their way back is the campaign card, and
+  `renderHomeScreen()`'s note says so.
 - **A signed-in player starts there.** `handleAuthStateChange` opens it on any
-  sign-in that nothing was waiting on — a sign-in *for* something (the party
-  modal) goes there instead. Firebase restores its session asynchronously, so
-  `maybeOpenHomeAtBoot()` guesses from `dnd_inventory_last_signin` (this
-  browser's own flag, written by auth.js) rather than painting the inventory and
-  yanking it away a moment later.
-- One modal serves three jobs — the sheet's gear, a card's Edit, and New
-  Character. A **null** `charModalTargetId` means *the character on screen*,
-  which is not always one of yours: a GM editing a player from the gear edits the
-  working copy and the party roster, never their own slot.
+  sign-in nothing was waiting on. `maybeOpenHomeAtBoot()` guesses from
+  `dnd_inventory_last_signin` (this browser's flag) rather than painting the
+  inventory and yanking it away.
+- One modal serves three jobs — the sheet's gear, a card's Edit, New Character. A
+  **null** `charModalTargetId` means the character on screen, not always one of
+  yours.
 
 ### Multiclassing and Character Setup
 
-A character's classes are **`classLevels`**: an ordered list of
-`{ name, level, subclass }`, one entry per class, each carrying its own level and
-its own subclass. A Warlock 5 / Bard 2 is two entries, and the character is level
-7. The model lives in `src/js/characters.js`; the editor is
+A character's classes are **`classLevels`**: an ordered list of `{ name, level,
+subclass }`, one entry per class. A Warlock 5 / Bard 2 is two entries; the
+character is level 7. Model in `src/js/characters.js`; editor in
 `src/js/character-setup.js`.
 
-- **The three fields that came before it are kept as mirrors** — `classes` (the
-  names), `level` (the sum, capped at 20) and `subclass` (the first one set) —
-  written only by `normalizeCharacterMeta()`, exactly as `strength` mirrors
-  `abilities.str` and for the same two reasons. Every existing reader keeps
-  working untouched (the home cards, the party panel, the proficiency bonus, the
-  species traits), and a party member on an older client still renders a sensible
-  line instead of `[object Object]`. One writer, so the two cannot drift:
-  **writing a bare `level` on a character who has classes does nothing**, just as
-  writing a bare `strength` does nothing.
-- **`classEntriesOf(c)` is the one way to read a character's classes.** A
-  character that has been through `normalizeCharacterMeta()` hands its list
-  straight back; anything that has not — a roster entry from an older client,
-  carrying only names and one level — is folded on the way out, so no caller has
-  to know which kind it was given.
-- **The migration guesses only for a multiclass.** The old model had one level
-  every listed class was read at, so a "Fighter, Rogue" at 5 says nothing about
-  how those five levels were spent. The first class is given what is left after
-  one level each for the rest, so the *total* — which the proficiency bonus and
-  the species traits are worked out from — comes through exactly right. A single
-  class, which is nearly every character, is migrated with no guessing at all.
-- **The proficiency bonus is worked out from the total, not per class.** That is
-  right by the rules, and it is why the sum has to be a real field rather than
-  something each reader adds up for itself.
+- **Three mirror fields** — `classes` (names), `level` (sum, capped 20),
+  `subclass` (first one set) — written only by `normalizeCharacterMeta()`, like
+  `strength` mirrors `abilities.str`. Every existing reader keeps working, and a
+  party member on an older client renders a sensible line. Writing a bare `level`
+  on a character who has classes does nothing.
+- **`classEntriesOf(c)` is the one way to read a character's classes** — a
+  normalized character hands its list back; anything older is folded on the way
+  out.
+- **The migration guesses only for a multiclass** — the old model had one level
+  for every listed class, so the first class gets what is left after one level
+  each for the rest (the *total* comes through exactly). A single class is
+  migrated with no guessing.
+- **The proficiency bonus is worked out from the total, not per class** — right
+  by the rules, and why the sum must be a real field.
 
-**The modal.** One dialog, three jobs: the gear at the top right of the
-character sheet, a roster card's Edit, and New Character.
-`charModalTargetId` names the slot to edit; a null target is the character *on
-screen*, which is not always one of yours.
+**The modal.** `charModalTargetId` names the slot to edit; a null target is the
+character on screen.
 
-- **The header has no Edit Character button and no STR readout.** The sheet owns
-  the six ability scores, and the grid has always sized itself from
-  `abilities.str` through the `strength` mirror — so a number in the header was
-  one more place for it to go stale, and the weight bar beside it already says
-  what that Strength buys. The gear replaces the button for both cases the button
-  covered: your own character, and — since `isReadOnly()` is false for a GM — a
-  player's.
-
-- **The class rows are why this left the sheet.** A multiclass is a list, and a
-  list that grows as classes are added does not belong across the top of a page
-  that has to stay readable. So the sheet keeps the readout and the gear opens
-  the editor. Species, background and alignment came with it: they answer the
-  same question ("who is this?"), and splitting that answer across two editors is
-  how two editors come to disagree.
+- **The header has no Edit Character button and no STR readout** — the sheet owns
+  the six ability scores, and the weight bar already says what Strength buys. The
+  gear replaces the button for both cases (your own character, and a player's,
+  since `isReadOnly()` is false for a GM).
+- **The class rows are why this left the sheet** — a growing list does not belong
+  across the top of a page. Species, background and alignment came with it.
 - `charModalClasses` is a **working copy**, written to the character only on
-  Save — Cancel has to mean something, and the target may be a slot that is not
-  on screen.
-- **Rows are built once and written into, never rebuilt on a keystroke** — the
-  rule the sheet follows for its ~80 inputs, for the same reason: a rebuild
-  mid-word takes the focus out of the box. Only a *removal* rebuilds the list,
-  because every index below the gap shifts.
-- The total under the rows is derived and never typed. With **no** classes there
-  is nothing to sum, so a plain Level box appears in its place — a character can
-  be levelled without this app knowing what they are, and that is the only time
-  `level` is written directly.
-- Class, subclass, species and alignment are free text with a `<datalist>`
-  hint, never a constraint — `ALIGNMENTS` offers the nine, and a table running
-  "Unaligned" or its own scheme can still type one. The class list is shared by
-  every row; each row mints its **own** subclass list, because those differ by
-  class.
+  Save.
+- **Rows are built once and written into, never rebuilt on a keystroke** — only a
+  *removal* rebuilds the list.
+- The total under the rows is derived. With **no** classes a plain Level box
+  appears in its place — the only time `level` is written directly.
+- Class, subclass, species and alignment are free text with a `<datalist>` hint,
+  never a constraint (`ALIGNMENTS` offers the nine). Each row mints its own
+  subclass list.
 
 ### The character sheet
 
-Page one of the 2024 sheet, in `src/js/character-sheet.js`, shown in place of the
-grid when a tab's *Character Sheet* is picked. It reads and writes the same
-`state.character` as everything else and owns no data of its own.
+Page one of the 2024 sheet, `src/js/character-sheet.js`. Reads and writes the
+same `state.character`; owns no data.
 
 - **What is typed and what is worked out.** Anything the rules derive
-  unambiguously is derived and rendered as *text*, never as a box: ability
-  modifiers, proficiency bonus (from level), every skill and save, passive
-  Perception, initiative. What is left is what the rules cannot settle without
-  knowing more than this app does — AC, speed, HP, hit dice — and those are
-  inputs. A derived box that can be edited will disagree with itself; a typed box
-  the app guesses at will fight homebrew. `.stat-tile.derived` is the visual half
-  of the same promise.
-- **What a character *is* is not edited here.** Their classes and the level
-  taken in each, their subclasses, species, background and alignment are edited
-  in the **Character Setup** modal behind the gear at the top right — see
-  *Multiclassing and Character Setup* below. A multiclass is a list rather than a
-  field, and a list that grows as classes are added does not belong across the
-  top of a page that has to stay readable. XP stays a box, because it is not part
-  of what a character is — it is a number that changes at the table, like HP.
-- **The identity block is the readout of all of it** (`renderSheetIdentity()`):
-  a row of facts under the name, each **named above and answered below** —
-  Class, Species, Background, Alignment, Level, in the order the 2024 sheet
-  prints them. It was one run-on line, which is fine as the party panel's
-  subtitle and wrong as the sheet's own heading: nothing in "Level 7 · Tiefling ·
-  Warlock 5 / Bard 2 · Soldier" says which word is the species and which the
-  background, so a reader has to already know the answer to read it. A label
-  over each value says it once and costs a line.
-  - **No box, no border, no rule** — these are not fields any more, they are what
-    the character is, printed. Chrome around them would make them look editable,
-    which is exactly what the gear took away.
-  - Each fact is only as wide as its content and the gap does the separating, so
-    the row reads as a run of captions rather than a table. It wraps whole facts
-    on a narrow sheet, never a label away from its value.
-  - **Every fact is drawn whether it is set or not**, with an em dash for a
-    blank. A column that vanished would shuffle the rest along and leave the
-    reader working out which one went; a dash holds its place.
-  - A class's own level is printed **only in a multiclass** ("Warlock 5 (Fiend
-    Patron) / Bard 2"). With one class it would only say again what the Level
-    column already says.
-- **`abilities.str` is the character's Strength, and the grid's.** The inventory
-  has always sized itself from `state.character.strength`, so that field stays —
-  as a *mirror*, written only by `normalizeCharacterMeta()`. One writer, so the
-  two cannot drift, and a save or a party member from before the sheet still
-  lands the right way up (`normalizeAbilities` takes the old `strength` as the
-  fallback for `str`, so nobody silently becomes a 10). Editing Strength here
-  resizes the grid, through `commitSheetEdit()` — though not until the reader
-  goes back to the inventory; see *the deferred resize* under Grid geometry.
-- **This is the only place a score is typed.** The header's STR readout and the
-  Character Setup modal's Strength box are both gone — they were from before the
-  sheet existed, and each was a second editor for a value this section owns. The
-  six scores **all start at 10**, so a character created from the roster is a
-  sound level-1 with a 30-row grid until someone opens the sheet.
-  `readCharModalFields()` therefore returns **no `abilities` key at all**: every
-  caller merges it over the character being edited, so omitting it is what
-  carries the existing scores through, and on New Character
-  `normalizeAbilities()` fills all six with 10.
-- **Scores run 0–30** (`clampScore`). Zero is a real score — a creature drained
-  to 0 Strength is incapacitated — so it is allowed rather than floored to 1, and
-  a grid of no rows is the honest reading of it. `updateWeightDisplay()` floors
-  its divisor at 1 for exactly that case: at Strength 0 all three thresholds are
-  0, and every ratio would be `0/0`, which the browser drops as an invalid
-  length, leaving the weight bar silently showing its last width.
+  unambiguously is derived and rendered as *text* (modifiers, proficiency bonus,
+  skills, saves, passive Perception, initiative). What the rules cannot settle
+  without knowing more (AC, speed, HP, hit dice) is an input.
+  `.stat-tile.derived` is the visual half of that promise.
+- **What a character *is* is not edited here** — classes, levels, subclasses,
+  species, background, alignment are in the **Character Setup** modal behind the
+  gear. XP stays a box (a number that changes at the table, like HP).
+- **The identity block is the readout of all of it** (`renderSheetIdentity()`) —
+  a row of facts under the name, each named above and answered below (Class,
+  Species, Background, Alignment, Level). No box, no border. Each fact is only as
+  wide as its content; it wraps whole facts, never a label from its value. Every
+  fact is drawn whether set or not (em dash for a blank). A class's own level is
+  printed **only in a multiclass**.
+- **`abilities.str` is the character's Strength, and the grid's** — the `strength`
+  mirror is written only by `normalizeCharacterMeta()` (with the old `strength`
+  as the fallback for `str`). Editing Strength here resizes the grid through
+  `commitSheetEdit()` — see *the deferred resize* under Grid geometry.
+- **This is the only place a score is typed.** The six scores all start at 10.
+  `readCharModalFields()` returns **no `abilities` key** — callers merge it over
+  the character, so omitting it carries existing scores through, and on New
+  Character `normalizeAbilities()` fills all six with 10.
+- **Scores run 0–30** (`clampScore`). Zero is a real score. `updateWeightDisplay()`
+  floors its divisor at 1 for that case (at Strength 0 every ratio would be `0/0`,
+  which the browser drops, freezing the weight bar).
 - Skill proficiency is **three-state** (none / proficient / expertise); saves are
-  two. 2024 keeps expertise, and a rogue with a plain tick is simply wrong.
-- **One group per ability, not three lists.** Everything on that half of the
-  sheet is one number read three ways, so `abilityGroup()` boxes them together:
-  the modifier large with the score beside it in a smaller box, the **bolded**
-  saving throw directly under and ruled off from what follows, then the skills
-  that read off that ability (`skillsOfAbility`, which groups on the same
-  `ability` field `skillModOf` derives from — the layout cannot drift from the
-  arithmetic). It retires the per-row `DEX` tag: the group *is* the tag, said
-  once rather than eighteen times. Constitution has no skills and its group is
-  simply short.
-- `.ability-groups` is **two columns and never three**. The percentage in
-  `minmax(max(196px, 46%), 1fr)` is the ceiling — a track can be no narrower
-  than 46% of the row, so a third will not fit — while the 196px floor still
-  drops it to one column on a squeezed sheet. Past 50% only one column would
-  ever fit; at a third, three would.
-- **Where the sections sit is no longer settled here.** Each is a widget in the
-  split tree — see *The sheet's layout* above. The 2:1 the abilities used to be
-  given by hand (`flex: 2 1 420px`) is now the default layout's opening share,
-  and the reader drags the seam to change it.
-- The unique boxes are static markup in `index.html`, as everything referenced by
-  JS is. The six ability groups are **built once** from
-  the `ABILITIES` and `SKILLS` constants that define them — hand-writing eighteen
-  rows would only give them somewhere to disagree with the constant. Built once
-  and never rebuilt: `renderCharacterSheet()` only writes values into what is
-  already there, so **an input never loses focus mid-keystroke**. It skips
-  `document.activeElement` for the same reason — the sheet re-renders on every
-  party roster update, and a sync landing mid-word must not reset the box.
-- One delegated listener per event, not one per box: there are ~80 of them.
-- Read-only when `isReadOnly()` — a player looking at someone else's sheet.
-- **Class features** and **species traits** are their own sections, built from
-  registries — see *Class features* and *Species traits* below.
-- **Backstory & Personality** and **Appearance** are Markdown, with an
-  editor/preview swap — see *The written sections* below.
-- **Not yet built:** the attacks table, and the rest of page two (spells,
-  alignment, attunement). Equipment and coins are deliberately absent — the
-  inventory and the coin purse already own them, and a second copy on the sheet
-  would be a second answer.
+  two.
+- **One group per ability, not three lists** (`abilityGroup()`) — the modifier
+  large with the score beside it, the bolded saving throw under, then the skills
+  that read off that ability (`skillsOfAbility`, grouping on the same `ability`
+  field `skillModOf` derives from). Retires the per-row `DEX` tag.
+- `.ability-groups` is **two columns and never three** — `minmax(max(196px,
+  46%), 1fr)`: the 46% ceiling blocks a third track, the 196px floor drops to
+  one column when squeezed.
+- Where sections sit is settled by the split tree — see *The sheet's layout*.
+- The unique boxes are static markup in `index.html`. The six ability groups are
+  **built once** from `ABILITIES` and `SKILLS`, then only written into —
+  **an input never loses focus mid-keystroke**, and it skips
+  `document.activeElement` because the sheet re-renders on every party roster
+  update.
+- One delegated listener per event, not one per box (~80 of them).
+- Read-only when `isReadOnly()`.
+- **Not yet built:** the attacks table, the rest of page two (spells, alignment,
+  attunement). Equipment and coins are deliberately absent — the inventory and
+  purse own them.
 
 ### The sheet's layout
 
-Every section of the character sheet is a **widget**, and where the widgets sit
-is a **tree of splits** rather than a list (`src/js/sheet-layout.js`). Drag a
-section by its title and drop it on an edge, and that edge splits.
-
-The tree is what answers the question a flat list cannot — when does a section
-run the full width, and when is it stopped by a neighbour?
-
-> A widget has no width of its own. It fills its slot, and the *drop* chooses
-> which slot — so a section's extent is decided by the depth it was dropped at,
-> not by a number stored on it.
-
-Drop a section on the sheet's own top edge and it becomes a band across
-everything. Drop it on the top edge of Combat, which is sharing a row with
-Abilities, and it spans that column only, stopped by Abilities — because the
-slot it split was Combat's, and Combat's slot is half a row. Same gesture, two
-answers, and neither is configured anywhere.
+Each section is a **widget**; where the widgets sit is a **tree of splits**
+(`src/js/sheet-layout.js`). Drag a section by its title, drop on an edge, that
+edge splits. A widget has no width of its own — it fills its slot, and the drop
+chooses which slot, so a section's extent is set by the depth it was dropped at.
 
 ```
 col[ Proficiencies, row[ Abilities, col[ Combat, HP ] ] ]
-
-+======================================+
-|  Identity                   (pinned) |
-+======================================+
-|  Proficiencies         (full width)  |
-+------------------+-------------------+
-|  Abilities       |  Combat           |
-|  & Skills        +-------------------+
-|                  |  Hit Points       |
-+------------------+-------------------+
 ```
 
-**The identity block is pinned above all of it, and is not in the tree.** Whose
-sheet this is heads the page; it cannot be dragged away and nothing can be
-dropped above it. There is no `pinned` flag in the model to honour and no
-special case in the drag — it simply lives **outside `#sheet-layout`** in
-`index.html`, `SHEET_WIDGET_IDS` is read from the store inside, and every hit
-test is scoped to the tree. A section that is not in the tree cannot be moved by
-a thing that only moves the tree. `sanitizeSheetLayout()` therefore drops an
-`identity` node left in a layout stored before this, exactly as it drops any
-other id it does not recognise, and the sheet heals itself on load. It carries
-no section title either — the character's own name heads the page, and an
-"Identity" rule above it only said again what the name says — so there is no
-handle to hover or grab; the `pinned` class does nothing but keep the
-drop-target outline off it mid-drag.
-
 - A node is `{ t:'w', id, size }` or `{ t:'s', dir:'row'|'col', size, kids[] }`.
-  `size` is the node's share of its parent and lives **on the node**, so it
-  travels with a section when one is moved.
+  `size` is the node's share of its parent, and lives **on the node** so it
+  travels with a moved section.
 - **Horizontal splits share space; vertical ones stack at their natural
-  height.** The asymmetry is the document underneath asserting itself: the sheet
-  is a scrolling page of paper — `.paper-sheet` is content-sized so its torn
-  edge hugs what is drawn on it — and a page has a width but not a height. So a
-  row divides its width by the shares and gets a **draggable seam** between each
-  pair; a column's children are simply as tall as their contents and have no
-  seam. Forcing one would clip a section or leave a hole under it.
-- The JS writes **only** `--share` on a node's element. What that share is spent
-  on is settled in `sheet-layout.css` by the *parent's* direction. That is what
-  lets a row fold into a column on one class with nothing to rewrite and no
-  sizes lost.
-- `normalizeSheetLayout()` runs after every edit and is what keeps the tree
-  honest: a split holding one child, a row nested directly in a row, a container
-  emptied by the section just dragged out of it. It **mutates and preserves node
-  identity**, because a drop holds a reference to the node it landed on and has
-  to find it again afterwards.
-- A drop removes the section **first**, normalizes, and only then inserts — so
-  the tree the insert works on is the one the drop will actually produce.
-- Where a section joins a split that already runs the right way, it takes **half
-  of the target's share** and the other children do not shuffle.
-
-**Folding.** A row too narrow to give every child `SHEET_MIN_COL` stops being a
-row and stacks (`foldNarrowRows`, driven by a `ResizeObserver`). This is the
-same fold the sheet has always done, moved off `flex-wrap` — which cannot honour
-the shares the seams set — and onto a measurement. Folds are applied
-**outermost-in** (document order gives that for free: a row that folds hands its
-width back to the rows inside it). The **hysteresis is not a nicety**: folding
-makes the sheet taller, a taller sheet can bring in `#character-sheet`'s
-scrollbar, and the scrollbar takes back the very width that was measured.
-`scrollbar-gutter: stable` removes most of that; `SHEET_FOLD_SLACK` makes it
-impossible.
-
-**The layout is this browser's furniture, not the character's.** Like the theme,
-the panel widths and the browse folders, it describes how *you* read a sheet
-rather than anything about who is on it — and a GM paging through the party must
-keep their own arrangement rather than adopting each player's. So it lives in
-its own key (`dnd_inventory_sheet_layout`), is **not** in the save file, and is
-never synced. That is also why a **read-only sheet is still rearrangeable**:
-moving a section writes nothing to the character.
-
-- The sections are written once as static markup in `#sheet-widget-store`, and
-  the renderer **moves** them into the tree — every id, value and listener
-  survives a rearrange. `renderSheetLayout()` is called when the sheet is first
-  built and after a drop or a reset, and deliberately **not** from
-  `renderCharacterSheet()`, which runs on every party roster update.
-- `SHEET_WIDGET_IDS` is read from the markup rather than written out again in
-  the JS: the sections *are* the markup, and a second list would only be
-  somewhere for the two to disagree. `sanitizeSheetLayout()` therefore copes
-  with a stored layout from a version with a different set of sections — unknown
-  ids are dropped, missing ones appended.
-- Dragging uses pointer events and bounding-rect hit tests, not the HTML5
-  drag-and-drop API, to agree with the drop feedback the browse list and equip
-  rack already give. The drop's edge is picked by **fraction** of each dimension
-  rather than raw pixels, so a short wide section and a tall narrow one both
-  have four reachable edges.
-- The rim band is tested first and is thin; everywhere else inside the sheet
-  resolves to the nearest section, because a drag that lands on nothing reads as
-  broken. A drop back onto the section's own slot is refused, but still labelled
-  ("Back where it started") — refusing silently is the one thing it must not do.
-- `#character-sheet` is in `DRAG_SCROLLERS`, so a long sheet scrolls under a held
-  drag exactly as the browse list does.
-- `resetSheetLayout()` **has no caller.** The Reset Layout button it sat behind
-  has been taken off the sheet — it is layout furniture, not part of a character
-  sheet — and it is waiting to be wired up somewhere better (Settings is the
-  obvious home, beside the theme picker, which is furniture of the same kind).
-  Kept because an arrangement is otherwise only recoverable by clearing the
-  browser's storage.
+  height** — the sheet is a scrolling page of paper, which has a width but not a
+  height. A row divides its width and gets a **draggable seam** between each
+  pair; a column has no seam.
+- The JS writes **only** `--share` on a node's element; `sheet-layout.css` spends
+  it per the *parent's* direction, so a row folds into a column with nothing to
+  rewrite.
+- `normalizeSheetLayout()` runs after every edit (a split with one child, a row
+  nested in a row, an emptied container). It **mutates and preserves node
+  identity** — a drop holds a reference to the node it landed on.
+- A drop removes the section **first**, normalizes, then inserts.
+- Joining a split that already runs the right way takes **half the target's
+  share**; the other children do not shuffle.
+- **The identity block is pinned above all of it and is not in the tree** — it
+  lives **outside `#sheet-layout`** in `index.html`, every hit test is scoped to
+  the tree, and `sanitizeSheetLayout()` drops an `identity` node left in an old
+  stored layout.
+- **Folding.** A row too narrow for every child to get `SHEET_MIN_COL` stacks
+  (`foldNarrowRows`, driven by a `ResizeObserver`), applied outermost-in
+  (document order). Hysteresis (`SHEET_FOLD_SLACK`) is **not a nicety** — folding
+  makes the sheet taller, a taller sheet brings in the scrollbar, and the
+  scrollbar takes back the width that was measured. `scrollbar-gutter: stable`
+  removes most of it.
+- **The layout is this browser's furniture** (`dnd_inventory_sheet_layout`), not
+  in the save file, never synced — a GM paging through the party keeps their own
+  arrangement, and a **read-only sheet is still rearrangeable**.
+- The sections are written once as static markup in `#sheet-widget-store`; the
+  renderer **moves** them into the tree, so every id, value and listener
+  survives. `renderSheetLayout()` runs when the sheet is first built and after a
+  drop or reset, **not** from `renderCharacterSheet()`.
+- `SHEET_WIDGET_IDS` is read from the markup, not written out in JS.
+  `sanitizeSheetLayout()` drops unknown ids and appends missing ones.
+- Dragging uses pointer events and bounding-rect hit tests (not the HTML5 DnD
+  API), the edge picked by **fraction** of each dimension. The rim band is tested
+  first; everywhere else resolves to the nearest section. A drop onto the
+  section's own slot is refused but labelled ("Back where it started").
+- `#character-sheet` is in `DRAG_SCROLLERS`.
+- `resetSheetLayout()` **has no caller** — the Reset Layout button was taken off
+  the sheet (it is furniture, not part of a character) and is waiting to be wired
+  up somewhere better (Settings). Kept because an arrangement is otherwise only
+  recoverable by clearing browser storage.
 
 ### Class features
 
-The sheet's Class Features section reads `state.character.classes` (names, as
-typed) and `level`, and shows what those classes hand out. Two halves live in
-`src/js/class-features.js`: the **registry** — where a class definition comes
-from — and the section that draws it.
+Reads `state.character.classes` (names, as typed) and `level`. Two halves in
+`src/js/class-features.js`: the **registry** and the section that draws it.
 
-**The class data is not in the JS.** It is `data/classes.json`, read at load
-with a blocking `XMLHttpRequest` exactly as `data/items.csv` is, and for the
-same reason: it is content, not code, and adding a class should not be a code
-change. That file is also already the shape a user-authored class will take —
-data only, no behaviour — so the editor that eventually writes one has nothing
-new to learn.
+**The class data is `data/classes.json`**, read at load with a blocking
+`XMLHttpRequest` like `data/items.csv` — content, not code, and already the shape
+a user-authored class will take.
 
 ```
 { id, name, source?, features: [{ id, name, level, description, unlocks? }],
-  subclasses?: [{ id, name, source?, features: [ …same as above… ] }] }
+  subclasses?: [{ id, name, source?, features: [ …same… ] }] }
 ```
 
-**The registry is the seam custom classes come through.** Nothing outside
-`class-features.js` may reach into `DEFAULT_CLASSES`: everything goes through
-`allClasses()` and `findClassByName()`. When custom classes land they become one
-more source inside `allClasses()` and every caller gets them for free — the same
-shape `state.db` has, where `DEFAULT_ITEMS` are re-hydrated each boot and only
-the customs are saved. `sanitizeClassList()` is what lets the file be edited by
-hand without taking the sheet down: a malformed class or feature is dropped, and
-an unreadable file leaves the registry empty rather than throwing.
+**The registry is the seam custom classes come through** — nothing outside
+`class-features.js` may reach into `DEFAULT_CLASSES`; everything goes through
+`allClasses()` and `findClassByName()`. `sanitizeClassList()` drops a malformed
+class or feature and leaves an unreadable file as an empty registry.
 
-- A feature's `id` is stable and never derived from position. (An item's id
-  *is* its CSV row number, and that has bitten this project before — see the
-  coin purse.) Order within a level is the order written.
-- **Classes are matched by name, not id**, because a class entry's `name` is a
-  free-text field the player types. A name that matches nothing is not an error —
-  it is a class the app has not been taught yet, and the section says so by name
-  rather than going blank. Ids are accepted too, so a stored id survives a
-  rename.
-- **Every class is read at its own level.** The section iterates
-  `classEntriesOf(character)`, and each entry carries the level taken in that
-  class: a Warlock 5 / Bard 2 sees the Warlock list up to 5 and the Bard list up
-  to 2. `characterClassLevel()` is where that lands — the seam this section
-  always said would learn about per-class levels. The character's *total* level
-  (the sum) is still what the proficiency bonus and the species traits are
-  worked out from, which is right by the rules.
+- A feature's `id` is stable and never derived from position. Order within a
+  level is the order written.
+- **Classes are matched by name, not id** — a class entry's `name` is free text.
+  A name that matches nothing is a class the app has not been taught yet, and the
+  section says so by name. Ids are accepted too.
+- **Every class is read at its own level** (`characterClassLevel()`) — a Warlock
+  5 / Bard 2 sees the Warlock list to 5 and the Bard list to 2. The *total* level
+  still drives the proficiency bonus and species traits.
 - `classFeaturesFor()` returns the **complete** list sorted by level → class →
-  written order, each row carrying an `owned` flag. The level gate decides
-  `owned`; the *section* decides what to draw. Keeping those apart is what makes
-  the show/hide toggle a filter over one list rather than two code paths.
-- The class name is tagged onto a card only when there is more than one class
-  (`showClass`) — one class does not need saying on every card.
-- **Subclasses nest under the class** (`subclasses[]`, sanitized by
-  `sanitizeSubclassList()` — the same shape as a class minus its own
-  `subclasses`). **Each class entry carries its own free-text `subclass`**,
-  matched by `findSubclassByName(classDef, name)` against the subclasses of that
-  class. A match folds that subclass's features into the same list
-  (`classFeaturesFor()`), gated by *that class's* level, sorted after the base
-  features at a shared level (`sub` key), and tagged with the subclass name on
-  every card — single class or not. The Subclass **field** is a row in the
-  Character Setup modal, shown only once that class's own level has unlocked it
-  (`classUnlockKeys()` — see *Unlocks* below); each row mints its own
-  `<datalist>`, filled by `fillDatalist()` from that class's subclasses, as a
-  hint only.
-- **`source`** is a short book label ("PHB") on a class and, separately, on
-  each subclass. `classSourceSummary()` renders the known ones as a quiet
-  `.feature-sources` caption above the cards; nothing carrying a source means
-  no caption. `cleanSource()` trims and caps it.
-- Descriptions are terse summaries of the mechanic, written for this app. Do not
-  paste rulebook text in.
-- **A description is Markdown**, rendered by `markdown.js` through the same
-  `renderMarkdownInto()` the written sections use — so a feature can bold the
-  name of a mechanic and list what it grants rather than running it all into one
-  sentence. That makes the class and species files a *second consumer of the
-  sanitizer*, which is the point: a user-authored class will sync to Firebase and
-  render in the GM's browser exactly as a player's backstory does. `.feature-desc`
-  is therefore a `<div>`, never a `<p>` — a paragraph cannot legally hold the
-  list or second paragraph the renderer emits.
+  written order, each row with an `owned` flag. The level gate decides `owned`;
+  the section decides what to draw (so the show/hide toggle is a filter over one
+  list, not two code paths).
+- The class name is tagged on a card only when there is more than one class
+  (`showClass`).
+- **Subclasses nest under the class** (`subclasses[]`, `sanitizeSubclassList()`).
+  Each class entry carries its own free-text `subclass`, matched by
+  `findSubclassByName(classDef, name)`; a match folds those features into the
+  same list (gated by that class's level, sorted after base features at a shared
+  level, tagged with the subclass name). The Subclass **field** is a Character
+  Setup row, shown only once that class's level has unlocked it
+  (`classUnlockKeys()`), each row minting its own `<datalist>` via
+  `fillDatalist()`.
+- **`source`** is a short book label ("PHB"), separately on a class and each
+  subclass. `classSourceSummary()` renders known ones as a `.feature-sources`
+  caption; `cleanSource()` trims and caps it.
+- Descriptions are terse summaries written for this app — do not paste rulebook
+  text.
+- **A description is Markdown**, rendered through the same `renderMarkdownInto()`
+  the written sections use — so the class and species files are a second consumer
+  of the sanitizer. `.feature-desc` is a `<div>`, never a `<p>`.
 - **`description` may be an array** (`normalizeDescription()`, shared with
-  species-traits.js). JSON has no multi-line string, and a bulleted feature
-  written as one `"…\n- one\n- two"` line is unreadable in the file it has to be
-  hand-edited in. It is the convention the files' own `_comment` blocks already
-  use. That is also the answer to "should this be YAML" — it should not: a
-  parser is a dependency, and this app has none.
-  - **An entry is a block, not a line.** Entries are separated by a *blank*
-    line, so a paragraph is one entry and nothing has to type `""` between them.
-  - **Except a list item, which joins to the line above.** `collectListItems()`
-    stops at a blank line, so a blank between two bullets yields two separate
-    one-item lists with a gap — never what someone writing `- a` / `- b` on two
-    entries meant. The one case where the blank line would be wrong is the one
-    case it is not inserted. The test is `MD_LIST_RE`, **borrowed from
-    markdown.js rather than copied**, so what counts as a list line here cannot
-    drift from what the parser does with it.
-  - **A nested array is one block with its lines kept together**, for the two
-    things that need consecutive lines and are not lists: a hand-written
-    `<table>` (the raw-HTML branch reads to the next blank line), and a stanza
-    wanting hard breaks mid-paragraph.
-  - Borrowing `MD_LIST_RE` is why **`markdown.js` now loads before
-    `class-features.js`**: the JSON is parsed at load time, not at render, so
-    the regex has to exist by then. markdown.js declares only functions and
-    constants, so it is safe that early.
+  species-traits.js) — JSON has no multi-line string.
+  - An entry is a **block**, separated by a *blank* line.
+  - **Except a list item, which joins to the line above** — `collectListItems()`
+    stops at a blank line. The test is `MD_LIST_RE`, **borrowed from
+    markdown.js**, which is why markdown.js now loads before class-features.js
+    (the JSON is parsed at load time).
+  - **A nested array is one block with its lines kept together** — a hand-written
+    `<table>`, or a stanza wanting hard breaks.
 
 **Unlocks — parts of the app that arrive with a feature.** A feature may name
-parts it brings with it (`"unlocks": ["subclass"]`). Markup marks those parts
-`data-unlocked-by="subclass"`, and they stay hidden until an *owned* feature
-names them. The only key in use is the Subclass field, which means nothing on a
-level-1 character.
+parts (`"unlocks": ["subclass"]`); markup marks them `data-unlocked-by="subclass"`
+and they stay hidden until an *owned* feature names them. The only key in use is
+the Subclass field.
 
-- The key is a plain string shared between the JSON and the markup, never a
-  selector or an element id, so the data never has to know how the sheet is
-  built. That proved itself: the Subclass field moved off the sheet and into the
-  Character Setup modal without `data/classes.json` changing a character.
-- **The subclass key is asked per class, not of the character**
-  (`classUnlockKeys(classDef, subclass, level)`), because a Warlock 5 / Bard 2
-  has a patron and no Bard college. The Character Setup modal gates each class
-  row's Subclass field with it, at that class's own level.
-- **A class the app does not know shows the field.** `classUnlockKeys()` returns
-  `null` rather than an empty set for a class it has never heard of, and the
-  caller must show. If someone plays a Bloodhunter this app has no idea what one
-  gets or when, so hiding their Subclass field would be an invention — and one
-  that reads as the app having eaten a box they were using.
+- The key is a plain string shared between JSON and markup — never a selector or
+  element id, so the data never has to know how the sheet is built.
+- **The subclass key is asked per class** (`classUnlockKeys(classDef, subclass,
+  level)`) — a Warlock 5 / Bard 2 has a patron and no Bard college.
+- **A class the app does not know shows the field** — `classUnlockKeys()` returns
+  `null`, not an empty set, and the caller must show. Hiding a box for a
+  Bloodhunter would be an invention.
 - `applyFeatureUnlocks()` / `featureUnlocksAreAuthoritative()` are the same
-  question asked of the *character* — the right one for a part of the sheet that
-  belongs to no class in particular, unioned with the species' keys. It has no
-  targets today, and is what a species **Lineage** field will arrive through. It
-  runs from `renderClassFeatures()`, so it follows a level or class edit without
-  its own trigger, and toggles `.hidden` without ever touching a value: hiding a
-  box must not clear what is in it.
+  question asked of the *character*, unioned with the species' keys. It has no
+  targets today (a species **Lineage** field will arrive through it). Runs from
+  `renderClassFeatures()`, toggling `.hidden` without touching a value.
 
-**The section.** `renderClassFeatures()` is called from
-`renderCharacterSheet()`, since it is driven by `classLevels` and `level`, and
-every path that edits those ends in a sheet render — it needs no trigger of its
-own.
+**The section.** `renderClassFeatures()` is called from `renderCharacterSheet()`.
 
-- **One card per row, always the section's full width.** A run of cards read top
-  to bottom is a list of what you have in level order, which is what the section
-  is for; columns turn it into a grid to be searched, and squeeze each
-  description into a narrow strip of four-word lines.
-- The **level badge rides the card's top-left corner**, roughly a third of it
-  hanging outside. It is what the list is scanned by, so it breaks the edge to
-  be read before the card it belongs to. That costs two things: the card needs a
-  margin to hang into (`.feature-list`'s padding) and **no ancestor may clip
-  it** — which is why nothing in `class-features.css` uses `overflow: hidden`.
-  The ring in the badge's `box-shadow` is the card's own background, and is what
-  makes it read as punched through the corner rather than dropped on top.
-- Locked features are drawn as a plan rather than a possession — dashed edge,
-  no fill, hollow badge — so they are legible but never mistakable for something
-  usable.
-- The show/hide toggle **hides itself when nothing is locked**: a button that
-  cannot change what you see is noise. Its state is session-only and
-  deliberately not persisted — which half of a list you are looking at is a
-  glance, not a setting, and the useful default is what you actually have.
-- The toggle sits *inside* `.widget-title`, which is also the section's drag
-  handle. `sheet-layout.js` therefore ignores a pointerdown that lands on a
-  `button`/`a`/field — without that the button would still work, but the
-  smallest wobble would pick the section up instead.
+- **One card per row, always the section's full width** — a list read top to
+  bottom is what the section is for.
+- The **level badge rides the card's top-left corner**, a third of it hanging
+  outside — so **no ancestor may clip it** (nothing in `class-features.css` uses
+  `overflow: hidden`). The ring in the badge's `box-shadow` is the card's own
+  background.
+- Locked features are drawn as a plan — dashed edge, no fill, hollow badge.
+- The show/hide toggle **hides itself when nothing is locked**. State is
+  session-only.
+- The toggle sits inside `.widget-title` (also the drag handle), so
+  `sheet-layout.js` ignores a pointerdown on a `button`/`a`/field.
 
-**Folding a card shut.** Clicking a card collapses it to its name, and clicking
-it again opens it. Like the locked-features toggle it is **session-only** — a
-`collapsedFeatures` Set in memory, never in the save file and never synced,
-because reading a long section by folding away what you have already read is a
-glance, not a property of the character. Every card opens expanded.
+**Folding a card shut.** Clicking a card collapses it to its name. Session-only
+(`collapsedFeatures` Set in memory), never saved or synced.
 
 - **The name is a real `<button>` inside the heading** — the standard disclosure
-  pattern. The heading keeps its meaning in the sheet's structure, and the
-  button is what Tab reaches and what Enter and Space work on, so there is no
-  keydown handler here at all. `.feature-name-btn` styles it back to bare text
-  (`font`/`color: inherit` from `.feature-name`, so the two cannot drift), which
-  is what keeps an expanded card pixel-identical to the one that could not fold.
-- One delegated listener **per section**, not per card, for the reason the sheet
-  gives about its ~80 inputs — and here also because the sections are rebuilt on
-  every render while the containers are static markup that outlives them. Both
-  are wired from `class-features.js` because `featureCard()` is: species traits
-  fold too, and a fold that worked in one section only would be exactly the
-  drift that sharing the card prevents.
-- The button's own click reaches that listener **by bubbling**, not by a second
-  listener, so a click on the name cannot toggle twice.
+  pattern; Tab reaches it, Enter/Space work on it, no keydown handler here.
+  `.feature-name-btn` styles it back to bare text.
+- One delegated listener **per section**, not per card — the sections are rebuilt
+  on every render while the containers are static markup. Wired from
+  `class-features.js` because `featureCard()` is (species traits fold too).
+- The button's click reaches that listener **by bubbling**.
 - The key is `scope:id` (`class:rage`, `species:dwarf-darkvision`), not the bare
-  id. Class ids are bare words where species ids are prefixed, so the two files
-  could collide on one — and a collision would fold a card in one section
-  because you folded an unrelated one in the other. The coin purse is the
-  standing reminder of what assuming a hand-written id is unique costs.
-- The toggle flips classes and `aria-expanded` on the card that was hit and
-  deliberately **does not re-render the section**: a render rebuilds every card,
-  throwing away keyboard focus mid-click and costing a Markdown parse per
-  feature to change one `display`. The Set is read at build time, so the state
-  still survives a render driven by anything else (a party sync).
-- Clicks on a link, field or other control inside a description are left alone,
-  and **a click that ends a drag-select does not fold** — that is a reader
-  highlighting a passage to copy, not asking for the card to shut under them.
-- **No caret or chevron**, on purpose: an expanded card was to look exactly as
-  it always has, and a glyph at rest is a change to that. The hover lift
-  (`border-color: var(--accent)`) is the affordance instead, the same one
-  `.folder-header` uses for the same gesture.
+  id — class ids are bare words, species ids prefixed, so the two files could
+  collide.
+- The toggle flips classes and `aria-expanded` and **does not re-render the
+  section** — the Set is read at build time, so state survives a render driven by
+  anything else.
+- A click that ends a drag-select does not fold.
+- **No caret or chevron** — the hover lift (`border-color: var(--accent)`) is the
+  affordance, same as `.folder-header`.
 
 ### Species traits
 
-The sheet's Species Traits section reads `state.character.race` (a name, as
-typed) and `level`, and shows what that species hands out. It is deliberately
-`class-features.js` again, in `src/js/species-traits.js`: same registry shape,
-same card, same locked/unlocked toggle, same reasoning. Read the Class features
-section above first — what follows is only where the two differ.
+Reads `state.character.race` and `level`. Deliberately the same shape as
+`class-features.js`, in `src/js/species-traits.js` — same registry shape, card,
+toggle. Read the Class features section first; only the differences follow.
 
-- **The data is `data/species.json`**, read the same blocking way and for the
-  same reason: content, not code. `{ id, name, traits: [...] }`, and a trait is
-  `{ id, name, level?, description, unlocks? }`.
-- **`level` is optional here** and defaults to 1, where a class feature's is
-  required. Almost every species trait arrives at level 1, so writing it on each
-  of them would be ceremony that only invites a typo; the handful that scale
-  (Draconic Flight, Large Form, Celestial Revelation) say so.
-- **One species, not a list.** `race` is a single field where `classes` is a
-  list, so there is no per-card species tag and no sort by species. That is the
-  whole of the difference in the model.
+- **The data is `data/species.json`**, read the same blocking way.
+  `{ id, name, traits: [{ id, name, level?, description, unlocks? }] }`.
+- **`level` is optional here** and defaults to 1 — almost every species trait is
+  level 1; the handful that scale say so.
+- **One species, not a list** — no per-card species tag, no sort by species.
 - **The level badge is drawn only when the levels differ**, judged on the rows
-  actually *drawn*. For a class the badge is what the list is scanned by; for a
-  species almost everything is level 1, and a column of identical `1`s is noise
-  standing where information should be. So a level-1 Dragonborn gets no badges,
-  and they appear when the reader asks to see the locked trait and the levels
-  start to differ. `featureCard(row, { badge })` and `.feature-card.no-badge`
-  are the two halves of that.
-- The cards and their CSS are **shared, not copied** — `featureCard()` and
-  `featureNote()` live in `class-features.js`, and `class-features.css` styles
-  both sections. They are one kind of thing (a named thing you have, with a
-  level it arrived at) read off two registries; two copies would only drift.
-  That sharing is why **`species-traits.js` must load after `class-features.js`**:
-  it calls `normalizeUnlocks()` while parsing the JSON, which happens at load
-  time rather than at render.
+  actually drawn — a column of identical `1`s is noise. `featureCard(row, {
+  badge })` and `.feature-card.no-badge`.
+- The cards and CSS are **shared, not copied** — `featureCard()` / `featureNote()`
+  live in `class-features.js`. This is why **`species-traits.js` must load after
+  `class-features.js`** (it calls `normalizeUnlocks()` while parsing the JSON).
 
-**Unlocks are now a union.** A species trait may name parts of the sheet exactly
-as a class feature may — same key space, same `data-unlocked-by` markup.
-`applyFeatureUnlocks()` in `class-features.js` still owns the mechanism and
-gathers both sets of keys; `speciesUnlockKeys()` / `speciesUnlocksAreAuthoritative()`
-are the species half.
+**Unlocks are a union.** `applyFeatureUnlocks()` in `class-features.js` owns the
+mechanism and gathers both sets; `speciesUnlockKeys()` /
+`speciesUnlocksAreAuthoritative()` are the species half.
 
-- The authoritative test is an **AND**, and has to be: if either half of what
-  the character is cannot be reasoned about, a hidden box might be one they
-  should have, and hiding it reads as the app having eaten a field. So a
-  Fighter/Warforged keeps their Subclass field, because this app has never heard
-  of a Warforged and will not guess on its behalf.
-- A **blank** species is authoritative — it grants nothing and hides nothing,
-  which is the honest reading of an empty field. Only a *typed and unknown* one
-  disables the mechanism.
-- No species in `data/species.json` uses `unlocks` today. The support is there
-  because a user-authored species is expected to, and because a Lineage field
-  (Elven Lineage, Fiendish Legacy) is the obvious next one to arrive — it is
-  exactly the Subclass field's shape.
+- The authoritative test is an **AND** — if either half of what the character is
+  cannot be reasoned about, a hidden box might be one they should have. A
+  Fighter/Warforged keeps their Subclass field.
+- A **blank** species is authoritative (grants and hides nothing). Only a *typed
+  and unknown* one disables the mechanism.
+- No species uses `unlocks` today — a Lineage field is the obvious next one.
 
 ### The written sections
 
-Backstory & Personality and Appearance are the parts of a character the rules
-have nothing to say about, so they are not boxes and derived numbers but a page
-to write on. `src/js/sheet-prose.js` is the sections; `src/js/markdown.js` is
-the formatting.
+Backstory & Personality and Appearance: `src/js/sheet-prose.js` (the sections),
+`src/js/markdown.js` (the formatting).
 
-- **Neither section owns data.** They are two more `data-sheet` string fields on
-  `state.character` (`backstory`, `appearance`), written by the same delegated
-  listener as every other box, saved by the same save, synced by the same sync.
-  `data-prose` on the wrapper *is* the `data-sheet` path, so a section needs no
-  table in the JS — a row of markup is the whole of adding one.
-- **The mode is not a setting.** Which face you are looking at is a glance —
-  the same argument the feature toggles make — so it is session-only. What it
-  *is* is a guess: a section with writing in it opens formatted, because that is
-  the readable form; an empty one opens in the editor, because a blank preview
-  is a dead end. Touching the toggle replaces the guess with your choice, until
-  the sheet on screen changes to a different character (`proseCharacterId`).
-- **The preview is only rendered when it is on screen.** Every keystroke
-  re-renders the sheet, and parsing a whole backstory each time to update
-  something nobody is looking at would be work for nothing.
-- Read-only does not gate the swap: someone looking at another player's sheet
-  can still read how a passage was written. The textarea is disabled by
-  `renderCharacterSheet()` along with every other input, so nothing can change.
-- The toggle is at the top left of the widget *body*, not in the title — the
-  title is the drag handle and already carries the section's name at the left.
+- **Neither section owns data** — two `data-sheet` string fields on
+  `state.character` (`backstory`, `appearance`), written/saved/synced by the same
+  machinery as every other box. `data-prose` on the wrapper *is* the `data-sheet`
+  path.
+- **The mode is not a setting** — session-only. It is a guess: a section with
+  writing opens formatted, an empty one opens in the editor. The toggle replaces
+  the guess with your choice until the sheet changes character
+  (`proseCharacterId`).
+- **The preview is only rendered when it is on screen** — every keystroke
+  re-renders the sheet.
+- Read-only does not gate the swap; the textarea is disabled by
+  `renderCharacterSheet()`.
+- The toggle is at the top left of the widget *body*, not the title (the title is
+  the drag handle).
 
 **Markdown, and the sanitizer that is not optional.** `markdown.js` is the only
-place in the app that turns a string into markup; everywhere else builds DOM
-with `createElement` and `textContent`, which cannot inject anything.
+place in the app that turns a string into markup.
 
 > A character sheet is not private. Party sync copies it to Firebase, and every
-> other member — and the GM — renders it in their own browser. Unsanitized, a
-> `<script>` or an `onerror=` in a player's backstory would run on the GM's
-> machine, against the GM's signed-in Firebase session.
+> other member renders it in their own browser. Unsanitized, a `<script>` or an
+> `onerror=` in a player's backstory would run on the GM's machine, against the
+> GM's signed-in Firebase session.
 
-- So the rule is **formatting is allowed, behaviour is not**. Raw HTML passes
-  through on purpose, because reaching past what the renderer offers is the
-  point; then `MD_ALLOWED_TAGS` / `MD_ALLOWED_ATTRS` decide what survives.
-  `<b>`, `<span style>` and a hand-written `<table>` all work; `<script>`,
-  `<iframe>`, `on*=` and `javascript:` do not.
-- An unknown tag is **unwrapped** — its text is the player's writing and is
-  kept. `MD_DROP_WHOLE` is the short list that goes with its contents instead,
-  because inside a `<script>` the text *is* the payload.
-- Parsing happens in a detached `<template>`, whose content has no browsing
-  context — nothing loads or runs while it is being scrubbed.
-- URLs are checked after control characters, spaces and entities are stripped
-  (`stripInvisible`), because `java&#9;script:` is a URL a browser will happily
-  run and a naive prefix check will happily pass. `style` is refused whole if it
-  contains `url(`, `@import` or friends: formatting needs none of them.
-- `on*` attributes are dropped **before** the allowlist is consulted rather than
-  by relying on it — that is the one class of attribute a later edit to the
-  lists must not be able to let through.
-- **Every block branch must consume a line.** The tests that end a paragraph are
+- **Formatting is allowed, behaviour is not.** Raw HTML passes through on
+  purpose; `MD_ALLOWED_TAGS` / `MD_ALLOWED_ATTRS` decide what survives. `<b>`,
+  `<span style>`, a hand-written `<table>` work; `<script>`, `<iframe>`, `on*=`,
+  `javascript:` do not.
+- An unknown tag is **unwrapped** — its text is the player's writing.
+  `MD_DROP_WHOLE` is the short list that goes with its contents instead.
+- Parsing happens in a detached `<template>` (no browsing context).
+- URLs are checked after control chars, spaces and entities are stripped
+  (`stripInvisible`) — `java&#9;script:` is a URL a browser will run. `style` is
+  refused whole if it contains `url(`, `@import` etc.
+- `on*` attributes are dropped **before** the allowlist is consulted.
+- **Every block branch must consume a line** — the tests that end a paragraph are
   looser than the ones that open a block, so a line like ```` ```js extra ````
-  can fall through all of them; leaving `i` where it was is an infinite loop, on
-  text a player is allowed to type. Whatever reaches the end with nothing
-  collected is taken as one line of paragraph.
-- A single newline is a **line break**, not a space. Standard Markdown wants two
-  trailing spaces, which is a rule nobody writing a backstory in a box knows.
-- Pipe tables are **not** parsed. A hand-written `<table>` is the escape hatch,
-  and `sheet-prose.css` styles one to match the sheet.
+  can fall through all of them; not advancing `i` is an infinite loop on text a
+  player may type.
+- A single newline is a **line break**, not a space.
+- Pipe tables are **not** parsed — a hand-written `<table>` is the escape hatch,
+  styled by `sheet-prose.css`.
 
 ### Character tabs
 
-The strip above the inventory (`character-tabs.js`) holds one tab per character —
-your own, plus every other member of the party — and clicking one opens a
-two-item menu, because each character has two views.
+The strip above the inventory (`character-tabs.js`) holds one tab per character
+(your own, plus every party member). Clicking one opens a two-item menu.
 
-- The selection is split in two, and only half of it is new. **Which** character
-  is shown remains `state.party.viewingPlayerId`, so the tabs and the sidebar's
-  Party panel are two faces of one selection; **which view** is `state.view`.
-  Neither is saved: both are UI position, not character data.
+- **Which** character is shown is `state.party.viewingPlayerId` (shared with the
+  Party panel); **which view** is `state.view`. Neither is saved.
 - `syncCharacterViewUI()` is the single entry point for "who or what we're
-  looking at changed". `updatePartyPanel()` calls it, which is what keeps the
-  tabs in step with roster updates arriving from Firebase, and stops a
-  deselected player's sheet from staying on screen.
-- The sheet/inventory swap is one class, `sheet-view` on `#inventory-panel`, so
-  the grid, stash and container tabs stay hidden by CSS rather than by JS that
-  would fight their own `.hidden` toggling.
-- A GM has no own-tab (no character of their own) and no active tab until they
-  pick a player. `#character-tabs` is positioned above `#gm-placeholder`, which
-  paints over the whole panel — that is exactly when the tabs are needed.
-- `#character-sheet` is a placeholder pending the real sheet.
+  looking at changed". `updatePartyPanel()` calls it.
+- The sheet/inventory swap is one class, `sheet-view` on `#inventory-panel`.
+- A GM has no own-tab and no active tab until they pick a player.
 - One key per half of the selection: **Tab** flips the shown character between
-  their two views, **Shift+Tab** walks to the next tab, and **1–9** jump to a tab
-  by position. They keep the other half of the selection intact — cycling stays
-  on the same view, Tab stays on the same character. Suppressed while typing,
-  while any modal is open, and unless `state.mode === 'idle'`
-  (`characterShortcutsAllowed`), because a character swap mid-drag would strand
-  the item that dragging has taken out of the grid.
+  its two views, **Shift+Tab** walks to the next tab, **1–9** jump by position.
+  Suppressed while typing, while any modal is open, and unless `state.mode ===
+  'idle'` (`characterShortcutsAllowed`).
 
 ### Coins
 
 Coins are ordinary stackable items — the coin purse is a readout over
-`state.instances`, not a separate store, so coins weigh what they weigh and
-`removeCoinsFromInventory` will pull them off the grid as well as the stash.
+`state.instances`, so coins weigh what they weigh and `removeCoinsFromInventory`
+pulls them off the grid as well as the stash.
 
 **A default item's id is its row number in `data/items.csv`**, so it changes the
-moment a row is inserted above it — never write one into the code (hard-coded
-`coin_cp`-style ids are exactly how the purse silently went dead). The coins are
-found by identity instead, in `getCoinTemplates()`: the `currency`-tagged item
-whose cost is exactly one of its own denomination. Keeping the tag and the `1cp`
-/ `1sp` / … costs on those CSV rows is what keeps the purse wired up.
+moment a row is inserted above it — never write one into the code. The coins are
+found by identity in `getCoinTemplates()`: the `currency`-tagged item whose cost
+is exactly one of its own denomination. Keeping the tag and the `1cp` / `1sp` / …
+costs on those CSV rows is what keeps the purse wired up.
 
 ### Interaction state machine
 
@@ -2036,6 +1255,7 @@ whose cost is exactly one of its own denomination. Keeping the tag and the `1cp`
 IDLE
   click sidebar card  → PLACING (ghost follows cursor, snaps to grid)
   pointerdown on item → DRAGGING (item removed from grid, ghost appears)
+  pointerdown on stash card → DRAGGING (origRow/origCol null)
 
 PLACING
   mousemove  → initGhostEl + moveGhost + highlightCells
@@ -2046,281 +1266,205 @@ PLACING
 DRAGGING
   pointermove → moveGhost + highlightCells
   R key       → rotateAnchorCW, increment rotation, rebuild ghost
-  pointerup   → place at new position or restore to original → IDLE
+  pointerup   → place at new position / equip slot, or restore → IDLE
   Escape      → restore original position/rotation → IDLE
 ```
 
-`cursorToGridPos` returns `null` when the cursor is outside `#grid-scroll`, gating all grid snapping.
+`cursorToGridPos` returns `null` when the cursor is outside `#grid-scroll`,
+gating all grid snapping.
 
 ### Edge auto-scroll
 
-A drag holds the pointer button down, so the wheel is the only way to reach a
-folder or a grid row that is scrolled out of view — and letting go to scroll ends
-the drag. `src/js/drag-scroll.js` therefore pulls a container along while the
-cursor rests near its edge, for both held drags (a browse card, a placed item)
-but **not** placing mode: that follows a free cursor with no button down, and a
-cursor left resting near an edge would scroll forever.
+A drag holds the pointer button down, so `src/js/drag-scroll.js` pulls a
+container along while the cursor rests near its edge — for held drags (a browse
+card, a placed item) but **not** placing mode (a free cursor left near an edge
+would scroll forever).
 
-- Three calls per drag and no more: `startDragAutoScroll` at the point the drag
-  becomes real, `updateDragAutoScroll` on each pointermove, `stopDragAutoScroll`
-  on release *and* on the Escape cancel. The rAF loop runs for the whole drag
-  rather than starting and stopping at the edge bands — the velocity is simply
-  zero away from an edge, which leaves nothing to leak.
-- **A frame that scrolls re-runs the drag's own pointermove logic** (the
-  `refresh` callback — `dragMoveAt` / `dragRefresh`, both just the move handler
-  with a synthetic `{clientX, clientY}`). The cursor has not moved but the
-  content under it has, so the highlighted folder or grid cell would otherwise
-  be a whole scroll out of date by the drop. It fires only on frames that
-  actually moved, so the ends of a container cost nothing.
-- `DRAG_SCROLLERS` is an explicit list — the same bounding-rect approach the
-  equip cards and folder headers use, and for the same reason: the ghost is under
-  the cursor and `elementFromPoint` would keep finding it.
-- **The band reaches past a container's top and bottom, but never past its left
-  and right.** Above and below a scroller is its own panel's header or footer, so
-  overshooting the bottom edge should keep pulling rather than stall an inch
-  short. The panels sit side by side, so a horizontal band would let a drag in
-  one panel scroll its neighbour.
-- Note the asymmetry this creates: past the edge the pull continues but the drop
-  hit-tests (`getFolderDropAtPoint`, `cursorToGridPos`) return null, since the
-  cursor is outside. That is right — overshooting is how you *reach* a target,
-  not how you drop on one.
-- `renderItemList` restores `#item-list`'s `scrollTop`, because filing an item is
-  the one render that happens mid-gesture: rebuilding the list would otherwise
-  throw the reader back to the top of a list auto-scroll had just carried them
-  down.
+- Three calls per drag: `startDragAutoScroll` (drag becomes real),
+  `updateDragAutoScroll` (each pointermove), `stopDragAutoScroll` (release *and*
+  Escape). The rAF loop runs for the whole drag — velocity is simply zero away
+  from an edge.
+- **A frame that scrolls re-runs the drag's own pointermove logic** (`dragMoveAt`
+  / `dragRefresh`, the move handler with a synthetic `{clientX, clientY}`) — the
+  cursor has not moved but the content under it has.
+- `DRAG_SCROLLERS` is an explicit list (bounding-rect, like the equip cards and
+  folder headers — the ghost is under the cursor and `elementFromPoint` would
+  keep finding it).
+- **The band reaches past a container's top and bottom, never its left and
+  right** — above/below is the panel's own header or footer; the panels sit side
+  by side, so a horizontal band would scroll a neighbour.
+- Past the edge the pull continues but the drop hit-tests
+  (`getFolderDropAtPoint`, `cursorToGridPos`) return null — overshooting is how
+  you *reach* a target, not how you drop on one.
+- `renderItemList` restores `#item-list`'s `scrollTop` — filing an item is the
+  one render that happens mid-gesture.
 
 ### Persistence
 
-`saveState` / `loadState` use `localStorage` key `dnd_inventory_v1`. Only custom items (not in `DEFAULT_ITEMS`) are saved; default items are always re-hydrated from `data/items.csv` on init. Placed instances are saved in full and re-placed via `rebuildGrid` on load.
+`saveState` / `loadState` use `localStorage` key `dnd_inventory_v1`. Only custom
+items (not in `DEFAULT_ITEMS`) are saved; default items are re-hydrated from
+`data/items.csv` on init. Placed instances are saved in full and re-placed via
+`rebuildGrid` on load.
 
 The payload is **version 3**: `{ version, activeCharacterId, characters,
-campaigns }`. Version 2 was the same without `campaigns`, and reads as an account
-that has not joined one — so the bump needs no migration. Version 1 was a single
-character at the top level and is still what an older browser or an older cloud
-save holds, so `normalizeSavePayload()` in `characters.js` reads both and folds a
-v1 save into a one-character roster — the *only* place that knows there were ever
-two shapes. The key is unchanged
-(`dnd_inventory_v1`): it names the storage slot, not the payload version, and
-renaming it would orphan every existing save.
+campaigns }`. Version 2 was the same without `campaigns` (reads as an account
+that has not joined one — no migration). Version 1 was a single character at the
+top level, still what an older browser or cloud save holds;
+`normalizeSavePayload()` in `characters.js` folds a v1 save into a one-character
+roster — the only place that knows there were two shapes. The key is unchanged
+(`dnd_inventory_v1`) — it names the storage slot, not the payload version.
 
-`class-features.js` reads `data/classes.json` the same blocking way, and
-`species-traits.js` reads `data/species.json` beside it. Both are skipped over
-silently if missing — the sheet is usable with no classes or species known, it
-simply says it has not heard of whatever was typed.
+`class-features.js` reads `data/classes.json` and `species-traits.js` reads
+`data/species.json` the same blocking way; both are skipped silently if missing.
 
-`items.js` reads `data/items.csv` with a **synchronous** `XMLHttpRequest` so `DEFAULT_ITEMS`
-is populated before `init()` runs. That is why the app needs an HTTP server rather than
-`file://`, and why the CSV path is relative to the project root, not to `src/js/`.
+`items.js` reads `data/items.csv` with a **synchronous** `XMLHttpRequest` so
+`DEFAULT_ITEMS` is populated before `init()` runs — which is why the app needs an
+HTTP server rather than `file://`, and why the CSV path is relative to the
+project root.
 
 ### Browse-list folders
 
-User-made groups for the Browse tab, in `src/js/folders.js`. Like the theme, they
-describe the *catalogue*, not the character, so they live in their own
-`localStorage` key (`dnd_inventory_folders`) and are **not** part of
-`dnd_inventory_v1` and never synced to the party — a GM paging through players'
-sheets keeps their own folders.
+User-made groups for the Browse tab, in `src/js/folders.js`. They describe the
+*catalogue*, not the character — own `localStorage` key
+(`dnd_inventory_folders`), not in the save file, never synced.
 
-- A folder never owns items: `state.folderAssign` maps templateId → folderId. So
-  deleting a folder only drops assignments (`deleteFolder`); the items themselves
-  are untouched and fall back to their default folder, or to **Unfiled** — a
-  virtual group rendered last that is never stored — when that folder is gone too.
+- A folder never owns items: `state.folderAssign` maps templateId → folderId.
+  Deleting a folder only drops assignments (`deleteFolder`); items fall back to
+  their default folder, or to **Unfiled** (a virtual group rendered last, never
+  stored).
 - Every item is filed by default. `DEFAULT_FOLDERS` (Weapons / Armor / Currency /
-  Gear, the last matching everything) is seeded once per browser — first run, or
-  the first load for a browser whose stored folders predate it, tracked by the
-  `seeded` flag in the folder payload. They are ordinary folders afterwards:
-  renaming or deleting them sticks, and nothing re-creates them.
-- `folderAssign` therefore holds only *overrides*. An item with no entry follows
-  `defaultFolderIdFor()` (matched on tags, by id, falling back to a name match so
-  a renamed default keeps working); the `UNFILED_ID` sentinel is stored to mean a
-  deliberate "no folder", telling it apart from "never filed by hand". Read the
-  resolved folder with `folderOf()` and the override with `explicitFolderOf()` —
-  the item editor and the picker modal show the override, so an auto-filed item
-  reads as *Automatic*, and `setItemFolder(id, null)` hands it back to auto.
-- **Restore Defaults** (`restoreDefaultFolders`) empties `folderAssign` whole —
-  it holds nothing but hand-filed overrides, so clearing it *is* "nobody filed
-  anything by hand". It re-creates any missing default folder first, because
-  otherwise `defaultFolderIdFor` has no answer and every item the button just
-  freed lands in Unfiled. Folders the user made are left standing: the button
-  restores where items *are*, and deleting someone's folders is a different
-  operation nobody asked for. A re-created folder is appended, like seeding.
-- With no folders at all (the user deleted every one), `renderItemList` renders
-  the flat list exactly as before.
+  Gear, the last matching everything) is seeded once per browser, tracked by the
+  `seeded` flag. Ordinary folders afterwards.
+- `folderAssign` holds only *overrides*. An item with no entry follows
+  `defaultFolderIdFor()` (tags, then id, then a name match so a renamed default
+  keeps working); the `UNFILED_ID` sentinel means a deliberate "no folder". Read
+  the resolved folder with `folderOf()`, the override with `explicitFolderOf()`.
+  `setItemFolder(id, null)` hands an item back to auto.
+- **Restore Defaults** (`restoreDefaultFolders`) empties `folderAssign` whole,
+  re-creating any missing default folder first (or `defaultFolderIdFor` has no
+  answer). Folders the user made are left standing.
+- With no folders at all, `renderItemList` renders the flat list.
 - **A whole folder is a drop target, not just its header.** `buildItemCard`'s
-  drag checks `folderDropTargetFor` *before* the grid, so a card dropped
-  anywhere among a folder's items files itself there instead of being placed.
-  The list is a flat run of headers and cards, so a folder is the *band* from
-  its header down to the next one: `getFolderDropAtPoint` walks the children in
-  order rather than hit-testing each element, which is what makes the gaps
-  between cards part of the band too. The empty space past the last card belongs
-  to no folder — filing into whichever came last would be a guess.
+  drag checks `folderDropTargetFor` *before* the grid. The list is a flat run of
+  headers and cards, so a folder is the *band* from its header to the next;
+  `getFolderDropAtPoint` walks the children in order, so the gaps between cards
+  are part of the band. The space past the last card belongs to no folder.
   - `showFolderDropFeedback()` in `drag-ghost.js` is the whole of the drag's
-    feedback in one call — band, chip and the answer the drop will act on come
-    out of one place, so they cannot disagree. It hands back `hovering`, which
-    is true over *any* folder band including the item's own: the grid never gets
-    a look in while the cursor is over the list.
-  - The band highlights whole, header and cards together; the header alone would
-    leave the cursor over unlit cards with no sign of where the item is going.
-  - **The band is the area, the chip is the answer.** `#folder-drop-hint` rides
+    feedback in one call — band, chip, and the answer the drop will act on. It
+    returns `hovering`, true over any folder band including the item's own.
+  - The band highlights whole (header + cards).
+  - **The band is the area, the chip is the answer** — `#folder-drop-hint` rides
     the cursor naming the folder ("Move to Weapons") because a folder is often
-    taller than the list: hovering cards halfway down Weapons lights a header
-    that has scrolled out of sight, leaving the drag unnamed. It flips to the
-    other side of the cursor at the viewport edge, measured after its text is in
-    — the chip is as wide as the folder's name.
-  - The card left behind is faded (`.item-card.dragging`), so a drag over the
-    list reads as moving *that* item rather than as hovering the folder. The
-    ghost is hidden over the list, so without it nothing marks what is in flight.
-  - **A drop back into the item's own folder is not a target.** Order inside a
-    folder is the sort's business, so there is nothing to reorder by hand and the
-    drag simply reads as cancelled rather than as a move that changed nothing.
-    That folder still answers, though — outlined and dashed (`.drop-current`)
-    under a quiet "Already in Currency" — because an unlit band under the cursor
-    is indistinguishable from a broken drag. Refusing silently is the one thing
-    it must not do.
-- A non-empty search expands every folder — a collapsed folder hiding the only
-  match would read as "no results" — and the headers stop toggling while it does,
-  as does the Collapse/Expand All button (`updateFolderToolbar`, disabled and
-  labelled from the *stored* state, which is what clearing the search restores).
+    taller than the list. It flips sides at the viewport edge.
+  - The card left behind is faded (`.item-card.dragging`); the ghost is hidden
+    over the list.
+  - **A drop back into the item's own folder is not a target** — order inside a
+    folder is the sort's business. That folder still answers (outlined dashed,
+    `.drop-current`, under "Already in Currency") — refusing silently is the one
+    thing it must not do.
+- A non-empty search expands every folder and freezes the headers and the
+  Collapse/Expand All button (`updateFolderToolbar`, driven by the *stored*
+  state, which clearing the search restores).
 
 ### Browse-list sorting
 
-The order the Browse list is in, in `src/js/item-sort.js`. Like the folders it
-describes the *catalogue*, not the character, so it has its own localStorage key
-(`dnd_inventory_sort`) and is neither saved nor synced.
+`src/js/item-sort.js`. Own `localStorage` key (`dnd_inventory_sort`), not saved
+or synced.
 
-- **Every mode is a chain of keys, not one key.** Sorting purely by weight would
-  scatter each weight's rarities at random; naming the tie-breakers keeps the
-  list readable in every mode. The default is rarity → name → weight, which is
-  the order the list has always used with weight now settling the last ties.
-- Each key has one fixed direction — rarity best-first (that is what sorting
-  loot by rarity means), name and weight ascending — and the toolbar's arrow
-  toggle (`state.itemSortReverse`) negates the **whole chain**, so the list is
-  exactly the one the reader had, upside down. Flipping only the leading key
-  would leave the tie-breakers running the other way and shuffle items that
-  never moved. The reverse rides in the same localStorage key; a stored bare id
-  is the pre-direction shape and still reads. `dir` on each mode names its two
-  directions in that mode's own words ("Worst first", "Z to A") — the button
-  says what the reader will get, not "reversed".
+- **Every mode is a chain of keys** — sorting purely by weight would scatter each
+  weight's rarities. Default is rarity → name → weight.
+- Each key has one fixed direction; the toolbar's arrow toggle
+  (`state.itemSortReverse`) negates the **whole chain**. A stored bare id is the
+  pre-direction shape and still reads. `dir` on each mode names its two
+  directions in that mode's own words ("Worst first", "Z to A").
 - The reverse turns each folder's contents over; the **folders keep their own
-  order**, which is the user's arrangement rather than the sort's.
-- `ITEM_SORTS` is the whole model — the menu is built from it, so adding a mode
-  is one line. `sortItems()` is the only caller `renderItemList` needs.
-- Sorting happens **before** `groupItemsByFolder`, which only buckets an
-  already-sorted list, so items keep the chosen order inside their folders.
-- The weight a mode sorts on is the figure the card *prints* (`itemSortWeight`,
-  a stackable item's per-unit weight), so the order matches what the reader sees.
+  order**.
+- `ITEM_SORTS` is the whole model; `sortItems()` is the only caller
+  `renderItemList` needs.
+- Sorting happens **before** `groupItemsByFolder`.
+- The weight a mode sorts on is the figure the card *prints* (`itemSortWeight`).
 
 ### Theming
 
-Two palettes, both defined as CSS custom properties in `tokens.css`:
-`:root` holds the light (aged parchment) tokens, `:root[data-theme="dark"]` the dark
-(candlelit) ones. **Every colour is a token — never write a literal colour in a rule**,
-or it will be wrong in one of the two themes. The single exception is the hue wheel in
-`appearance.css`, which is not a themed surface but the spectrum itself — see
-*The accent colour* above.
+Two palettes as CSS custom properties in `tokens.css`: `:root` holds the light
+(aged parchment) tokens, `:root[data-theme="dark"]` the dark (candlelit) ones.
+**Every colour is a token — never write a literal colour in a rule** (except the
+hue wheel in `appearance.css`, which is the spectrum itself).
 
-- `<html data-theme>` is always `light` or `dark`, never unset. The inline script in
-  `index.html` `<head>` sets it before first paint (no flash); `theme.js` owns it after.
-  That script also applies the **custom accent** before first paint, for the same reason.
-- The theme picker itself lives on the **Appearance page** (Settings → Appearance),
-  beside the colour wheel — the two halves of one question.
+- `<html data-theme>` is always `light` or `dark`. The inline script in
+  `index.html` `<head>` sets it before first paint; `theme.js` owns it after.
+  That script also applies the **custom accent** before first paint.
+- The theme picker lives on the **Appearance page** (Settings → Appearance),
+  beside the colour wheel.
 - `--accent` / `--accent-soft` / `--on-accent`, and the whole panel family
-  (`--panel` / `--surface` / `--field` / `--border` / `--border2` / `--desk` / `--bg`), can be
-  **overridden per browser** by a user-chosen colour, set as inline properties on
-  `<html>`. Anything reading them still just reads the token; see *The accent colour*
-  for how the two themes are resolved. `ACCENT_MANAGED` in `appearance.js` is the full
-  list, and it is built from the roles rather than written out.
-- `--text` / `--text-dim` deliberately **do not** follow a custom panel colour. They do
-  not need to: each theme pins its surfaces' lightness, so a light theme's panels stay
-  light however they are tinted and the ink still reads.
-- The stored *preference* (`dnd_inventory_theme` in `localStorage`) is `light`, `dark`,
-  or `system`. `system` is re-resolved live from `prefers-color-scheme`.
-- Deliberately **not** part of the `dnd_inventory_v1` save file: the theme belongs to the
-  browser, not the character, and must be readable before app state loads.
-- **The paper.** `img/paper-antique-seamless.jpg` (1919 × 1362, seamless) is a torn
-  sheet drawn by `.paper-sheet::before` — one rule, two users: `#grid-paper` (the
-  wrapper around the inventory grid) and `.sheet-scroll` (the character sheet's body).
-  Both are **content**-sized, so the paper hugs what is drawn on it with an even
-  half-inch margin (`inset: -0.5in`, exact — 1 CSS inch is 96px) rather than filling
-  the panel and putting the tear out at the far edges where nothing is happening.
-  `#inventory-panel` is now just the desk. `#grid-scroll` and `#character-sheet` are
-  **transparent**; give either a background and it covers the paper.
-  - `#grid-paper` exists only to carry the sheet: `#inventory-grid` is
-    `overflow: hidden` for its own cells, which would clip the paper away. It is a
-    plain wrapper — the JS only ever looks the grid up by id, so it is safe.
+  (`--panel` / `--surface` / `--field` / `--border` / `--border2` / `--desk` /
+  `--bg`), can be **overridden per browser** by a user colour, set as inline
+  properties on `<html>`. `ACCENT_MANAGED` in `appearance.js` is the full list,
+  built from the roles.
+- `--text` / `--text-dim` deliberately **do not** follow a custom panel colour —
+  each theme pins its surfaces' lightness, so the ink still reads.
+- The stored *preference* (`dnd_inventory_theme`) is `light`, `dark`, or
+  `system`. `system` is re-resolved live from `prefers-color-scheme`.
+- **Not** part of `dnd_inventory_v1` — the theme belongs to the browser and must
+  be readable before app state loads.
+- **The paper.** `img/paper-antique-seamless.jpg` (1919 × 1362, seamless) is a
+  torn sheet drawn by `.paper-sheet::before` — one rule, two users: `#grid-paper`
+  (wraps the inventory grid) and `.sheet-scroll` (the sheet's body). Both are
+  **content**-sized (`inset: -0.5in`), so the paper hugs what is drawn on it.
+  `#grid-scroll` and `#character-sheet` are **transparent** — give either a
+  background and it covers the paper.
+  - `#grid-paper` exists only to carry the sheet — `#inventory-grid` is `overflow:
+    hidden` for its cells, which would clip the paper. A plain wrapper (the JS
+    only looks the grid up by id).
   - The wrapper's `margin` (62px) must exceed the paper's overhang plus half the
-    displacement scale, or the ancestor's overflow trims the ragged edge back to a
-    straight line. `#character-sheet` carries the same figure as side padding, for
-    when the panel is squeezed narrow enough that `.sheet-scroll`'s auto side margins
-    collapse to nothing.
-  - Only the tile **width** is set; the height is `auto`, which preserves the aspect
-    ratio without anyone doing the arithmetic. Never give it a second length.
-  - It is faded by `--paper-veil`, a wash of `--bg` laid *over* the image — the same
-    thing as opacity, but it stays an ordinary background layer. **Raise** the
-    percentage to turn the texture down. Per theme, and not the same number: the
-    texture is cream paper, so what suits parchment (26%) turns the candlelit theme
-    grey and the grid stops reading against it (79%).
-  - **The torn edge** is the `#paper-fray` SVG filter in `index.html`: feTurbulence
-    makes noise, feDisplacementMap pushes the paper layer's pixels around by it, so
-    the rectangle loses irregular bites at the edges. A *filter*, not a mask, because
-    filters work in real pixels — the fray stays the same size whatever shape the
-    panel is dragged into, where a stretched mask image would smear along the long
-    side. Applied only to the paper layer, **never to an element with content**:
-    displacing the grid or the sheet's text would be a disaster.
-  - Three numbers have to stay in step. `scale` (34) is how deep the tear bites;
-    the layer's `inset` (20px) must clear **half** of it, since the tear pushes
-    outward as well as in, and past that the fray covers the desk instead of
-    revealing it; the filter's own region (±6%) must exceed both or the displaced
-    edge is clipped back into a straight line.
-  - `--desk` is what shows around the tear. A frayed edge is only an edge if
-    something different is behind it — with the desk near the paper's own tone the
-    whole effect vanishes. `--paper-edge` is the burn around the rim, and it is
-    ragged for free: the same displacement tears it along with the edge.
-  - `pointer-events: none` on the layer, and `isolation: isolate` on each
-    `.paper-sheet` so its `z-index: -1` paper sits below that sheet's own content
-    instead of escaping behind the whole app.
-  - `#svg-defs` is positioned absolute, not `display: none` — a hidden subtree cannot
-    be referenced by `filter: url(#…)` everywhere, but an inline 0×0 SVG still opens a
-    line box and pushes the page down by a line's height.
-- Rarity and coin colours differ per theme (neon green vanishes on parchment). JS reads
-  them from CSS via `rarityColor()` / `coinColor()` in `helpers.js`, which cache lookups;
-  `applyTheme()` clears the cache and re-renders everything that bakes a colour into an
-  inline style. **If you add a render path that inlines a palette colour, it must be
-  re-run from `rerenderThemedContent()`.**
+    displacement scale, or the ancestor's overflow trims the ragged edge straight.
+    `#character-sheet` carries the same figure as side padding.
+  - Only the tile **width** is set; height is `auto`. Never give it a second
+    length.
+  - Faded by `--paper-veil`, a wash of `--bg` laid *over* the image. **Raise**
+    the percentage to turn the texture down. Per theme (26% parchment, 79%
+    candlelit — the texture is cream paper).
+  - **The torn edge** is the `#paper-fray` SVG filter in `index.html`
+    (feTurbulence + feDisplacementMap). A *filter*, not a mask, so the fray stays
+    the same size whatever shape the panel is. Applied only to the paper layer,
+    **never to an element with content**.
+  - Three numbers stay in step: `scale` (34, how deep the tear bites); the
+    layer's `inset` (20px, must clear **half** of it); the filter's own region
+    (±6%, must exceed both).
+  - `--desk` is what shows around the tear (a frayed edge is only an edge if
+    something different is behind it). `--paper-edge` is the burn around the rim,
+    ragged for free.
+  - `pointer-events: none` on the layer; `isolation: isolate` on each
+    `.paper-sheet` so its `z-index: -1` paper sits below that sheet's content,
+    not behind the whole app.
+  - `#svg-defs` is `position: absolute`, not `display: none` — a hidden subtree
+    cannot be referenced by `filter: url(#…)`, but an inline 0×0 SVG still opens a
+    line box.
+- Rarity and coin colours differ per theme; JS reads them from CSS via
+  `rarityColor()` / `coinColor()` in `helpers.js` (cached). `applyTheme()` clears
+  the cache and re-renders. **If you add a render path that inlines a palette
+  colour, re-run it from `rerenderThemedContent()`.**
 
 ### The accent colour
 
-Light/dark is the *palette*; this is the *colour* — the one hue everything gold
-in the app is drawn in. Both are reached from **Settings → Appearance**, which
-is an info page like How to Use and About: the theme picker lives there now, not
-on the Settings page itself. Light/dark stays in `theme.js`; the colour is
-`src/js/appearance.js`.
+`src/js/appearance.js`. Light/dark is the palette; this is the *colour* — the one
+hue everything gold is drawn in.
 
-**What the user picks is a hue and a saturation. Never a lightness.** That is
-the whole design, and it is what keeps a custom colour readable. Each theme
-already knows how light its accent has to be to sit on its own background —
-dark brown on parchment (L 33%), light gold on candlelit (L 56%) — so a pick
-supplies the *colour* and the theme supplies the *contrast*:
+**What the user picks is a hue and a saturation. Never a lightness.** Each theme
+knows how light its accent must be to sit on its own background (dark brown on
+parchment L 33%, light gold on candlelit L 56%), so a pick supplies the colour
+and the theme supplies the contrast. The wheel has no lightness slider.
 
 ```
 picked hsl(0, 66%)  ->  light theme  hsl(0, 66%, 33%)   a deep brick
                     ->  dark  theme  hsl(0, 66%, 56%)   a warm coral
 ```
 
-A pale yellow chosen in dark mode cannot come out invisible on cream paper,
-because the light palette never uses the pale version of it. The wheel therefore
-has **no lightness slider**: there is nothing there to offer.
-
 - Three roles. `primary` drives `--accent`; `secondary` drives `--accent-soft`
-  (the gold rules and gradients); `surface` drives the whole panel family.
-  Until the secondary is set on its own it **follows the primary**, eight points
-  calmer — which is the relationship the default gold pair already has. Setting
-  it explicitly is what breaks the link; resetting it restores it. The panels
-  follow nothing and nothing follows them: a page tinted to match its own accent
-  is a much louder app than anyone asked for.
-- **A role can drive a family, not just one token.** `surface` is one hue at six
-  lightnesses, so "the background is a darker version of the panel colour" is
-  not a rule applied afterwards — it is what having one hue and six lightnesses
-  *means*:
+  (the gold rules and gradients); `surface` drives the whole panel family. Until
+  the secondary is set on its own it **follows the primary**, eight points
+  calmer. The panels follow nothing and nothing follows them.
+- **A role can drive a family** — `surface` is one hue at six lightnesses:
 
   ```
   --panel    L 91   the panels themselves, the lightest step
@@ -2331,192 +1475,131 @@ has **no lightness slider**: there is nothing there to offer.
   --desk     L 48   under the torn paper, darkest of the ladder
   ```
 
-  (Light-theme figures; the dark palette has its own ladder, 12 down to 4.)
-  `--paper-veil` is a `color-mix` over `--field`, so it follows for free.
-- **The inventory grid is deliberately not in the family.** Its cells, its
-  carry zones and everything drawn on them keep the palette's own colours
-  whatever the panels are tinted to. The grid is the parchment a character's kit
-  is laid out on, not part of the app's chrome, and it should read as itself
-  rather than as another panel.
-- **`--bg` is not on that ladder.** The page behind everything takes the panel's
-  *hue* and nothing else, at a fixed `oklch(L 0.04 H)` — so the app always sits
-  on a deep, near-neutral ground and the panels read as lit sheets on it.
-  `oklch` rather than `hsl` because that is the whole point: perceptual
-  lightness is what "this dark" has to mean when the hue can be anything, and an
-  HSL lightness of 25% is a very different darkness for yellow than for blue.
-  The hue comes from the **resolved panel colour** via `oklchHueOf()`, not from
-  the pick — OKLCH and HSL hues disagree, sometimes by tens of degrees (an HSL
-  pick of 200 lands at OKLCH 231).
-- **`--field` exists because `--bg` used to do two jobs** — the page ground *and*
-  every recessed well. They parted company the moment the ground went dark: at
-  L 0.25 the light theme's inputs would have been near-black boxes holding dark
-  brown text (contrast 1.12). A field is a dip in the panel, so it belongs to the
-  panel's ladder. `--bg` now paints only `body` and `#home-screen`.
-- **`--on-bg`** is the ink for anything drawn straight onto the ground (the
-  roster page's heading and empty state). Unlike `--on-accent` it needs no
-  deriving and is not per-theme: the ground is locked dark in both palettes, so
-  it is always `--paper`. Never use `--text` there.
-- **The ground's lightness is per palette — 0.32 on parchment, 0.25 by
-  candlelight** — and it is the one figure to touch if the ground wants nudging.
-  It lives in two places that must agree: `tokens.css` for the stock palettes and
-  `ACCENT_ROLES.surface` in `appearance.js` for a custom colour. The chroma
-  (0.04) and the hue rule are shared.
-
-  They differ because the ground has to clear its own panels. The dark palette's
-  panels sit at OKLCH 0.247, so 0.25 puts the ground level with them — `--panel`
-  against `--bg` is a contrast ratio of **1.00**, and on the roster page the
-  cards are held by their 1px border alone. That is **deliberate and signed off**:
-  it reads as one continuous dark surface. The light palette's panels are at 0.95
-  with room to spare, so its ground is lifted to 0.32 (10.97 against the panels)
-  where 0.25 was heavier than wanted.
-  The **first token is the role's reference**: what the swatch shows, what the
-  wheel is painted at, and what the family's saturations are scaled against —
-  so the desk stays the flattest step and the panel the richest, whatever hue is
-  poured in.
-- Pinned lightness is also what stops a strong pick going garish. `s: 100`
-  sounds alarming until you notice a light-theme panel is fixed at L 91%:
-  `hsl(210, 100%, 91%)` is a pale blue tint, not a blue. The theme constrains
-  the chroma for free.
-- `--on-accent` is derived, never picked: whichever of `--ink` / `--paper` has
-  the better **WCAG contrast ratio** against the resolved accent. Not chosen off
-  HSL lightness — a saturated yellow and a saturated blue at the same `l` are
-  nowhere near as bright as each other, and lightness alone would put black text
-  on the blue.
+  (Light-theme figures; the dark palette has its own, 12 down to 4.)
+  `--paper-veil` is a `color-mix` over `--field`.
+- **The inventory grid is deliberately not in the family** — its cells and carry
+  zones keep the palette's own colours whatever the panels are tinted to.
+- **`--bg` is not on that ladder** — it takes the panel's *hue* only, at a fixed
+  `oklch(L 0.04 H)`, so the app always sits on a deep near-neutral ground. `oklch`
+  rather than `hsl` because perceptual lightness is what "this dark" has to mean
+  when the hue can be anything. The hue comes from the **resolved panel colour**
+  via `oklchHueOf()`.
+- **`--field` exists because `--bg` used to do two jobs** (the ground *and* every
+  recessed well) — at L 0.25 the light theme's inputs would be near-black. `--bg`
+  now paints only `body` and `#home-screen`.
+- **`--on-bg`** is the ink for anything drawn straight onto the ground — always
+  `--paper` (the ground is locked dark in both palettes). Never use `--text`
+  there.
+- **The ground's lightness is per palette** — 0.32 on parchment, 0.25 by
+  candlelight — the one figure to touch if the ground wants nudging. It lives in
+  `tokens.css` and `ACCENT_ROLES.surface` in `appearance.js`, which must agree.
+  They differ because the ground must clear its own panels: the dark palette's
+  panels sit at OKLCH 0.247, so 0.25 puts `--panel` against `--bg` at a contrast
+  ratio of **1.00** — **deliberate and signed off**, one continuous dark surface
+  held by a 1px border. The first token is the role's reference.
+- Pinned lightness stops a strong pick going garish — `hsl(210, 100%, 91%)` is a
+  pale blue tint, not a blue.
+- `--on-accent` is derived — whichever of `--ink` / `--paper` has the better
+  **WCAG contrast ratio** against the resolved accent (not HSL lightness).
 - `--ink` and `--paper` are declared once in `tokens.css` **outside both
-  `[data-theme]` blocks**, because they are not a palette's choice — they are
-  the two things `--on-accent` is chosen *between*, and each theme just picks
-  one. `appearance.js` reads them rather than carrying a second copy.
-- **Both themes are resolved at pick time, not at paint time.** The stored
-  `vars` is a finished map of CSS properties per theme, so switching theme is
-  reading strings out of storage and never colour maths. That is what lets the
-  no-flash script in `index.html` `<head>` stay four lines instead of carrying
-  its own `hslToHex` — it applies the custom accent before first paint exactly
-  as it already applied `data-theme`. `sanitizeAccentPrefs()` recomputes `vars`
-  on load rather than trusting it, so a hand-edited cache cannot paint a colour
-  the wheel does not show.
-- **Nothing re-renders.** `rerenderThemedContent()` exists because rarity and
-  coin colours are baked into inline styles; the accent never is — it is read
-  straight from `var(--accent)` by ~150 rules and by nothing in JS — so setting
-  the property on `<html>` is the entire operation. Live drag-preview on the
-  wheel is free, and only the pointer *release* writes to storage.
-- A reset **removes** the property rather than writing the old value back, which
-  hands the palette to `tokens.css` instead of pinning a stale override.
-  `ACCENT_MANAGED` is the list of what may be removed.
-- Stored per browser (`dnd_inventory_colors`), like the theme, the folders, the
-  panel widths and the sheet layout: it describes this browser's idea of the
-  app, not anything about a character, and must be readable before app state
-  loads. Not in the save file, never synced.
-- The wheel is hue around and saturation outward, drawn from two CSS gradients
-  rather than a canvas. **It holds the only literal colours in the app, and they
-  belong there**: everything else must be a token or it is wrong in one of the
-  two palettes, but a spectrum is not themed — it *is* the colours, and it means
-  the same thing in both. The gradient is rebuilt at the lightness the role will
-  actually be given, so the wheel previews the result rather than a nominal 50%
-  — **clamped to a legible band** (`WHEEL_FACE_MIN`/`MAX`), because a panel is
-  L 91% on parchment and L 12% by candlelight, and a wheel at either is a flat
-  white or a flat black disc with no hues to tell apart. The swatch beside the
-  row, and the app recolouring live, carry the true result.
+  `[data-theme]` blocks** — they are what `--on-accent` is chosen between, and
+  each theme picks one. `appearance.js` reads them.
+- **Both themes are resolved at pick time, not at paint time** — the stored
+  `vars` is a finished per-theme map of CSS properties, so switching theme is
+  reading strings, never colour maths (which is what keeps the no-flash script
+  four lines). `sanitizeAccentPrefs()` recomputes `vars` on load.
+- **Nothing re-renders** — the accent is read straight from `var(--accent)` by
+  ~150 rules and nothing in JS, so setting the property on `<html>` is the whole
+  operation. Only the pointer *release* writes to storage.
+- A reset **removes** the property (`ACCENT_MANAGED`), handing the palette back
+  to `tokens.css` rather than pinning a stale override.
+- Stored per browser (`dnd_inventory_colors`), not in the save file, never
+  synced.
+- The wheel is hue around, saturation outward, from two CSS gradients — **the
+  only literal colours in the app, and they belong there**. The gradient is
+  rebuilt at the lightness the role will get, **clamped to a legible band**
+  (`WHEEL_FACE_MIN`/`MAX`).
 - The wheel panel is **moved under whichever row was clicked** rather than
-  floating, so a row reads as opening. This modal can scroll on a short window,
-  and a popover would need positioning and clipping logic to survive that for no
-  gain.
-- **`appearance.js` loads after `theme.js`, so it wires its own button.**
+  floating.
+- **`appearance.js` loads after `theme.js`, so it wires its own button** —
   theme.js's listeners run at *load* time and `openAppearanceModal` is not
-  defined yet at that point — binding it from there attaches `undefined`
-  silently, with no error to notice. Anything of appearance's that theme.js
-  needs is called at *runtime* (`applyAccentVars()` and `updateAppearanceUI()`
-  from `applyTheme`, `initAppearance()` from `initTheme`), which is fine.
+  defined yet. Runtime calls (`applyAccentVars()`, `updateAppearanceUI()`,
+  `initAppearance()`) are fine.
 
 ### Icons
 
-`img/icon/*.png` are black silhouettes on transparency (Flaticon — the
-attributions are in `icons.html`). They are drawn as CSS **masks** over
-`currentColor`, never as `<img>`: an `<img>` would be black in both themes, and
-black is not a token. As a mask each icon takes the colour of whatever it sits
-in — `--accent` on a settings row, `--text-dim` on a card's menu button,
-`--on-accent` on a primary button — and follows a theme switch for free.
+`img/icon/*.png` are black silhouettes on transparency (Flaticon — attributions
+in `icons.html`). Drawn as CSS **masks** over `currentColor`, never as `<img>`
+(which would be black in both themes). As a mask each icon takes the colour of
+whatever it sits in.
 
 - One class per file in `icons.css`, `.ico-<name>`, alongside the `.ico`
-  primitive that does the masking. Sized in `em`, so an icon is as big as the
-  text around it and the rule that sets `font-size` sizes both.
-- Deliberately `.ico`, not `.icon`: `.icon-only` already means "a button with no
-  label" on `.btn-sm`.
-- From JS, `iconEl(name)` / `setIconLabel(el, name, text)` in `helpers.js` — the
-  caller never sets a colour.
-- Add a `-webkit-mask-*` beside every `mask-*`; the prefix is still needed.
+  primitive. Sized in `em`.
+- Deliberately `.ico`, not `.icon` (`.icon-only` already means "a button with no
+  label").
+- From JS: `iconEl(name)` / `setIconLabel(el, name, text)` in `helpers.js`.
+- Add a `-webkit-mask-*` beside every `mask-*`.
 
 ### Versioning
 
-The version is a one-line `VERSION` file at the project root — deliberately not in the
-source, so a release bump never means editing code. `loadAppVersion()` in `main.js`
+The version is a one-line `VERSION` file at the project root — not in the source,
+so a release bump never means editing code. `loadAppVersion()` in `main.js`
 fetches it into `APP_VERSION` and the Settings footer.
 
-- **Async, unlike `items.csv` and `.env`.** Those use blocking XHR because `init()` cannot
-  run without them; nothing waits on the version, so it must not hold up the boot.
-- A missing file leaves the footer blank and changes nothing else — and the same
-  `startsWith('<')` guard as `firebase-config.js` applies, since a host that answers
-  unknown paths with its index page would otherwise "find" a version made of HTML.
-- Pages serves everything `must-revalidate`, so the number on the live site is always the
-  deployed one rather than a cached leftover.
+- **Async**, unlike `items.csv` and `.env` (which block because `init()` needs
+  them) — nothing waits on the version.
+- A missing file leaves the footer blank; the same `startsWith('<')` guard as
+  `firebase-config.js` applies (a host answering unknown paths with its index
+  page).
+- Pages serves everything `must-revalidate`.
 
 ### Accounts and cloud save
 
-Signing in is never a door the app opens behind. The inventory is usable signed out,
-on `localStorage`, exactly as before — an account only unlocks **party play** (other
-people's data) and **cloud save**.
+The inventory is usable signed out, on `localStorage`. An account only unlocks
+**party play** and **cloud save**.
 
-- Every gated entry point goes through `requireAuth(reason, action)` in `auth.js`. It
-  runs `action` immediately when signed in, otherwise opens the login modal with the
-  reason showing and runs it on success. Only the party buttons use it; **do not gate
-  the inventory itself**.
-- Firebase restores a session asynchronously, hence `state.auth.ready`. Before it flips,
-  "no user" means "not known yet" — gating on `user` alone flashes the login screen at
-  someone who is already signed in.
-- `cloud-save.js` stores the entire save as **one JSON string** at `users/<uid>/save`.
-  Not a tree: RTDB drops nulls and empty objects, and the save file is full of both (an
-  unplaced item's `row` is `null`, an empty inventory is `{}`), so a tree write would
-  silently fail to replicate a deletion. Party sync still writes a tree — that is
-  deliberate, it is read field by field.
-- `buildSavePayload()` / `applySavePayload()` in `persistence.js` are the single shape
-  shared by the local and cloud copies. Anything added to one is in both for free.
-- Writes are suppressed while `state.party.viewingPlayerId !== null` — `state` is then
-  somebody else's character, and pushing it would overwrite your own save. Incoming
-  saves are held while `state.mode !== 'idle'` and retried, because replacing the world
-  mid-drag strands the item that dragging took out of the grid.
-- Our own writes echo back through the `on('value')` listener; `cloudClientId` tags each
-  write so they can be ignored. Conflicts are last-writer-wins, except the first sign-in
-  with real data on both sides, which asks (`openCloudConflictModal`).
-- The Firebase console needs Email/Password and Google enabled, the host in Authorized
-  domains, and the rules from `database.rules.example.json` — without those rules the
-  save writes are refused and the status line says so.
+- Every gated entry point goes through `requireAuth(reason, action)` in
+  `auth.js` — runs `action` immediately when signed in, else opens the login
+  modal and runs it on success. **Do not gate the inventory itself.**
+- Firebase restores a session asynchronously, hence `state.auth.ready` — before
+  it flips, "no user" means "not known yet".
+- `cloud-save.js` stores the entire save as **one JSON string** at
+  `users/<uid>/save` — not a tree, because RTDB drops nulls and empty objects
+  and the save file is full of both, so a tree write would silently fail to
+  replicate a deletion. Party sync still writes a tree (read field by field).
+- `buildSavePayload()` / `applySavePayload()` in `persistence.js` are the single
+  shape shared by the local and cloud copies.
+- Writes are suppressed while `state.party.viewingPlayerId !== null` (`state` is
+  then someone else's character). Incoming saves are held while `state.mode !==
+  'idle'` and retried.
+- Our own writes echo back through the `on('value')` listener; `cloudClientId`
+  tags each write so they can be ignored. Conflicts are last-writer-wins, except
+  the first sign-in with real data on both sides (`openCloudConflictModal`).
+- The Firebase console needs Email/Password and Google enabled, the host in
+  Authorized domains, and the rules from `database.rules.example.json`.
 
 ### Configuration
 
-`firebase-config.js` uses the same synchronous-XHR pattern to read the Firebase settings
-from the project root and parse them into `FIREBASE_CONFIG`. Both paths are relative to the
-**document**, not the script.
+`firebase-config.js` reads the Firebase settings from the project root with a
+synchronous XHR and parses them into `FIREBASE_CONFIG`. Both paths are relative
+to the **document**.
 
-- Two sources, same `KEY=value` text, first hit wins: `.env` locally, `/firebase-env` on a
-  deploy. The deploy needs its own source because `.env` is gitignored and never reaches
-  the host — and **Cloudflare Pages will not serve any path beginning with a dot**
-  regardless. `functions/firebase-env.js` is a Pages Function (anything under `functions/`
-  is deployed as a Worker with no build step) that reads the `FIREBASE_*` variables from
-  the Pages dashboard, which is what keeps them out of the public repo. `.env.example` is
-  the committed template — keep it in sync when adding a key, along with the `KEYS` list
-  in the Function.
-- Which is tried first depends on `location.hostname`, purely to avoid a certain miss: a
-  deploy has no `.env`, a plain local static server has no Functions runtime. Both are
-  always tried, so neither environment is locked out.
-- A missing file does **not** reliably mean a 404: Pages answers unknown paths with its
-  index page, i.e. HTTP 200 and a pageful of HTML. `readEnvFile` rejects a body starting
-  with `<` for that reason, and a file that parses but has no `FIREBASE_DATABASE_URL` is
-  skipped rather than fatal, so the next candidate still gets its turn.
-- When `.env` is absent or has no `FIREBASE_DATABASE_URL`, `FIREBASE_CONFIG` is `null` and
-  `initFirebase()` returns early — the app must stay fully usable offline. Preserve that
-  guard when touching party code.
-- The party buttons then explain themselves through `partyUnavailableMessage()`, which
-  separates the three causes that all look alike from the button (no `.env` — usually
-  because the page was opened over `file://`, where it cannot be read; no SDK; or
-  `initializeApp` throwing). Keep it in step with any new failure mode.
-- `.env` is served to the browser and readable at `/.env`. It holds Firebase web config,
-  which is public by design. Never move real secrets into it.
+- Two sources, same `KEY=value` text, first hit wins: `.env` locally,
+  `/firebase-env` on a deploy. The deploy needs its own source because `.env` is
+  gitignored and **Cloudflare Pages will not serve any dot-prefixed path**.
+  `functions/firebase-env.js` is a Pages Function reading the `FIREBASE_*`
+  variables from the Pages dashboard. `.env.example` is the committed template —
+  keep it and the `KEYS` list in the Function in sync when adding a key.
+- Which is tried first depends on `location.hostname`, only to avoid a certain
+  miss. Both are always tried.
+- A missing file does **not** reliably 404 — Pages answers unknown paths with its
+  index page (HTTP 200, a pageful of HTML). `readEnvFile` rejects a body starting
+  with `<`; a file with no `FIREBASE_DATABASE_URL` is skipped rather than fatal.
+- When `.env` is absent or has no `FIREBASE_DATABASE_URL`, `FIREBASE_CONFIG` is
+  `null` and `initFirebase()` returns early — **the app must stay fully usable
+  offline**. Preserve that guard when touching party code.
+- The party buttons explain themselves through `partyUnavailableMessage()`, which
+  separates the three look-alike causes (no `.env` — usually `file://`; no SDK;
+  `initializeApp` throwing).
+- `.env` is served to the browser and readable at `/.env` — it holds Firebase web
+  config, public by design. Never move real secrets into it.

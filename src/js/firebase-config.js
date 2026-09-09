@@ -3,9 +3,6 @@
 // =============================================================================
 'use strict';
 
-// =============================================================================
-// FIREBASE CONFIGURATION
-// =============================================================================
 // Loaded with a synchronous XHR, the same way items.js loads data/items.csv, so
 // FIREBASE_CONFIG is populated before init() runs.
 //

@@ -3,9 +3,6 @@
 // =============================================================================
 'use strict';
 
-// =============================================================================
-// STATE
-// =============================================================================
 const state = {
   // The character on screen — the *working copy* of one slot out of
   // `state.characters`. Everything below (grid, instances, equipped, db)

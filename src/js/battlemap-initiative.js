@@ -3,34 +3,18 @@
 // =============================================================================
 'use strict';
 
-// **Initiative belongs to the map**, not to the party and not to a character.
-// A fight happens somewhere, it ends when the party walks out of that room, and
-// the next map is the next fight — so the order lives at
-// `parties/<code>/battlemap/maps/<mapId>/initiative` with the walls and the
-// creatures. Three things fall out of that and none of them had to be built:
+// Initiative belongs to the map: it lives at
+// `parties/<code>/battlemap/maps/<mapId>/initiative` with the walls and
+// creatures, rides `subscribeToBattlemap`, and is thrown away with the map.
 //
-//   - "Have they rolled already?" is answered by *this map's* entries, which is
-//     exactly the question asked. A player who rolled in the cellar rolls again
-//     in the courtyard because that is a different map.
-//   - It rides the subscription that already carries the roster, the shops and
-//     the board (`subscribeToBattlemap`), so every member sees the same order
-//     with no second listener and no new database rule.
-//   - It is thrown away with the map it belonged to.
+//   initiative
+//     round   1, 2, 3 …
+//     turn    <entryId>   whose turn it is, named rather than numbered
+//     entries { <id>: { id, kind, name, score, at, uid?, tokens?, icon?, hostility? } }
 //
-// ```
-// initiative
-//   round   1, 2, 3 …
-//   turn    <entryId> — whose turn it is, named rather than numbered
-//   entries { <id>: { id, kind, name, score, at, uid?, tokens?, icon?, hostility? } }
-// ```
-//
-// **The turn is an entry id, never an index into the order.** The order is not
-// a fixed list: a player who was late to roll drops in halfway down it mid-fight,
-// and the GM can take a group out of it. An index would silently come to mean a
-// different creature; a name goes on meaning the same one, or stops meaning
-// anything at all — and `initiativeActiveEntry()` heals that case by falling
-// back to the top of the order rather than leaving the panel pointing at a
-// creature that is no longer in the fight.
+// The turn is an entry id, never an index — the order is not a fixed list (late
+// rollers drop in mid-fight; the GM removes groups). `initiativeActiveEntry()`
+// heals a dangling turn by falling back to the top. See CLAUDE.md § Initiative.
 
 const INITIATIVE_PC_PREFIX = 'pc_';
 

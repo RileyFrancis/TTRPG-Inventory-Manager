@@ -3,18 +3,9 @@
 // =============================================================================
 'use strict';
 
-// A party used to be a session: six letters, alive while somebody held them, and
-// forgotten the moment everyone closed their tab. A **campaign** is the table
-// itself — it has a name, it has a Game Master, it remembers who plays in it and
-// which character each of them brings, and it is still there next Tuesday.
-//
-// That is not a bigger party. It is the same party with one thing fixed: a
-// roster keyed by *person* rather than by *connection*. See the identity note at
-// the top of party.js — that key is why a player who drops out and comes back
-// rejoins themselves instead of appearing twice, and it is what lets the roster
-// be read as a membership list at all.
-//
-// **Two halves, and neither is a copy of the other.**
+// A campaign is a persistent party: a roster keyed by account uid (not by a
+// per-join session id), so it outlives every session in it. party.js is the live
+// session under it. Two halves, neither a copy of the other:
 //
 //   parties/<code>/          in Firebase — the campaign. Shared, authoritative.
 //     meta      { name, gmUid, gmName, createdAt }
@@ -25,20 +16,11 @@
 //   state.campaigns[code]    in the save file — this account's *bookmark*.
 //     { code, name, role, characterId, gmName, memberCount, lastPlayed }
 //
-// The bookmark answers only what the home screen has to know before it has
-// spoken to Firebase: that you have a seat somewhere, roughly what it looks
-// like, and which character sits in it. Everything it caches — the name, the
-// GM, the head count — is refreshed from the party itself the moment you are
-// connected (`noteCampaignMeta` / `noteCampaignRoster`), and **nothing reads the
-// bookmark to decide anything that matters**: `enterCampaign()` asks the party
-// whether you are its GM rather than believing the role written here, because a
-// bookmark is this browser's memory and the party is the fact.
-//
-// It rides in the save payload rather than a Firebase index of its own, so it
-// follows the account across browsers for free — cloud-save.js already mirrors
-// exactly this — and needs no second set of database rules. The cost is that a
-// campaign somebody invites you to is not discoverable until you type its code
-// once, which is the same as it ever was.
+// The bookmark is only what the home screen needs before Firebase answers; it is
+// refreshed from the party once connected, and nothing reads it to decide
+// anything that matters (`enterCampaign()` asks the party who its GM is). It
+// rides the save payload, so it follows the account across browsers for free.
+// See CLAUDE.md § Campaigns.
 
 // =============================================================================
 // THE MODEL

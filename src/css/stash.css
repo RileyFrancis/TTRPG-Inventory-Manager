@@ -68,10 +68,6 @@
   position: relative;
 }
 .stash-card:hover { border-color: var(--accent); }
-.stash-card.placing {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
-}
 
 .stash-shape {
   display: grid;

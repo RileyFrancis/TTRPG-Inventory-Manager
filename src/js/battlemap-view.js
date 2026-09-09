@@ -3,38 +3,16 @@
 // =============================================================================
 'use strict';
 
-// The map is the **third view of the middle panel**, beside the inventory grid
-// and the character sheet — `state.view === 'map'`, and `.map-view` on
-// `#inventory-panel` is the whole of the swap, exactly as `.sheet-view` is.
+// The map is the third view of the middle panel (`state.view === 'map'`,
+// `.map-view` on `#inventory-panel`), beside the grid and the character sheet —
+// but it is not a view of a *character*, so it is reached from the corner button
+// and a GM with nobody selected may be on it.
 //
-// It used to be a page over the whole app, and that was the wrong shape for it.
-// A board is where the party is standing, which is the same question the middle
-// panel already answers; taking the screen over to show one cost the reader the
-// character tabs above it, the chat and the dice beside it, and — for the GM —
-// the Maps pane holding the grid controls they were trying to line the board up
-// with. Every one of those is something you want *while* looking at the map.
-//
-// The one way it is not like the other two views: it is not a view of a
-// *character*. So it is reached by the button in the corner rather than from a
-// tab's menu, and a GM with nobody selected is allowed to be on it — the
-// placeholder that otherwise covers this panel stands down for it.
-//
-// One `<canvas>`, drawn on demand. Not a rAF loop — nothing on a battle map
-// animates on its own, and a loop repainting a 2400px picture sixty times a
-// second to show the same thing is a laptop fan for no reason. Every path that
-// changes what is on screen ends in `drawBattlemap()`.
-//
-// **The camera is this browser's furniture**, like the panel widths and the
-// sheet layout: where *you* have scrolled to on a shared map says nothing about
-// the map, and a GM zoomed in on a doorway must not drag every player's view
-// along with them. It is not saved and never synced.
-//
-// **The fog is a second canvas**, at the picture's own resolution, holding one
-// question per pixel: can the party see this? It is rebuilt only when something
-// that could change the answer moves, and then read twice — drawn over the map,
-// and sampled under each creature to decide whether that creature is on screen
-// at all. One source for both, so what is hidden and what is dark can never
-// disagree.
+// One `<canvas>`, drawn on demand (not a rAF loop) — every path that changes the
+// screen ends in `drawBattlemap()`. The camera is this browser's furniture: not
+// saved, never synced. The fog is a second canvas at the picture's resolution,
+// rebuilt only when something that could change visibility moves, then read
+// twice (drawn over the map, and sampled under each creature). See CLAUDE.md § Battle maps.
 
 // =============================================================================
 // THE VIEW'S OWN STATE

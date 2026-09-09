@@ -3,10 +3,6 @@
 // =============================================================================
 'use strict';
 
-// =============================================================================
-// INTERACTION — DRAGGING PLACED ITEMS
-// =============================================================================
-let dragPointerCapture = null;
 let dragHoverSlotId = null; // slot id the drag ghost is currently hovering over
 
 const DRAG_THRESHOLD = 6; // px of movement before a press becomes a drag

@@ -3,9 +3,6 @@
 // =============================================================================
 'use strict';
 
-// =============================================================================
-// FOLDERS
-// =============================================================================
 // Folders organise the item *catalogue*, not the character, so like the theme
 // preference they live in their own localStorage key rather than in the
 // dnd_inventory_v1 save file: a GM flipping between players' sheets keeps their

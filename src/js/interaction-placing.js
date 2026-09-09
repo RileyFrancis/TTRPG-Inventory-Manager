@@ -3,9 +3,6 @@
 // =============================================================================
 'use strict';
 
-// =============================================================================
-// INTERACTION — PLACING MODE
-// =============================================================================
 function startPlacing(templateId) {
   if (isReadOnly()) return;
   cancelPlacing();
@@ -46,21 +43,6 @@ function addToStash(templateId) {
   renderStash();
   updateWeightDisplay();
   debouncedSync();
-}
-
-function startPlacingFromStash(instanceId) {
-  if (isReadOnly()) return;
-  const inst = state.instances[instanceId];
-  if (!inst) return;
-  cancelPlacing();
-  state.mode = 'placing';
-  state.placing = { templateId: inst.templateId, rotation: inst.rotation ?? 0, instanceId };
-  document.body.style.cursor = 'crosshair';
-  document.body.style.userSelect = 'none';
-  renderStash();
-  document.addEventListener('mousemove', onPlacingMouseMove);
-  document.addEventListener('click', onPlacingClick, true);
-  document.addEventListener('contextmenu', onPlacingRightClick, true);
 }
 
 function stashAllItems() {
@@ -107,11 +89,10 @@ function renderStash() {
     const t = state.db[inst.templateId];
     if (!t) return;
     const color = rarityColor(t.rarity);
-    const isActive = state.placing?.instanceId === inst.id;
 
     const card = document.createElement('div');
-    card.className = 'stash-card' + (isActive ? ' placing' : '');
-    card.title = 'Click to place';
+    card.className = 'stash-card';
+    card.title = 'Drag onto the grid to place · click for details';
 
     const shape = normalizeShape(isStackable(t) ? [[1]] : t.shape);
     const { rows, cols } = shapeDims(shape);
@@ -136,7 +117,6 @@ function renderStash() {
     removeBtn.textContent = '×';
     removeBtn.addEventListener('click', e => {
       e.stopPropagation();
-      if (state.placing?.instanceId === inst.id) cancelPlacing();
       delete state.instances[inst.id];
       renderStash();
       updateWeightDisplay();
@@ -213,18 +193,8 @@ function onPlacingRightClick(e) {
 }
 
 function finalizePlacement(template, shape, rotation, row, col, stackCount) {
-  let id;
-  if (state.placing?.instanceId) {
-    // Placing a stash item — update existing instance
-    id = state.placing.instanceId;
-    state.instances[id].rotation = rotation;
-    state.instances[id].row = row;
-    state.instances[id].col = col;
-    state.instances[id].containerId = state.activeContainer ?? null;
-  } else {
-    id = newId();
-    state.instances[id] = { id, templateId: template.id, rotation, row, col, stackCount, containerId: state.activeContainer ?? null };
-  }
+  const id = newId();
+  state.instances[id] = { id, templateId: template.id, rotation, row, col, stackCount, containerId: state.activeContainer ?? null };
   placeOnGrid(id, shape, row, col);
   // Initialize container grid for newly placed container items
   if (template.container && !state.containerGrids[id]) initContainerGrid(id);

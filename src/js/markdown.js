@@ -3,31 +3,13 @@
 // =============================================================================
 'use strict';
 
-// The character sheet's written sections (Backstory & Personality, Appearance)
-// are Markdown, and **raw HTML in them is deliberately allowed** — the point is
-// that a player can reach past what this renderer offers and format something
-// the way they want it.
-//
-// **This is the only place in the app that turns a string into markup.**
-// Everywhere else builds DOM with `createElement` and `textContent`, which
-// cannot inject anything. So the safety of the whole feature is the sanitizer
-// at the bottom of this file, and it is not optional:
-//
-//   A character sheet is not private. Party sync copies it to Firebase, and
-//   every other member of the party — and the GM — renders it in their own
-//   browser. Unsanitized, a `<script>` or an `onerror=` in a player's backstory
-//   would run on the GM's machine, against the GM's signed-in Firebase session.
-//
-// So the rule is: **formatting is allowed, behaviour is not.** Tags that lay
-// text out are kept; anything that can execute, fetch, navigate on its own or
-// collect input is dropped. `<b>`, `<span style>` and `<table>` all work.
-// `<script>`, `<iframe>`, `onclick=` and `javascript:` do not, and are removed
-// without comment rather than escaped into visible noise.
-//
-// No dependency, because the app has none. What is implemented is the common
-// half of Markdown — headings, emphasis, lists, quotes, code, links, images,
-// rules. Tables are *not* parsed from pipe syntax; a `<table>` written by hand
-// is passed through, which is the escape hatch for everything not listed here.
+// The only place in the app that turns a string into markup — everywhere else
+// builds DOM with `createElement` + `textContent`. Raw HTML is deliberately
+// allowed (a player reaching past the renderer), so the sanitizer at the bottom
+// of this file is not optional: a sheet syncs to Firebase and renders in the
+// GM's browser, so a `<script>` in a backstory would run there. Rule: formatting
+// is allowed, behaviour is not. No dependency. Pipe tables are not parsed — a
+// hand-written `<table>` is the escape hatch. See CLAUDE.md § The written sections.
 
 // =============================================================================
 // THE ENTRY POINT

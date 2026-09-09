@@ -3,19 +3,11 @@
 // =============================================================================
 'use strict';
 
-// =============================================================================
-// TABS
-// =============================================================================
-// The sidebar shows the tabs that belong to what the inventory panel is
-// currently showing, because the two answer one question. Reading an item's
-// stats beside a grid of items is the whole point; reading them beside a
-// character sheet is a panel of the wrong app. So:
-//
+// The sidebar shows the tabs that belong to what the inventory panel is showing:
 //   inventory view   Browse · Details · Party
-//   sheet view       Chat · Dice · Party
-//
-// Party is in **both** — it is who you are playing with, which is true of either
-// view — and it is the reason this is a map rather than two flat lists.
+//   sheet / map view Chat · Dice · Party
+// Party is in both, hence a map with a null rather than two flat lists.
+// See CLAUDE.md § The sidebar's tabs.
 const SIDEBAR_TAB_VIEW = {
   browse:  'inventory',
   details: 'inventory',
@@ -29,19 +21,10 @@ function sidebarTabView(name) {
   return SIDEBAR_TAB_VIEW[name] ?? null;
 }
 
-// **What the inventory panel is actually showing**, which is not always
-// `state.view`. A GM who deselects a player keeps `state.view === 'sheet'` while
-// the panel falls back to their placeholder — and reading the raw field there
-// would leave them on Chat and Dice with no Browse, which is the tab they stock
-// their shops by dragging out of. `syncCharacterViewUI()` computes the same
-// thing for `.sheet-view`; this is that answer, asked from here.
-//
-// **The battle map answers 'sheet' rather than earning a third set of tabs.**
-// The question this function asks is not "which view is up" but "which pane
-// belongs beside it", and beside a board that is Chat, Dice and Party — the
-// table's own three. Browse and Details are a list of items to read against a
-// grid of items, which a map is not. Giving the map its own row would mean
-// three names for two answers.
+// What the inventory panel is actually showing, which is not always
+// `state.view`: a GM who deselects a player keeps `state.view === 'sheet'` while
+// the panel falls back to the placeholder. The battle map answers 'sheet' — the
+// panes beside a board are Chat, Dice and Party, not a third row.
 function sidebarView() {
   if (mapViewIsShowing()) return 'sheet';
   return (state.view === 'sheet' && hasViewedCharacter()) ? 'sheet' : 'inventory';

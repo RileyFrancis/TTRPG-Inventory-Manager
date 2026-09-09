@@ -3,37 +3,16 @@
 // =============================================================================
 'use strict';
 
-// Light/dark is the *palette*; this is the *colour* — the one hue everything
-// gold in the app is drawn in. They are two halves of one Appearance page but
-// two concerns, so light/dark stays in theme.js and the accent lives here.
+// theme.js owns light/dark (the palette); this owns the accent (the colour).
 //
-// **What the user picks is a hue and a saturation. Never a lightness.**
-// That is the whole design, and it is what keeps a custom colour readable:
-// each theme already knows how light its accent has to be to sit on its own
-// background — dark brown on parchment (L 33%), light gold on candlelit
-// (L 56%) — so a pick supplies the *colour* and the theme supplies the
-// *contrast*. A pale yellow chosen in dark mode cannot come out invisible on
-// cream paper, because the light palette never uses the pale version of it.
-// The wheel therefore has no lightness slider: there is nothing there to offer.
-//
-//   picked hsl(0, 66%)  ->  light theme  hsl(0, 66%, 33%)   a deep brick
-//                       ->  dark  theme  hsl(0, 66%, 56%)   a warm coral
-//
-// **Both themes are resolved at pick time, not at paint time.** `vars` holds a
-// finished map of CSS properties for each theme, so switching theme — or the
-// inline script in index.html <head> painting before any of this has loaded —
-// is a matter of reading strings out of storage, never of doing colour maths.
-// That is what lets the no-flash script stay four lines instead of carrying its
-// own copy of hslToHex.
-//
-// **Nothing has to re-render.** `rerenderThemedContent()` exists because rarity
-// and coin colours get baked into inline styles; the accent never is — it is
-// read straight from `var(--accent)` by 153 rules and nothing else — so setting
-// the property on <html> is the entire operation. Live drag-preview is free.
-//
-// Stored per browser (`dnd_inventory_colors`), like the theme, the folders and
-// the panel widths: it describes this browser's idea of the app, not anything
-// about a character, and it must be readable before app state loads.
+// What the user picks is a hue and a saturation — never a lightness. Each theme
+// knows how light its accent must be to sit on its own background (L 33% on
+// parchment, L 56% by candlelight), so a pick supplies the colour and the theme
+// supplies the contrast. `vars` holds a finished per-theme map of CSS properties
+// resolved at pick time, so switching theme (and the no-flash script in <head>)
+// never does colour maths. Setting the property on <html> is the whole of
+// applying it — the accent is never baked into an inline style. Stored per
+// browser (`dnd_inventory_colors`), not in the save file. See CLAUDE.md § The accent colour.
 
 const ACCENT_KEY = 'dnd_inventory_colors';
 

@@ -3,9 +3,6 @@
 // =============================================================================
 'use strict';
 
-// =============================================================================
-// THEME
-// =============================================================================
 // The `data-theme` attribute on <html> is always one of 'light' | 'dark'; the
 // inline script in index.html <head> sets it before first paint. What we store
 // is the *preference*, which may also be 'system' — resolved against the OS

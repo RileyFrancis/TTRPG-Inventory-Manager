@@ -3,28 +3,16 @@
 // =============================================================================
 'use strict';
 
-// An account is a *player*, not a character: one person may run a fighter on
-// Tuesdays and a wizard on Fridays, and both belong to them. So the save file
-// holds a roster — `state.characters`, keyed by id — and exactly one of them is
-// live in `state.character` / `state.instances` / `state.equipped` at a time.
-//
-// Live state stays where it always was rather than being read through the
-// roster, because every render path, the grid, the drag machinery and the party
-// sync already speak that language. The roster is the *store*; the live fields
-// are the *working copy*. Two functions bridge them, and nothing else may:
-//
-//   commitActiveCharacter()       working copy → slot
-//   loadActiveCharacterIntoLive() slot → working copy
-//
-// `commitActiveCharacter()` runs from `buildSavePayload()`, so every save — local
-// or cloud — flushes the character on screen back into its slot first and the
-// two can never disagree.
-//
-// Crucially it refuses when the working copy is *not* your own character: while
-// you are looking at another party member's sheet, or while you are the GM (who
-// has no character, and whose panel is the placeholder), `state` is somebody
-// else's or nobody's, and writing it into your slot would overwrite a character
-// with someone else's inventory.
+// The save file holds a roster — `state.characters`, keyed by id — and exactly
+// one slot is live in `state.character` / `state.instances` / `state.equipped` /
+// `state.db` at a time. The roster is the store; the live fields are the working
+// copy. Two functions bridge them and nothing else may:
+//   commitActiveCharacter()        working copy → slot (runs from buildSavePayload)
+//   loadActiveCharacterIntoLive()  slot → working copy
+// commitActiveCharacter() refuses when the working copy is not your own character
+// (another member's sheet, or a GM with none) — see `liveStateIsOwnCharacter()`.
+// This file also holds the classLevels model and the home screen. See CLAUDE.md
+// § Characters and the home screen, and § Multiclassing.
 
 // =============================================================================
 // MODEL

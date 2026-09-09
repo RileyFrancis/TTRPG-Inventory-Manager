@@ -3,9 +3,6 @@
 // =============================================================================
 'use strict';
 
-// =============================================================================
-// PERSISTENCE
-// =============================================================================
 const SAVE_KEY = 'dnd_inventory_v1';
 
 document.getElementById('save-btn').addEventListener('click', saveState);
@@ -72,7 +69,6 @@ document.getElementById('stash-delete-all-btn').addEventListener('click', () => 
     (i.containerId ?? null) === activeContainerId && (i.row === null || i.row === undefined)
   );
   if (!confirm(`Delete all ${unplaced.length} stashed item${unplaced.length > 1 ? 's' : ''}? This cannot be undone.`)) return;
-  if (state.placing?.instanceId && state.instances[state.placing.instanceId]?.row === null) cancelPlacing();
   unplaced.forEach(inst => { delete state.instances[inst.id]; });
   renderStash();
   updateWeightDisplay();

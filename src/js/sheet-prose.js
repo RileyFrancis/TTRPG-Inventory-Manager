@@ -3,25 +3,11 @@
 // =============================================================================
 'use strict';
 
-// Backstory & Personality and Appearance are the parts of a character the rules
-// have nothing to say about, so they are not boxes and derived numbers but a
-// page to write on. Each is one Markdown field with two faces: the textarea you
-// write in, and the formatted version you read. See markdown.js for what the
-// formatting covers and — more importantly — what the sanitizer refuses to
-// render.
-//
-// **Neither section owns any data.** They are two more `data-sheet` fields on
-// `state.character`, written by the same delegated listener as every other box
-// on the sheet, saved by the same save, synced by the same sync.
-//
-// **The mode is not a setting.** Which face you are looking at is a glance, the
-// same argument the class features toggle makes, so it is session-only and
-// never persisted. What it *is* is a sensible guess: a section with something
-// written in it opens formatted, because that is the readable form and reading
-// is what you are usually there for; an empty one opens in the editor, because
-// there is nothing to read and a blank preview is a dead end. Touch the toggle
-// and the guess gives way to your choice, until the sheet on screen changes to
-// a different character.
+// Backstory & Personality and Appearance: two Markdown fields with an
+// editor/preview swap. Neither owns data — they are `data-sheet` fields on
+// `state.character` (the `data-prose` key IS the `data-sheet` path). The mode is
+// session-only, a guess overridden by the toggle: a section with writing opens
+// formatted, an empty one opens in the editor. See markdown.js for the sanitizer.
 
 // One entry per written section. The `data-prose` key is also the `data-sheet`
 // path, so a section needs no wiring of its own beyond a row here and the

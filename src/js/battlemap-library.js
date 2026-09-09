@@ -3,20 +3,10 @@
 // =============================================================================
 'use strict';
 
-// A third pane beside Equipment and Shop, on exactly the terms the Shop pane
-// already set: it is the GM's own tool, so it appears for a GM and for nobody
-// else, and it comes first in their strip because their own things do. The list
-// is the library; opening one map is where its grid, its reveal and its
-// clearing-out live.
-//
-// Everything a *player* does with a map happens on the map itself — there is no
-// player half of this file. That is the split the whole feature is built on:
-// the library is about which maps exist, and `battlemap-view.js` is about the
-// one the party is standing on.
+// The GM's Maps pane (a third left-panel pane, GM-only) and the import /
+// creature dialogs. The library is about which maps exist; battlemap-view.js is
+// about the one the party is standing on. There is no player half of this file.
 
-// =============================================================================
-// THE PANE
-// =============================================================================
 function renderMapPanel() {
   const pane = document.getElementById('left-pane-map');
   if (!pane) return;

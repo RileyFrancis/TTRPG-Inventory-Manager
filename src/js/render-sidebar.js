@@ -3,9 +3,6 @@
 // =============================================================================
 'use strict';
 
-// =============================================================================
-// RENDERING — SIDEBAR ITEM LIST
-// =============================================================================
 function renderItemList() {
   const listEl = document.getElementById('item-list');
   const search = document.getElementById('item-search').value.trim().toLowerCase();

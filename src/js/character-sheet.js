@@ -3,24 +3,16 @@
 // =============================================================================
 'use strict';
 
-// The sheet is the *other* view of a character, opposite the inventory, and it
-// reads and writes the same `state.character` the rest of the app already uses.
-// Nothing here owns data of its own.
+// Page one of the 2024 sheet — the other view of a character, opposite the
+// inventory. Reads and writes the same `state.character`; owns no data.
 //
-// **What is typed and what is worked out.** Anything the rules derive
-// unambiguously from something else is derived and shown as text, never as a
-// box: modifiers from scores, proficiency bonus from level, each skill and save
-// from its ability plus its proficiency, passive Perception, initiative. What is
-// left is what the rules cannot settle without knowing more than this app
-// does — AC, speed, HP, hit dice — and those are plain inputs. The line is
-// deliberate: a derived box that can be edited is a box that will disagree with
-// itself, and a typed box the app tries to guess is a box that fights homebrew.
-//
-// **`abilities.str` is the character's Strength, and the grid's.** The inventory
-// has always sized itself from `state.character.strength`, so that field stays —
-// but as a *mirror*, recomputed from `abilities.str` in `normalizeCharacterMeta()`
-// and nowhere else. One writer, so the two cannot drift, and a save or a party
-// member from before the sheet existed still lands the right way up.
+// Anything the rules derive unambiguously is shown as text, never a box
+// (modifiers, proficiency bonus, skills, saves, passive Perception, initiative);
+// what the rules cannot settle alone is an input (AC, speed, HP, hit dice).
+// `abilities.str` is the Strength the grid sizes from, via the `strength` mirror
+// written only by `normalizeCharacterMeta()`. Boxes are built once and written
+// into, never rebuilt — an input must not lose focus mid-keystroke. See CLAUDE.md
+// § The character sheet.
 
 // =============================================================================
 // THE MODEL

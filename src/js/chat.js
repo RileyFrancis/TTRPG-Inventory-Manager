@@ -3,39 +3,16 @@
 // =============================================================================
 'use strict';
 
-// Talk belongs to the **table**, not to a character: the same argument the shops
-// make. So it lives under `parties/<code>/chat`, everyone holding the code reads
-// one log, and there is nothing to say with no campaign open — the tab says so
-// rather than offering an input that could only talk to itself.
-//
-//   parties/<code>/chat/<pushId>   { uid, name, text, at }
-//
-// A **push id**, not a key of our own devising. RTDB's are ordered by server
-// time and unique across clients without coordination, which is exactly the
-// property a chat log needs and the one thing a client-side id cannot promise:
-// two people typing at once must not be able to land on the same key, and the
-// order they arrive in must be the order everyone reads.
-//
-// The log is a **read-through cache** like `state.shops`, refreshed by a
-// subscription that rides along with the roster (`subscribeToChat`, called from
-// `subscribeToParty`). Nothing about it is in the save file — a conversation is
-// not part of a character, and every member already holds the same copy.
-//
-// **`name` is stamped on the message, not looked up when it is drawn.** Who said
-// a thing is a fact about the moment it was said: renaming a character, or a
-// player leaving the campaign entirely, must not rewrite or blank the history.
-// It is the same reason a shop entry snapshots its template.
-//
-// **A roll is a message too.** `kind: 'roll'` carries a `roll` object beside the
-// ordinary `text`, and this file draws it as a card rather than as a bubble —
-// see `rollMessageBody()`. It is one log rather than two because a roll *is* a
-// thing said at the table, and because everything the log already provides
-// (server ordering, one subscription, a capped tail, a stamped name) is exactly
-// what a roll feed would otherwise have to grow for itself. src/js/dice.js owns
-// the shape of that payload; nothing here works out a number.
+// Talk belongs to the table: `parties/<code>/chat/<pushId> { uid, name, text, at }`.
+// A read-through cache like state.shops, refreshed by `subscribeToChat` (from
+// `subscribeToParty`); nothing about it is in the save file. `name` is stamped
+// at send time, not looked up when drawn. `textContent`, never innerHTML — this
+// is the one pane where another player's typing lands in your browser. A roll is
+// a message too (`kind: 'roll'`, drawn as a card by `rollMessageBody()`).
+// See CLAUDE.md § Chat.
 
-// Only the tail is subscribed. A campaign that has run for a year should not
-// cost a year of messages to open a tab, and nobody scrolls past a few hundred.
+// Only the tail is subscribed — a year-old campaign should not cost a year of
+// messages to open a tab.
 const CHAT_HISTORY = 200;
 const CHAT_MAX_LEN = 2000;
 

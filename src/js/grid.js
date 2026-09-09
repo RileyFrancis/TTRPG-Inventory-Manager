@@ -3,32 +3,14 @@
 // =============================================================================
 'use strict';
 
-// =============================================================================
-// THE DEFERRED RESIZE
-// =============================================================================
-// **Strength typed on the character sheet does not resize the grid until the
-// reader goes back to the inventory.** A number box is edited a keystroke at a
-// time, and on the way from 8 to 16 it passes through 1: three rows, and
-// `rebuildGrid()` would drop nearly the whole inventory into Needs Placement.
-// That is not undone by finishing the number — `unplaceInstance()` clears
-// `row`/`col`, so the items stay unplaced and the reader has to lay the whole
-// pack out again for a digit they typed in passing. An empty box is the same
-// hazard: it reads as 0, which is now a legal score and a grid of no rows.
-//
-// So the sheet marks the grid dirty (`commitSheetEdit`) and the resize happens
-// once, on the number the reader settled on, when they go and look at it
-// (`syncCharacterViewUI`).
-//
-// **Nothing is left inconsistent in the meantime.** `state.grid` and the
-// instances placed in it still agree with each other exactly as before — the
-// grid is simply still sized for the previous Strength. The one field that has
-// run ahead is `state.character.strength`, and the only thing reading it
-// meanwhile is the header's weight readout, which is a set of numbers rather
-// than a set of cells and is right to preview where the edit is going.
-//
-// A save taken before the reader returns keeps each item's `row`/`col`, and the
-// `rebuildGrid()` in `init()` settles it on the next load — once, on a finished
-// number, which is the whole point.
+// The deferred resize: Strength typed on the sheet does not resize the grid
+// until the reader returns to the inventory. A number box passes through 0 and 1
+// on the way from 8 to 16, and rebuilding on each would eject the whole pack into
+// Needs Placement — which finishing the number does not undo. So the sheet marks
+// the grid dirty (`commitSheetEdit`) and the resize happens once, on the settled
+// number, from `syncCharacterViewUI`. Nothing is inconsistent while it waits:
+// only `state.character.strength` has run ahead, read only by the weight readout.
+// See CLAUDE.md § Grid geometry.
 let gridSizeDirty = false;
 
 function markGridSizeDirty() { gridSizeDirty = true; }

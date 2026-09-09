@@ -3,13 +3,8 @@
 // =============================================================================
 'use strict';
 
-// A battle map belongs to the **table**, exactly as a shop and the chat log do.
-// The GM keeps a library of them, picks the one the party is standing on, and
-// reveals it when they walk in; everyone holding the code then draws the same
-// map, the same creatures on it and the same walls between them. So Firebase is
-// the only copy — `state.battlemap` is a read-through cache of
-// `parties/<code>/battlemap`, refreshed by the subscription that already
-// carries the roster, the shops and the chat.
+// A battle map belongs to the table. `state.battlemap` is a read-through cache
+// of `parties/<code>/battlemap`; nothing about a map is in the save file.
 //
 //   parties/<code>/battlemap/activeId          which map the party is on
 //   parties/<code>/battlemap/maps/<mapId>
@@ -19,25 +14,10 @@
 //       walls:  { <id>: { id, kind:'rect'|'circle', x, y, w, h, r } },
 //       masks:  { <id>: { id, mode:'hide'|'show', x, y, w, h } } }
 //
-// **Nothing about a map is in the save file.** A map is not part of a
-// character, and the GM's copy is the only one — the same argument shop.js
-// makes, and the reason there is no map at all without a campaign to be at.
-//
-// **Every coordinate in the model is in the image's own pixels**, never in
-// screen pixels and never in cells. The camera is this browser's furniture and
-// the grid can be resized under the tokens at any moment; a token stored in
-// either of those frames would move the instant somebody else zoomed, or the
-// GM nudged the grid a pixel to line it up. Image pixels are the one frame
-// every client already agrees on, because they come with the picture.
-//
-// Reveal is **pacing, not security**, exactly as a shop's is: an unrevealed map
-// is filtered out on the client, and a player reading the database directly
-// could still find it. The fog of war carries the same caveat and is worth
-// stating on its own — see the note above `computeVision()`.
-//
-// This file is the model, the Firebase seam, the GM's library panel and the
-// geometry. `battlemap-view.js` is the map itself: the camera, the canvas and
-// every pointer that lands on it.
+// Every coordinate in the model is in the image's own pixels — never screen
+// pixels, never cells — because that is the one frame every client agrees on.
+// Reveal and fog are pacing, not security. This file is the model, the Firebase
+// seam and the geometry; battlemap-view.js is the canvas. See CLAUDE.md § Battle maps.
 
 // =============================================================================
 // SHAPE OF A MAP

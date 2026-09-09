@@ -3,32 +3,12 @@
 // =============================================================================
 'use strict';
 
-// One dialog, three jobs: the gear at the top right of the character sheet, a
-// roster card's Edit, and New Character on the home screen. It edits the things
-// that describe a character rather than the things that happen to one — name,
-// species, background, alignment, and the classes they have taken levels in.
-//
-// **Nothing the character sheet already owns.** Strength used to be here, from
-// before the sheet existed, and it was the last thing in this dialog with a
-// second editor somewhere else. The six ability scores are the sheet's; they all
-// start at 10, which is what a character has until someone sets them; and the
-// grid reads Strength off `abilities.str` through the `strength` mirror wherever
-// that happens. So a character can be created here and be a perfectly sound
-// level-1 with a 30-row grid, and the sheet is the one place a score is typed.
-//
-// **The class rows are why this left the sheet.** A multiclass is a *list* —
-// Warlock 5 / Bard 2, each with its own subclass — and a list of rows that grows
-// as you add classes does not belong across the top of a page that has to stay
-// readable. So the sheet keeps the readout (the identity block under the name,
-// which names each of these facts above its answer) and the editing happens
-// here.
-//
-// `charModalTargetId` names the slot in the roster to edit. A null target is the
-// character *on screen*, which is not always one of yours — a GM editing a
-// player from the sheet's gear is editing the working copy and the party roster,
-// never their own slot. That path survives the header's Edit Character button
-// being taken away because `isReadOnly()` is false for a GM, so the gear is
-// theirs to use on whoever they are looking at.
+// One dialog, three jobs: the sheet's gear, a roster card's Edit, New Character.
+// It edits what describes a character — name, species, background, alignment, and
+// the classes they have taken levels in — never what the sheet owns (ability
+// scores, which all start at 10). `charModalTargetId` names the roster slot to
+// edit; null means the character on screen, which is not always one of yours (a
+// GM editing a player via the gear). See CLAUDE.md § Multiclassing and Character Setup.
 
 let charModalTargetId = null;
 let charModalIsNew = false;

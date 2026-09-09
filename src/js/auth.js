@@ -3,18 +3,11 @@
 // =============================================================================
 'use strict';
 
-// Signing in is never demanded at the door: the app opens straight into the
-// inventory and works signed out, on localStorage, exactly as it always has.
-// The login screen appears only where an account is genuinely needed — party
-// play, which is other people's data — and once you have one, cloud-save.js
-// starts mirroring your inventory to it.
-//
-// So every entry point goes through `requireAuth(reason, action)`: it runs the
-// action straight away if you are signed in, and otherwise explains itself and
-// runs it after you succeed. Firebase restores a previous session
-// asynchronously, which is why `state.auth.ready` exists — before it flips,
-// "no user" only means "not known yet", and gating on it would flash the login
-// screen at someone who is already signed in.
+// The app works signed out, on localStorage. An account only unlocks party play
+// and cloud save. Every gated entry point goes through `requireAuth(reason,
+// action)`; do not gate the inventory itself. Firebase restores a session
+// asynchronously — hence `state.auth.ready`; before it flips, "no user" means
+// "not known yet". See CLAUDE.md § Accounts and cloud save.
 
 let firebaseAuth = null;
 

@@ -19,11 +19,9 @@ src/css/                All styles, one file per concern
 src/js/                 Application logic, one file per concern
 data/
   items.csv             Default item database, loaded at startup
-  item_dtypes.csv       Reference: the allowed values for each items.csv column
+  _item_dtypes.csv      Reference: the allowed values for each items.csv column
   classes.json          The classes the app knows, and the features each grants
   species.json          The species the app knows, and the traits each grants
-  generic_items.csv     Reference data, not loaded
-  items_old.csv         Reference data, not loaded
 img/                    Image assets — the icon set and the paper texture
 functions/
   firebase-env.js       Cloudflare Pages Function: serves the Firebase keys on a
@@ -55,7 +53,7 @@ In load order.
 | File | Contents |
 |------|----------|
 | `items.js` | CSV parsing into `DEFAULT_ITEMS` |
-| `constants.js` | `CELL`, `GRID_COLS`, `RARITY_META`, `RARITY_ORDER`, `EQUIP_SLOTS` |
+| `constants.js` | `CELL`, `GRID_COLS`, `RARITY_META`, `RARITY_ORDER`, `getDefaultEquipLayout` |
 | `state.js` | The `state` object and convenience accessors |
 | `folders.js` | Browse-list folders: model, persistence, folder modals |
 | `item-sort.js` | The Browse list's sort order: the modes, their persistence, the menu |
@@ -96,6 +94,7 @@ In load order.
 | `battlemap.js` | Battle maps: the model, the Firebase seam, and line of sight |
 | `battlemap-library.js` | The GM's Maps pane, and the import / creature dialogs |
 | `battlemap-view.js` | The map itself: the camera, the canvas, the fog, the pointer |
+| `battlemap-initiative.js` | The turn order: the model, the panel, the GM's group roll |
 | `tooltip.js` | Hover tooltip |
 | `main.js` | `init()` and the single call to it |
 
@@ -114,6 +113,7 @@ that owns the element wins.
 | `sidebar.css` | The right panel: browse list, folders, details, menus |
 | `modals.css` | Modal chrome, and the shape editor inside the item editor |
 | `character.css` | The character tabs, and page one of the 2024 sheet |
+| `character-setup.css` | The sheet's gear button, and the class rows in the setup modal |
 | `sheet-layout.css` | The sheet's split containers, resize seams, drop feedback |
 | `class-features.css` | The feature cards and badges — Class Features and Species Traits both |
 | `sheet-prose.css` | The written sections: the bar, the editor, and the rendered prose |
@@ -121,7 +121,8 @@ that owns the element wins.
 | `campaigns.css` | The home screen's Campaigns section, its cards, and the campaign modal |
 | `chat.css` | The sidebar's Chat pane, its messages and composer, and a roll said in it |
 | `dice.css` | The flying number, the corner stack, the wheel, the hover card, the tray |
-| `battlemap.css` | The map button, the map page, and the GM's library pane |
+| `battlemap.css` | The map button, the map view, and the GM's library pane |
+| `initiative.css` | The turn order panel over the board, and its group-roll dialog |
 | `equipment.css` | The equip rack, the left-panel tabs, the layout editor |
 | `shop.css` | The GM shop editor, the player shopfront, and their modals |
 | `tooltip.css` | The hover tooltip |
@@ -163,11 +164,13 @@ That split is the rule to preserve: anything describing *how this browser shows
 the app* stays out of the save file, because a GM paging through the party must
 keep their own arrangement rather than adopting each player's.
 
-The save file's shape is version 2 — `{ version, activeCharacterId, characters }`.
-Version 1 was a single character at the top level, and `normalizeSavePayload()`
-folds one into a one-character roster; it is the only place that knows there were
-ever two shapes. Only custom items are saved, since the defaults are re-hydrated
-from `data/items.csv` on every boot.
+The save file's shape is version 3 —
+`{ version, activeCharacterId, characters, campaigns }`. Version 2 was the same
+without `campaigns` (no migration needed). Version 1 was a single character at
+the top level, and `normalizeSavePayload()` folds one into a one-character
+roster; it is the only place that knows there were ever earlier shapes. Only
+custom items are saved, since the defaults are re-hydrated from `data/items.csv`
+on every boot.
 
 Cloud save stores the whole save as **one JSON string**, not a tree: RTDB drops
 nulls and empty objects, and the save file is full of both, so a tree write would
@@ -195,7 +198,7 @@ Never write one into the code.
 | `image` | Path to artwork, relative to the project root |
 | `source` | Source material — `PHB`, `DMG`, `TCoE`, … ; `HB` (homebrew) for items the player adds in-app |
 
-`data/item_dtypes.csv` lists the allowed values for every column and is the
+`data/_item_dtypes.csv` lists the allowed values for every column and is the
 reference to check against. `tools/shape-editor.html` draws a shape visually and
 prints the `shape` string to paste in.
 

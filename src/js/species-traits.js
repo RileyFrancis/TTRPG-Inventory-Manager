@@ -3,32 +3,12 @@
 // =============================================================================
 'use strict';
 
-// The sheet reads `state.character.race` (a name, as typed) and `level`, and
-// shows what that species hands out. This file is deliberately the same shape as
-// class-features.js: a **registry** saying where a species definition comes
-// from, and a **section** that draws it. Read that file's header first — the
-// reasoning there applies here almost line for line, and where the two differ
-// it is called out below.
-//
-// **The species data is not in this file.** It is `data/species.json`, read the
-// same blocking way `data/items.csv` and `data/classes.json` are, for the same
-// reason: it is content, not code, and a release that adds a species should not
-// be a code change. That file is already the shape a user-authored species will
-// take — data only, no behaviour.
-//
-// **The registry is the seam custom species come through.** Nothing outside this
-// file may reach into `DEFAULT_SPECIES`: everything goes through `allSpecies()`
-// and `findSpeciesByName()`. When custom species land they become one more
-// source inside `allSpecies()` and every caller gets them for free.
-//
-// **A species is matched by name, not id**, because `race` is a free-text field
-// the player types. A name that matches nothing is not an error — it is a
-// species this app has not been taught yet, and the section says so by name
-// rather than going blank.
-//
-// **One species, not a list.** `race` is a single field, where `classes` is a
-// list — so there is no equivalent of the per-card class tag, and no sort by
-// species. That is the whole of the difference in the model.
+// Same shape as class-features.js (read that header first): a registry over
+// `data/species.json` and a section that draws it, both sharing that file's
+// `featureCard()` and CSS. Species is matched by name (`race`, free text); it is
+// one field, not a list, so there is no per-card tag. `level` on a trait is
+// optional (defaults to 1) and the level badge is drawn only when levels differ.
+// See CLAUDE.md § Species traits.
 
 // =============================================================================
 // LOADING THE SPECIES

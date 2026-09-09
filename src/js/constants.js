@@ -3,9 +3,6 @@
 // =============================================================================
 'use strict';
 
-// =============================================================================
-// CONSTANTS
-// =============================================================================
 const CELL = 44;          // px per grid square
 const GRID_COLS = 15;     // fixed column count
 
@@ -21,23 +18,9 @@ const RARITY_META = {
 
 const RARITY_ORDER = ['common','uncommon','rare','very_rare','legendary','artifact','special'];
 
-const EQUIP_SLOTS = [
-  // Body — rendered top to bottom in equip panel
-  { id: 'head',     label: 'Headgear',  group: 'body'     },
-  { id: 'armor',    label: 'Armor',     group: 'body'     },
-  { id: 'cloak',    label: 'Cloak',     group: 'body'     },
-  { id: 'gloves',   label: 'Gloves',    group: 'body'     },
-  { id: 'boots',    label: 'Footwear',  group: 'body'     },
-  // Weapons — rendered in a row
-  { id: 'mainHand', label: 'Main Hand', panelLabel: 'Main',   group: 'weapons' },
-  { id: 'offHand',  label: 'Off Hand',  panelLabel: 'Off',    group: 'weapons' },
-  { id: 'ranged',   label: 'Ranged',    panelLabel: 'Ranged', group: 'weapons' },
-  // Wondrous — only items that require attunement (max 3 per D&D 5e rules)
-  { id: 'attune1',  label: 'Slot I',    group: 'wondrous', attuneOnly: true },
-  { id: 'attune2',  label: 'Slot II',   group: 'wondrous', attuneOnly: true },
-  { id: 'attune3',  label: 'Slot III',  group: 'wondrous', attuneOnly: true },
-];
-
+// The equip slots and their default arrangement. `state.equipLayout` is the
+// working copy the layout editor edits; `getSlotDef()` reads slots back out of
+// it.
 function getDefaultEquipLayout() {
   return [
     { type: 'header', label: 'Body' },

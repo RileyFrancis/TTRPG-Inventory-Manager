@@ -3,9 +3,6 @@
 // =============================================================================
 'use strict';
 
-// =============================================================================
-// EDGE AUTO-SCROLL
-// =============================================================================
 // A drag holds the pointer button down, so the wheel is the only way to reach a
 // folder or a grid row that is scrolled out of view — and letting go to scroll
 // ends the drag. Holding the cursor near a scrollable container's edge therefore

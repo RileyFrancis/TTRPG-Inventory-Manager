@@ -3,16 +3,10 @@
 // =============================================================================
 'use strict';
 
-// A shop belongs to the table, not to a character: the GM builds it, the whole
-// party draws from one pile of stock, and a sword bought by one player is gone
-// for the rest. Firebase is therefore the only copy — `state.shops` is a
-// read-through cache of `parties/<code>/shops` and every GM edit writes straight
-// there. Nothing about a shop enters the save file.
-//
-// Reveal is a *pacing* control, not a security boundary. An unrevealed shop is
-// filtered out on the client by shopVisibleToMe(); a player who reads the
-// database directly could still see it. Making a draft genuinely unreadable
-// would mean parking it under a GM-only path — see CLAUDE.md.
+// A shop belongs to the table, not a character. `state.shops` is a read-through
+// cache of `parties/<code>/shops`; nothing about a shop enters the save file.
+// Stock is claimed by an RTDB transaction before coins move. Reveal is pacing,
+// not security (client-side filter). See CLAUDE.md § Shops.
 
 const SHOP_UNLIMITED = -1; // qty sentinel: RTDB drops nulls, so it cannot be one
 

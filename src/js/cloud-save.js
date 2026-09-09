@@ -3,23 +3,13 @@
 // =============================================================================
 'use strict';
 
-// While you are signed in, the save file follows the account instead of the
-// browser: sign in on a second machine and your inventory is there. localStorage
-// keeps working underneath as the local copy, so signing out — or losing the
-// network — leaves you exactly where the app has always been.
-//
-// The whole save is stored as one JSON string at `users/{uid}/save`, not as a
-// tree. The Realtime Database drops nulls and empty objects, which the save file
-// is full of: an unplaced item's `row` is null, and "no items" is `{}`. Written
-// as a tree, deleting your last item would silently fail to replicate. A string
-// round-trips byte for byte, and party sync — which does write a tree — is
-// unaffected.
-//
-// Two devices editing at once is settled last-writer-wins, per whole save,
-// which is honest for a save file that is really one document. The one case
-// worth asking about is the first sign-in: if this browser and the account each
-// hold real inventories, that is not a conflict to resolve silently, so
-// `openCloudConflictModal` puts the choice in front of the user.
+// While signed in, the save follows the account. The whole save is stored as one
+// JSON string at `users/{uid}/save`, not a tree — RTDB drops nulls and empty
+// objects and the save file is full of both, so a tree write would silently fail
+// to replicate a deletion. `buildSavePayload()` / `applySavePayload()` are the
+// single shape shared with the local copy. Conflicts are last-writer-wins except
+// the first sign-in with real data on both sides (`openCloudConflictModal`).
+// See CLAUDE.md § Accounts and cloud save.
 
 const CLOUD_SAVE_DEBOUNCE = 1200;
 

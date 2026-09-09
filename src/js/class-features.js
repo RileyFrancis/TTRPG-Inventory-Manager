@@ -3,61 +3,21 @@
 // =============================================================================
 'use strict';
 
-// The sheet reads `state.character.classLevels` — one `{ name, level, subclass }`
-// entry per class — and shows what those classes hand out. Three things live
-// here: the **registry**
-// (where a class definition comes from), the **section** that draws it, and the
-// **unlocks** a feature can carry — parts of the sheet that stay hidden until
-// the feature that grants them is owned.
-//
-// **The class data itself is not in this file.** It is `data/classes.json`,
-// read the same way `data/items.csv` is, for the same reason: it is content,
-// not code, and a release that adds a class should not be a code change. That
-// file is also exactly the shape a user-authored class will take — data only,
-// no behaviour — so the editor that eventually writes one has nothing new to
-// learn.
-//
-// **The registry is the seam custom classes come through.** Nothing outside
-// this file may reach into `DEFAULT_CLASSES`: everything goes through
-// `allClasses()` and `findClassByName()`. When custom classes land they become
-// one more source inside `allClasses()` and every caller gets them for free —
-// the same shape `state.db` has, where `DEFAULT_ITEMS` are re-hydrated each boot
-// and only the customs are saved.
-//
-// **Classes are matched by name, not by id**, because a class entry's `name` is
-// a free-text field the player types. A name that matches nothing is not an
-// error — it is a class this app has not been taught yet, and the section says
-// so rather than going blank.
-//
-// **Every class is read at its own level.** A Warlock 5 / Bard 2 sees the
-// Warlock list up to 5 and the Bard list up to 2, because each entry carries the
-// level it was taken to — see `classEntriesOf()` and the model in
-// characters.js. `characterClassLevel()` is where that lands, exactly as this
-// header used to promise it would. The character's *total* level (the sum) is
-// still what the proficiency bonus and the species traits are worked out from,
-// which is right by the rules.
-//
-// **Subclasses are a class in miniature** — `data/classes.json` nests them
-// under `subclasses: [{ id, name, source, features }]`. Each class entry carries
-// its own free-text `subclass`, matched against the subclasses of that class; a
-// match folds those features into the same list, gated by that class's level and
-// tagged with the subclass name. The field itself is offered in the Character
-// Setup modal only once that class's own level has unlocked it —
-// `classUnlockKeys()` is that test, and it is per class, so a Warlock 5 is asked
-// for a patron while the Bard 2 beside it is not.
-//
-// **`source`** is a short book label ("PHB") carried by a class and,
-// separately, by each subclass. The section shows it as a quiet caption above
-// the cards; absent, it says nothing.
+// The registry (where a class definition comes from), the section that draws it,
+// and the unlocks a feature can carry. Class data is `data/classes.json` —
+// content, not code. Nothing outside this file touches `DEFAULT_CLASSES`;
+// everything goes through `allClasses()` / `findClassByName()`, the seam custom
+// classes will come through. Classes are matched by name (a free-text field), and
+// each class entry is read at its own level (`characterClassLevel()`); the
+// character's total level still drives the proficiency bonus and species traits.
+// Descriptions are Markdown, so this file is a second consumer of markdown.js's
+// sanitizer. See CLAUDE.md § Class features.
 
 // =============================================================================
 // LOADING THE CLASSES
 // =============================================================================
-// Synchronous, like `loadDefaultItems()`: it is content the app is expected to
-// have, and a blocking read keeps every caller from having to cope with a
-// half-loaded registry. It is also why the app needs an HTTP server rather than
-// `file://`, and why the path is relative to the *document* rather than to this
-// script.
+// Synchronous, like `loadDefaultItems()` — content the app is expected to have,
+// and the reason it needs an HTTP server rather than `file://`.
 let DEFAULT_CLASSES = [];
 
 function loadDefaultClasses() {

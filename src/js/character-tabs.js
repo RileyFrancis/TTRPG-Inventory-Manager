@@ -3,15 +3,11 @@
 // =============================================================================
 'use strict';
 
-// The strip above the inventory holds one tab per character you can look at:
-// your own, plus everyone else in the party. A tab is not a plain switch —
-// clicking one opens a two-item menu, because every character has two views
-// (their character sheet and their inventory) and the tab is how you choose.
-//
-// *Which* character is shown stays where it always lived, in
-// `state.party.viewingPlayerId`, so these tabs and the sidebar's Party panel are
-// two faces of one selection — switch from either and both follow. Only the
-// sheet/inventory choice is new, in `state.view`.
+// One tab per character you can look at (your own, plus every party member).
+// Clicking a tab opens a two-item menu — sheet or inventory. Which character is
+// shown is `state.party.viewingPlayerId` (shared with the Party panel); which
+// view is `state.view`. Neither is saved. `syncCharacterViewUI()` is the single
+// entry point for "who or what we're looking at changed".
 
 const charTabsEl    = document.getElementById('character-tabs');
 const charTabMenuEl = document.getElementById('char-tab-menu');
