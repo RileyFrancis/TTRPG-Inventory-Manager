@@ -438,6 +438,13 @@
               <div id="init-actions"></div>
             </div>
             <ol id="init-list"></ol>
+            <!-- The player's own way into the fight, so rolling initiative does
+                 not mean leaving the board to find the sheet. `data-roll` is
+                 the sheet's own attribute and dice.js's own gesture pair reads
+                 it, so this is the same roll rather than a copy of it. -->
+            <div id="init-footer" class="hidden">
+              <button id="init-roll-own" class="btn-sm" type="button" data-roll="initiative">Roll Initiative</button>
+            </div>
           </div>
           <div id="map-empty" class="hidden">
             <span class="map-empty-icon">&#128506;</span>

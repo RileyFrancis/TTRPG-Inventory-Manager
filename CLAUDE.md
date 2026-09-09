@@ -1224,10 +1224,26 @@ second listener and no new database rule; and it is thrown away with the map.
 - **The order is score, then the moment of the roll, then the id.** The
   tie-break is arbitrary but *stable*, which is the only property that matters:
   every client sorts the same list the same way without asking anyone.
-- **A player joins by rolling Initiative on their sheet.** It is an ordinary
-  roll — it flies to the corner and is said in the chat log like any other — and
-  joining the order is the extra thing it does when the party is standing on a
-  map. One hook, `noteRollForInitiative()`, called from `performRoll()` for every
+- **A player joins by rolling Initiative — from their sheet, or from the board.**
+  It is an ordinary roll — it flies to the corner and is said in the chat log
+  like any other — and joining the order is the extra thing it does when the
+  party is standing on a map. The panel's own **Roll Initiative** button carries
+  the sheet's `data-roll="initiative"` and is wired to the same pair of listeners
+  in dice.js, so it *is* that roll rather than a copy of it: the same modifier
+  off the same sheet, the same flight, the same line in the log, and the same
+  hold-for-advantage every other roll target has. A second button that worked an
+  initiative roll out for itself would be a second answer waiting to disagree
+  with the first.
+  - It is offered exactly when pressing it would do something: **not to a GM**,
+    who has no character in the order and whose button is the +; **not while
+    reading somebody else's sheet**, since the roll would be made off their
+    Dexterity and attributed to your account — the same reason
+    `noteRollForInitiative()` refuses it; and **not once you are in the order**,
+    because rolling again cannot move you.
+  - It sits under the list rather than in the head: it is a labelled button
+    among single glyphs, and it is pressed once a fight where the head's are
+    pressed every turn. It survives collapsing, because a fight you have not
+    rolled into is exactly when the list is likely to be folded away. One hook, `noteRollForInitiative()`, called from `performRoll()` for every
   roll the app makes and interested in exactly one of them (`kind: 'initiative'`,
   the only thing `kind` on a roll is for; it is deliberately not in the chat
   payload, since the log already carries the label that says it in words).
@@ -1277,9 +1293,11 @@ drawing a second and shorter panel that could disagree with the first. Whether
 it is collapsed is session-only, like the sheet's folded sections and for the
 same reason.
 
-- A **GM sees it with no fight running**, because it is the door to the first
-  roll; a player does not, because for them it would be a box with nothing in it
-  and nothing to press.
+- **The panel is part of the board, not something a fight brings with it.**
+  Before there is an order it is how one is started — the GM's + and the
+  player's Roll Initiative both live in it — and a reader who had to find a
+  different screen to enter the fight they are looking at would be leaving the
+  board to do it.
 - **Hovering either half lights the other**, and one piece of state serves both
   directions (`initiativeHoverId`, an *entry* id) — which is what makes them
   incapable of disagreeing. A name in a list means nothing to a reader who

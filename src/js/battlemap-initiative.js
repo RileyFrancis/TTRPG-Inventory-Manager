@@ -376,10 +376,14 @@ let initiativeHoverId = null;
 function renderInitiativePanel() {
   const panel = document.getElementById('map-initiative');
   if (!panel) return;
+  // **The panel is part of the board**, not something a fight brings with it:
+  // before there is an order it is how one is started — the GM's + and the
+  // player's Roll Initiative both live in it — and a reader who had to find a
+  // different screen to enter the fight they are looking at would be leaving
+  // the board to do it.
   const map = typeof mapViewIsShowing === 'function' && mapViewIsShowing() ? viewedMap() : null;
-  const show = !!map && (initiativeRunning(map) || canEditMap());
-  panel.classList.toggle('hidden', !show);
-  if (!show) return;
+  panel.classList.toggle('hidden', !map);
+  if (!map) return;
 
   const running = initiativeRunning(map);
   const active = initiativeActiveEntry(map);
@@ -394,7 +398,32 @@ function renderInitiativePanel() {
   toggle.classList.toggle('hidden', !running);
 
   renderInitiativeActions(map, running);
+  renderInitiativeOwnRoll(map);
   renderInitiativeRows(map, active);
+}
+
+// **The player's own roll, on the board.** The same roll the character sheet
+// makes — the same `data-roll` attribute, read by the same pair of listeners in
+// dice.js — so it takes the same modifier off the same sheet, flies the same
+// way, is said in the log the same way, and holds for advantage like every
+// other roll target. A second button that *worked out* an initiative roll for
+// itself would be a second answer waiting to disagree with the first.
+//
+// It is offered exactly when pressing it would do something:
+//   - **not to a GM**, who has no character in the order; theirs is the + that
+//     rolls for the board.
+//   - **not while reading somebody else's sheet**, since the roll would be made
+//     off their Dexterity and attributed to your account — which is the same
+//     reason `noteRollForInitiative()` refuses it.
+//   - **not once you are in the order**, because rolling again cannot move you
+//     (see the note there), and a button that does nothing is worse than no
+//     button at all.
+function renderInitiativeOwnRoll(map) {
+  const footer = document.getElementById('init-footer');
+  const uid = ownPlayerId();
+  const own = typeof liveStateIsOwnCharacter !== 'function' || liveStateIsOwnCharacter();
+  const rolled = !!uid && !!mapInitiative(map).entries[INITIATIVE_PC_PREFIX + uid];
+  footer.classList.toggle('hidden', canEditMap() || !uid || !own || rolled);
 }
 
 function renderInitiativeActions(map, running) {
@@ -430,8 +459,8 @@ function renderInitiativeRows(map, active) {
     const empty = document.createElement('li');
     empty.className = 'init-empty';
     empty.textContent = canEditMap()
-      ? 'Nobody has rolled. Players roll from their sheet; + rolls for the board.'
-      : 'Roll Initiative on your character sheet to join the order.';
+      ? 'Nobody has rolled. Players roll for themselves; + rolls for the board.'
+      : 'Nobody has rolled yet.';
     list.appendChild(empty);
     return;
   }
@@ -554,6 +583,12 @@ document.getElementById('init-toggle').addEventListener('click', () => {
 });
 
 document.getElementById('init-roll-btn').addEventListener('click', confirmInitiativeRoll);
+
+// The board's Roll Initiative, wired the way the sheet's twenty-five roll
+// targets are: dice.js owns the gesture, this only says which roll it is.
+const initOwnRollEl = document.getElementById('init-roll-own');
+initOwnRollEl.addEventListener('pointerdown', e => beginRollGesture(e, initOwnRollEl, () => sheetRollSpec('initiative')));
+initOwnRollEl.addEventListener('click', () => rollFromClick(() => sheetRollSpec('initiative')));
 document.getElementById('init-group-name').addEventListener('input', e => {
   e.target.dataset.touched = e.target.value ? '1' : '';
 });

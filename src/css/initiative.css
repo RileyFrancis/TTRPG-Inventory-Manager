@@ -178,6 +178,22 @@
   color: var(--text-dim);
 }
 
+/* The player's own roll sits under the order rather than in the head: it is a
+   labelled button among a row of single glyphs, and it is pressed once a fight
+   — where the head's buttons are pressed every turn. It stays put when the list
+   is collapsed, because a fight you have not rolled into is exactly when the
+   panel is likely to be folded away. */
+#init-footer {
+  padding: 6px;
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+}
+#init-roll-own {
+  width: 100%;
+  font-size: 11px;
+  padding: 5px 6px;
+}
+
 /* Collapsed: only whose turn it is. The head stays, because the round number
    and the way back open are the rest of what a glance wants. */
 #map-initiative.collapsed .init-row:not(.active) { display: none; }
