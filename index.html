@@ -477,12 +477,10 @@
                  it's on. Purple to stay clear of every hostility colour. -->
             <span class="map-legend-item" style="--lc:#a860ff"><span class="map-legend-dot"></span>Player-owned</span>
           </div>
-          <!-- The reader's own remaining movement this turn — centred on the
-               map panel's own top-right corner, clipped by #map-stage's own
-               overflow so the sliver that crosses the corner reads as tucked
-               behind the toolbar and the sidebar rather than floating over
-               them. Built by renderMapSpeedIndicator() in
-               src/js/battlemap-view.js. -->
+          <!-- The reader's own remaining movement this turn, in the map
+               panel's own top-right corner (kept fully inside #map-stage —
+               see battlemap.css for why). Built by renderMapSpeedIndicator()
+               in src/js/battlemap-view.js. -->
           <div id="map-speed" class="hidden">
             <span id="map-speed-remaining">0</span>
             <span id="map-speed-total">/0 ft</span>
