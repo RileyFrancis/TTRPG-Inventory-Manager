@@ -41,27 +41,18 @@ function handleAuthStateChange(user) {
   state.auth.ready = true;
 
   updateAuthUI();
-  // The Campaigns section is gated on having an account, and a sign-in *for*
-  // something (below) returns without reopening the home screen — so it is
-  // refreshed here rather than only where the screen is opened. A no-op unless
-  // the roster page is what is on screen.
-  renderHomeScreen();
-  renderChat(); // who may speak just changed, and the pane says so
-  onAuthUserChanged(state.auth.user); // cloud-save.js picks it up from here
-
-  // The boot guess about which screen to open, corrected now that Firebase has
-  // actually spoken. A session that has expired since the last visit leaves the
-  // home screen up — it is still this browser's roster, and Back is right there.
-  rememberSignedIn(!!user);
+  renderHomeScreen();                  // the Campaigns section is gated on an account
+  renderChat();                        // who may speak just changed
+  onAuthUserChanged(state.auth.user);  // cloud-save.js picks it up from here
+  rememberSignedIn(!!user);            // corrects the boot guess about which screen to open
 
   if (!user) return;
 
-  // Unconditionally: the login screen has served its purpose the moment there
-  // is a user, whether something was waiting on it or not. Leaving it up made
-  // a successful Google sign-in look like it had done nothing at all.
+  // Unconditionally — a Google sign-in that left the modal up looked like it
+  // had done nothing.
   hideModal('login-modal');
 
-  // Then whatever the sign-in was for — the party modal, or back to Settings.
+  // Whatever the sign-in was for — the party modal, or back to Settings.
   if (pendingAuthAction) {
     const action = pendingAuthAction;
     pendingAuthAction = null;
@@ -69,11 +60,8 @@ function handleAuthStateChange(user) {
     return;
   }
 
-  // Nothing was waiting on it, so this is a sign-in for its own sake — or a
-  // session restored at boot. Either way an account means a roster, and the
-  // roster is where a player starts. A sign-in *for* something goes there
-  // instead, above: it would be strange to answer "join a party" with a
-  // character list.
+  // Nothing was waiting on it: an account means a roster, and the roster is
+  // where a player starts.
   openHomeScreen();
 }
 
@@ -100,9 +88,8 @@ function requireAuth(reason, action) {
 // =============================================================================
 // THE LOGIN MODAL
 // =============================================================================
-// `onSuccess` is what happens once they are through — the party modal, or the
-// Settings panel they started from. Something visible always follows, so
-// signing in never reads as nothing having happened.
+// `onSuccess` runs once they are through — always something visible, so signing
+// in never reads as nothing having happened.
 function openLoginModal(reason, onSuccess = null) {
   pendingAuthAction = onSuccess;
   setLoginMode('signin');
@@ -141,9 +128,7 @@ function showLoginError(message, kind = 'error') {
   el.className = 'auth-error ' + kind + (message ? '' : ' hidden');
 }
 
-// Firebase's codes are precise but unreadable; these are the ones a user can
-// actually hit. `operation-not-allowed` is the one that catches people out: the
-// code is fine, the provider just was never switched on in the console.
+// Firebase's codes are precise but unreadable; these are the ones a user can hit.
 function authErrorMessage(err) {
   switch (err && err.code) {
     case 'auth/invalid-email':           return 'That does not look like an email address.';
@@ -154,8 +139,6 @@ function authErrorMessage(err) {
     case 'auth/wrong-password':
     case 'auth/invalid-credential':
     case 'auth/invalid-login-credentials': return 'Wrong email or password.';
-    // Not a user error at all: the project has no Authentication set up, so
-    // there is nothing to sign in to yet.
     case 'auth/configuration-not-found':   return 'This Firebase project has no Authentication enabled yet. ' +
                                                   'Open Firebase Console → Authentication → Get started, ' +
                                                   'then switch on Email/Password and Google.';
@@ -293,9 +276,7 @@ document.querySelectorAll('#login-modal .cancel-btn').forEach(btn => {
   btn.addEventListener('click', () => { pendingAuthAction = null; });
 });
 
-// Straight back to Settings afterwards, where the Account row now shows who you
-// are and that the inventory is syncing — the confirmation for a sign-in that
-// was not on its way to anywhere else.
+// Back to Settings afterwards, where the Account row confirms the sign-in.
 document.getElementById('account-signin-btn').addEventListener('click', () => {
   hideModal('settings-modal');
   openLoginModal('Sign in to sync this inventory to your account.', openSettingsModal);

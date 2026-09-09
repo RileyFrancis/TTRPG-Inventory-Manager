@@ -183,9 +183,8 @@ function onDragEnd(e) {
 
   let placed = false;
 
-  // Try to drop onto the equip slot that was highlighted during the drag.
-  // Using the tracked dragHoverSlotId is more reliable than re-checking at pointerup
-  // because pointer coordinates can be stale or imprecise at release time.
+  // Drop onto the slot highlighted during the drag — the tracked id is more
+  // reliable than re-checking at pointerup, where coordinates can be stale.
   if (dragHoverSlotId) {
     // Restore grid position first (skip if dragged from stash — item has no grid pos)
     if (drag.origRow !== null && drag.origRow !== undefined) {

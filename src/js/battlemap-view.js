@@ -29,24 +29,20 @@ let mapCanvasW = 0, mapCanvasH = 0;      // CSS pixels
 // The picture, kept as one <img> and reloaded only when the map changes.
 let mapImage = null, mapImageSrc = null, mapImageReady = false;
 
-// The fog, at the picture's resolution (capped). `fogDirty` is what keeps it
-// from being recomputed on every pan.
+// The fog, at the picture's resolution (capped). `fogDirty` keeps it from being
+// recomputed on every pan.
 let fogCanvas = null, fogCtx = null, fogScale = 1, fogDirty = true;
 let hiddenTokenIds = new Set();
 const FOG_MAX_DIM = 1600;
 
-// **How soft the fog's edge is, as a fraction of the map's longer side.** A
-// fraction rather than a number of pixels: the softness then reads the same on a
-// small map and a large one, and it is the map the reader is looking at rather
-// than the fog canvas, whose resolution is an implementation detail that changes
-// with `FOG_MAX_DIM`. Under a hundredth of the board — enough that a shadow has
-// no drawn edge, small enough that it is still an answer about where the light
-// stops.
+// Fog-edge softness as a fraction of the map's longer side, so it reads the same
+// on any map size (and is measured against the picture, not the fog canvas whose
+// resolution is a FOG_MAX_DIM detail).
 const FOG_BLUR_FRACTION = 0.008;
 const FOG_BLUR_MIN_PX = 2;
 
-// A gesture in flight: a pan, a token being dragged, a shape being drawn, or
-// the grid being stretched or slid.
+// A gesture in flight: a pan, a token drag, a shape being drawn, or the grid
+// being stretched or slid.
 let mapPan = null;      // { sx, sy, camX, camY }
 let mapTokenDrag = null;// { id, x, y, dx, dy, moved }
 let mapDrawing = null;  // { tool, x0, y0, x1, y1 }
@@ -55,45 +51,33 @@ let mapGridDrag = null; // { mode, held, pivot, sx, sy, grid0, grid, moved }
 const MAP_MIN_SCALE = 0.05;
 const MAP_MAX_SCALE = 8;
 
-// **The Grid tool's handles are the picture's own corners and edges.** Drag one
-// and the grid is magnified about the point opposite — a corner about the corner
-// diagonally across, an edge about the middle of the edge facing it. Drag
-// anywhere else and the whole grid slides. See THE GRID'S HANDLES below.
-//
-// Their reach is in *screen* pixels: a handle is something the hand aims at, so
-// it is the same size however far the board is zoomed out.
+// The Grid tool's handles are the picture's own corners and edges (see THE
+// GRID'S HANDLES below). Their reach is in *screen* pixels — a handle is
+// something the hand aims at, the same size however far the board is zoomed.
 const GRID_HANDLE_PX = 13;
 
 // =============================================================================
 // WHAT IS BEING LOOKED AT
 // =============================================================================
-// A player is always shown the map the party is on, because that is what "the
-// map" means to them. A GM has a library, so they are shown the one they opened
-// — which is normally the one in play, since opening a map from the library
-// puts the party on it first.
+// A player is always shown the map the party is on. A GM is shown the one they
+// opened (normally the one in play, since opening from the library puts the
+// party on it first).
 function viewedMap() {
   if (!isMapGM()) return mapForViewer();
   return mapById(mapViewId) || mapForViewer();
 }
 
-// **Whether the middle panel is showing the board**, which is not the same as
-// `state.view === 'map'`: the map can be pulled out from under the reader — a
-// GM deleting it, or un-revealing it — and the panel then falls back to the
-// grid while the field still says 'map'. Exactly the shape of the sheet's own
-// `hasViewedCharacter()` caveat, and the reason this is a function both halves
-// of the screen ask rather than a test each writes out for itself.
-//
-// `viewedMap()` rather than `mapForViewer()`: a GM opening a map from their
-// library puts the party on it and shows it in the same breath, and the write
-// saying which map is active has not come back from Firebase yet.
+// Whether the middle panel is showing the board — NOT the same as
+// `state.view === 'map'`: the map can be pulled out from under the reader (a GM
+// deleting or un-revealing it) and the panel falls back to the grid while the
+// field still says 'map'. `viewedMap()` not `mapForViewer()`: a GM opening a map
+// from their library shows it before the "active map" write comes back.
 function mapViewIsShowing() {
   return state.view === 'map' && !!viewedMap();
 }
 
-// The button in the corner of the inventory panel exists only when there is
-// something behind it. A player with no revealed map, or anyone with no
-// campaign at all, gets no button rather than a button that opens nothing —
-// and nobody gets one while the map is already what this panel is showing.
+// The corner button exists only when there is something behind it — no revealed
+// map, or no campaign, means no button; and none while the map is already up.
 function syncMapButton() {
   const btn = document.getElementById('map-btn');
   if (!btn) return;
@@ -101,17 +85,14 @@ function syncMapButton() {
   const show = !!map && state.view !== 'map';
   btn.classList.toggle('hidden', !show);
   btn.title = map ? 'Open the battle map — ' + map.name : 'Battle map';
-  // The stash's header runs along the bottom of the panel and the button lands
-  // on it, so it is padded clear — see the note in battlemap.css.
+  // The stash header runs along the bottom of the panel; pad it clear of the button.
   document.getElementById('inventory-panel').classList.toggle('has-map-btn', show);
 }
 
 // =============================================================================
 // OPENING AND CLOSING
 // =============================================================================
-// Which view the reader was on before the map took the panel, so closing it
-// hands them back what they were reading rather than always the grid. Session
-// only, like every other piece of "where am I" in this app.
+// Which view the reader was on before the map took the panel. Session only.
 let mapReturnView = 'inventory';
 
 function openBattlemap(mapId) {
@@ -122,17 +103,14 @@ function openBattlemap(mapId) {
   mapTool = 'select';
   fogDirty = true;
   if (state.view !== 'map') mapReturnView = state.view;
-  // The GM's grid controls live in the Maps pane, and lining a grid up on a
-  // picture is done by looking at the picture — so opening a map puts that pane
-  // in front of them. It is the one pane whose subject is the thing now filling
-  // the middle of the screen.
+  // The GM's grid controls live in the Maps pane, and lining a grid up is done
+  // while looking at the picture — so opening a map puts that pane in front.
   if (isMapGM()) {
     state.mapLibraryOpenId = map.id;
     if (leftTabsAvailable().includes('map')) state.leftTab = 'map';
   }
-  // Everything the panel has to do to show a map happens in onMapViewShown(),
-  // driven from the single "what are we looking at" entry point — so opening
-  // the map from here and arriving at it any other way cannot disagree.
+  // The panel's actual work happens in onMapViewShown(), from the single "what
+  // are we looking at" entry point, so every way in agrees.
   setInventoryView('map');
 }
 
@@ -141,24 +119,20 @@ function closeBattlemap() {
   setInventoryView(mapReturnView === 'map' ? 'inventory' : mapReturnView);
 }
 
-// Which map the camera was last framed for. Framing is not something to do
-// every time the map is looked at: a GM who has zoomed into a doorway, glanced
-// at a player's sheet and come back must find the doorway, not the whole board.
-// It is a *different* map that has never been framed.
+// Which map the camera was last framed for — a GM who zoomed into a doorway,
+// glanced at a sheet and came back must find the doorway. Only a *different* map
+// gets framed.
 let mapFramedId = null;
 
-// The panel has just started showing the map. **Called on every pass through
-// `syncCharacterViewUI()`, which a party roster snapshot drives — so it does
-// nothing at all unless the map was not already up.** Setting the canvas size
-// clears it, and rebuilding the toolbar throws away whatever button the cursor
-// was over; neither belongs on a presence heartbeat. A panel resize is the
-// ResizeObserver's, and a data change is `onBattlemapDataChanged()`'s.
+// The panel has just started showing the map. Called on every pass through
+// `syncCharacterViewUI()` (a roster snapshot drives it), so it does nothing
+// unless the map was not already up — setting the canvas size and rebuilding the
+// toolbar must not run on a presence heartbeat.
 function onMapViewShown() {
   const wasOpen = mapOpen;
   mapOpen = true;
   if (!wasOpen) {
-    // The canvas has no size until the panel is showing it, so it is measured
-    // here rather than when the map was asked for.
+    // The canvas has no size until the panel is showing it.
     ensureMapCanvas();
     resizeMapCanvas();
     const map = viewedMap();
@@ -174,8 +148,7 @@ function onMapViewShown() {
   syncGridHint();
 }
 
-// The panel has stopped showing the map. A gesture in flight is abandoned —
-// there is no canvas under the cursor any more to finish it on.
+// The panel has stopped showing the map. A gesture in flight is abandoned.
 function onMapViewHidden() {
   if (!mapOpen) return;
   mapOpen = false;
@@ -186,14 +159,12 @@ function onMapViewHidden() {
   renderInitiativePanel();   // which, with the board gone, is what hides it
 }
 
-// Everything arriving from Firebase lands here — a creature somebody else
-// moved, a wall the GM drew, the map being swapped out from under the party.
+// Everything arriving from Firebase lands here.
 function onBattlemapDataChanged() {
   if (!mapOpen) return;
   const map = viewedMap();
-  // The map was deleted, or a player's map was hidden again mid-session. There
-  // is nothing to show, so the panel hands the reader back their inventory
-  // rather than standing empty.
+  // The map was deleted, or a player's map hidden again — hand the reader back
+  // their inventory rather than standing empty.
   if (!map) { closeBattlemap(); return; }
   loadMapImage(map);
   fogDirty = true;
@@ -216,9 +187,8 @@ function loadMapImage(map) {
   mapImage.src = map.image || '';
 }
 
-// The picture's own pixels are the model's frame of reference, so the stored
-// dimensions are what everything is measured against — never the <img>'s, which
-// are not known until it loads and are not what the coordinates were written in.
+// The stored dimensions are the model's frame of reference — never the <img>'s,
+// which are not known until it loads and are not what coordinates were written in.
 function mapBounds(map) {
   return { x: 0, y: 0, w: map.w || 1000, h: map.h || 1000 };
 }
@@ -248,8 +218,7 @@ function fitMapToView(map) {
   mapCam = { x: b.w / 2, y: b.h / 2, scale: Math.max(MAP_MIN_SCALE, Math.min(MAP_MAX_SCALE, s)) };
 }
 
-// Zoom about the cursor rather than about the centre: the thing under the
-// pointer is the thing being looked at, and it should stay put.
+// Zoom about the cursor — the thing under the pointer should stay put.
 function zoomMapAt(clientX, clientY, factor) {
   const before = screenToWorld(clientX, clientY);
   mapCam.scale = Math.max(MAP_MIN_SCALE, Math.min(MAP_MAX_SCALE, mapCam.scale * factor));
@@ -262,29 +231,15 @@ function zoomMapAt(clientX, clientY, factor) {
 // =============================================================================
 // THE FOG
 // =============================================================================
-// Rebuilt from the map's walls and whoever is standing on it, then used twice:
-// painted over the board, and sampled under each creature. Black means "the
-// party cannot see here", so punching a hole in it is what vision does.
-//
-// **A map with nobody on it has no fog at all.** With no party member to see
-// out of, the honest arithmetic is that nothing is visible — and a board that
-// opens entirely black the first time it is used reads as broken rather than as
-// dark. Fog begins the moment somebody is standing there to cast it.
-// **The edge of a shadow is not a line.** Light falls off, eyes are not
-// cameras, and a hard black boundary crossing a picture of a room reads as a
-// polygon rather than as dark. So every hole the vision cuts, and every region
-// the GM paints, is drawn through a blur.
-//
-// It is done to the **shapes as they are cut**, not to the finished canvas. A
-// blur over the whole thing would soften the fog's own outer boundary too, and
-// that boundary is the edge of the map — where the dark has to stay solid, or
-// the board would end in a glow of half-light leaking in from beyond the
-// picture.
-//
-// The radius is in fog-canvas pixels, which is where the drawing happens.
-// Returns `null` where the browser has no canvas filters, and the caller then
-// draws exactly what it always did: a crisp edge is a worse shadow, not a broken
-// one.
+// Black means "the party cannot see here"; vision punches holes in it. Used
+// twice: painted over the board, and sampled under each creature. A map with
+// nobody on it has no fog at all (nothing to see out of; an all-black board
+// reads as broken). The edge of a shadow is blurred — applied to the shapes as
+// they are cut, never the finished canvas, so the fog's own outer boundary (the
+// edge of the map) stays hard.
+
+// Returns null where the browser has no canvas filters; the caller then draws a
+// crisp edge (a worse shadow, not a broken one).
 function fogBlurFilter(fx) {
   const px = Math.max(FOG_BLUR_MIN_PX, Math.round(Math.max(fogCanvas.width, fogCanvas.height) * FOG_BLUR_FRACTION));
   const filter = 'blur(' + px + 'px)';
@@ -315,9 +270,7 @@ function buildFog(map) {
   fx.fillStyle = '#000';
   fx.fillRect(0, 0, b.w, b.h);
 
-  // The dark itself is laid down hard — it is the whole canvas, and its only
-  // edge is the edge of the map. Everything cut *out* of it is what gets the
-  // soft edge.
+  // The dark is laid down hard; everything cut out of it gets the soft edge.
   const blur = fogBlurFilter(fx);
 
   // What each party member can see, cut straight out of the dark.
@@ -336,26 +289,18 @@ function buildFog(map) {
     fx.fill();
   });
 
-  // The GM's own hand, applied over the arithmetic. A revealed region beats
-  // what the walls say; an obscured one beats everything, so it goes last —
-  // "I have decided you cannot see this" is the strongest claim on the map.
-  // Softened alike: a hand-drawn region is still a claim about what can be seen,
-  // and the one place on the board where the dark had a drawn edge would be
-  // exactly the place the eye went to.
+  // The GM's hand, over the arithmetic: Reveal beats the walls, Obscure beats
+  // everything so it goes last. Softened alike.
   masks.filter(m => m.mode === 'show').forEach(m => fx.fillRect(m.x, m.y, m.w, m.h));
   fx.globalCompositeOperation = 'source-over';
   fx.fillStyle = '#000';
   masks.filter(m => m.mode === 'hide').forEach(m => fx.fillRect(m.x, m.y, m.w, m.h));
   fx.filter = 'none';
 
-  // Which creatures that leaves off the board. Sampled from the fog rather than
-  // recomputed from the polygons, so what is hidden and what is dark are one
-  // answer: a creature is on screen if any part of its disc is in the light.
-  //
-  // The blur costs this nothing. A half-alpha threshold on a soft edge is the
-  // middle of the ramp, which is where the hard edge used to be — so a creature
-  // standing on the boundary is judged exactly as before, and one standing in
-  // the new penumbra is judged by whether it is more in the light than out.
+  // Which creatures that leaves off the board — sampled from the fog, so what is
+  // hidden and what is dark are one answer. On screen if any probe is in the
+  // light. The blur costs this nothing: half-alpha on a soft edge is the middle
+  // of the ramp, where the hard edge used to be.
   mapTokens(map).forEach(t => {
     const at = tokenDrawPos(t);
     const r = tokenRadius(map, t) * 0.7;
@@ -374,8 +319,8 @@ function fogAlphaAt(wx, wy) {
   try { return fogCtx.getImageData(x, y, 1, 1).data[3]; } catch { return 0; }
 }
 
-// A token being dragged is drawn — and casts its vision — from where the cursor
-// has it, not from where the database still says it is.
+// A dragged token is drawn — and casts its vision — from where the cursor has
+// it, not where the database still says it is.
 function tokenDrawPos(token) {
   if (mapTokenDrag && mapTokenDrag.id === token.id) return { x: mapTokenDrag.x, y: mapTokenDrag.y };
   return { x: token.x, y: token.y };
@@ -393,13 +338,11 @@ function ensureMapCanvas() {
   mapCanvas.addEventListener('pointerup', onMapPointerUp);
   mapCanvas.addEventListener('pointercancel', onMapPointerUp);
   mapCanvas.addEventListener('dblclick', onMapDoubleClick);
-  // The cursor leaving the board is the end of a hover, and nothing else would
-  // say so: pointermove stops arriving rather than arriving with nothing under
-  // it, so the last creature would stay lit in the panel indefinitely.
+  // The cursor leaving the board ends a hover — pointermove just stops arriving,
+  // so the last creature would stay lit in the panel forever.
   mapCanvas.addEventListener('pointerleave', () => setInitiativeHover(null));
   mapCanvas.addEventListener('wheel', onMapWheel, { passive: false });
-  // The right button pans, so the browser's own menu would land on every pan.
-  mapCanvas.addEventListener('contextmenu', e => e.preventDefault());
+  mapCanvas.addEventListener('contextmenu', e => e.preventDefault()); // right button pans
   new ResizeObserver(() => { resizeMapCanvas(); drawBattlemap(); }).observe(mapCanvas.parentElement);
 }
 
@@ -449,11 +392,9 @@ function drawBattlemap() {
   ctx.restore();
 }
 
-// The grid as it is *being* dragged, which is not yet the grid as it is stored:
-// a size or an offset is written once, on release, rather than a write per
-// pointermove into a database every other member is reading. Everything that
-// draws the grid asks these two rather than the model's own, so what is under
-// the cursor is what the release will commit.
+// The grid as it is *being* dragged, not yet as it is stored (written once, on
+// release). Everything that draws the grid asks these, so what is under the
+// cursor is what the release will commit.
 function viewGrid(map) {
   return mapGridDrag ? mapGridDrag.grid : mapGrid(map);
 }
@@ -464,10 +405,8 @@ function viewCellSize(map) {
 
 function drawMapGrid(ctx, map, b) {
   const g = viewGrid(map);
-  // While the Grid tool is up the grid is what is being worked on, so it is
-  // drawn whether or not it is switched on for play and whether or not it is
-  // faint enough to read against the picture. Turning it off to look at the map
-  // and then being unable to line it up is the trap this avoids.
+  // While the Grid tool is up the grid is drawn whether or not it is switched on
+  // for play — it is the thing being worked on.
   const tuning = mapTool === 'grid';
   if (g.visible === false && !tuning) return;
   const cell = viewCellSize(map);
@@ -488,8 +427,8 @@ function drawMapGrid(ctx, map, b) {
   ctx.restore();
 }
 
-// Walls are the GM's own notes about the room, not part of the picture, so only
-// the GM sees them — a player sees what they do, which is the dark behind them.
+// Walls are the GM's notes, not part of the picture, so only the GM sees them —
+// a player sees the dark behind them.
 function drawMapWalls(ctx, map) {
   ctx.save();
   ctx.strokeStyle = 'rgba(255, 92, 92, 0.9)';
@@ -516,8 +455,8 @@ function drawMapMasks(ctx, map) {
   ctx.restore();
 }
 
-// The GM is shown the fog as a wash rather than as a wall: they have to see
-// both what the players cannot see *and* what is standing in it.
+// The GM sees the fog as a wash, not a wall — they need both what the players
+// cannot see and what is standing in it.
 function drawMapFog(ctx, b) {
   if (!fogCanvas) return;
   ctx.save();
@@ -528,8 +467,7 @@ function drawMapFog(ctx, b) {
 
 function drawMapTokens(ctx, map) {
   const cell = mapCellSize(map);
-  // Whose turn it is, and what the reader is pointing at in the turn order —
-  // worked out once for the frame rather than asked per creature.
+  // Whose turn it is, and the turn-order hover — worked out once for the frame.
   const marks = initiativeMarks(map);
   mapTokens(map).forEach(token => {
     if (!canEditMap() && hiddenTokenIds.has(token.id)) return;
@@ -559,12 +497,9 @@ function drawMapTokens(ctx, map) {
       ctx.setLineDash([]);
     }
 
-    // **The turn order, drawn on the board.** A tracker beside a map is two
-    // lists of the same fight, and a reader should never have to work out which
-    // name is which creature — so the creature whose turn it is wears the
-    // panel's own accent, and whatever the cursor is over in either place is
-    // lit in both. Hover is white where the turn is gold, and solid where the
-    // selection ring is dashed, so three different answers never look alike.
+    // The turn order, drawn on the creature: the active one wears the panel's
+    // accent (gold), the hovered one white — so the turn, the hover and the
+    // dashed selection ring never look alike.
     const mark = marks.get(token.id);
     if (mark) {
       const lw = Math.max(2, r * (mark === 'active' ? 0.16 : 0.1));
@@ -601,8 +536,8 @@ function drawMapTokens(ctx, map) {
   });
 }
 
-// The shape under the cursor while it is being dragged out. Drawn from the same
-// numbers the write will use, so what is committed is what was shown.
+// The shape under the cursor while it is dragged out, from the same numbers the
+// write will use.
 function drawMapDrawing(ctx) {
   if (!mapDrawing) return;
   const r = drawingRect(mapDrawing);
@@ -628,9 +563,6 @@ function drawMapDrawing(ctx) {
   ctx.restore();
 }
 
-// The rectangle a drag has swept out, whichever corner it was started from, and
-// the radius a circle has reached. Both read the same `mapDrawing` the commit
-// does, so the shape written is the shape that was shown.
 function drawingRect(d) {
   return {
     x: Math.min(d.x0, d.x1), y: Math.min(d.y0, d.y1),
@@ -642,38 +574,15 @@ function drawingRadius(d) { return Math.hypot(d.x1 - d.x0, d.y1 - d.y0); }
 // =============================================================================
 // THE GRID'S HANDLES
 // =============================================================================
-// **The grid is lined up by dragging the picture it has to line up with.** The
-// handles are the map's own corners and edges: pull one and the grid is
-// magnified about the point opposite — a corner about the corner diagonally
-// across, an edge about the middle of the edge facing it — so that point stays
-// welded where it is and the squares grow or shrink under the hand. Drag
-// anywhere else and the whole grid slides.
-//
-// There is nothing else to set, and that is the point. A grid on somebody else's
-// picture is two questions — how big is a square, and where does the run of them
-// start — and a scale about a fixed point answers both at once, because the
-// pivot *is* the start. The old versions of this both asked the reader for a
-// third thing that was really about the tool rather than the map: a box to count
-// squares in, then a frame to say how many squares it spanned. A corner of the
-// picture needs no such thing, and it is the longest lever the map has to offer,
-// so it is also the most precise: a square out by a pixel at one corner is
-// visibly out by twenty at the other, and the drag divides that error by every
-// square in between.
-//
-// **An edge is the same gesture with one axis held back.** A corner is pulled
-// diagonally and both axes have an opinion about the magnification; an edge is
-// pushed straight in or out and only the axis it faces does, so movement along
-// the edge is ignored rather than averaged in. That is what makes it the finer
-// of the two — a hand crossing the picture sideways cannot nudge the answer —
-// and it is why the two kinds of handle differ in exactly one field.
-//
-// Nothing here is stored. The handles are drawn while the tool is up and are
-// otherwise not part of the map at all.
+// The grid is lined up by dragging the picture it has to line up with. Pull a
+// corner or edge and the grid magnifies about the point opposite (which stays
+// welded); drag anywhere else and the whole grid slides. A scale about a fixed
+// point answers both "how big is a square" and "where does the run start" at
+// once — the pivot IS the start. A corner asks both axes; an edge asks only the
+// axis it faces (movement along the edge is ignored), which makes it the finer
+// of the two. Nothing here is stored. See CLAUDE.md § Lining the grid up.
 
-// Where the handles are, in the picture's own pixels. `ix` / `iy` run 0 to 1
-// across the map, so a half is the middle of an edge and the pivot is always
-// `1 - i` — one rule that gives the corner its diagonal and the edge its
-// opposite side without either being written out.
+// `ix`/`iy` run 0→1 across the map; the pivot is always `1 - i`.
 const GRID_HANDLE_SPOTS = [
   { ix: 0,   iy: 0,   axis: null },   // the four corners: both axes speak
   { ix: 1,   iy: 0,   axis: null },
@@ -695,13 +604,9 @@ function mapGridHandles(map) {
   }));
 }
 
-// Which handle the pointer is on, measured in **screen** pixels for the reason
-// they are drawn at a fixed screen size: they are targets for the hand, not
-// marks on the board. A handle scrolled off the edge simply cannot be grabbed —
-// Fit brings the whole picture, and all eight, back.
-//
-// Nearest wins, so on a map squeezed small enough for a corner and an edge to
-// overlap the reader gets whichever they were actually closer to.
+// Which handle the pointer is on, in *screen* pixels (they are drawn at a fixed
+// screen size). A handle scrolled off the edge cannot be grabbed — Fit brings it
+// back. Nearest wins.
 function gridHandleAtPoint(map, clientX, clientY) {
   const r = mapCanvas.getBoundingClientRect();
   const px = clientX - r.left, py = clientY - r.top;
@@ -714,22 +619,11 @@ function gridHandleAtPoint(map, clientX, clientY) {
   return best;
 }
 
-// **How far the handle has been pulled, as one number.** Each axis says what it
-// thinks the magnification is — how far the pointer now stands from the pivot,
-// against how far the handle stood from it.
-//
-// A corner averages the two. Averaged rather than measured along the diagonal,
-// so the answer does not depend on the shape of the picture: on a map twice as
-// wide as it is tall, a diagonal measurement would let sideways movement do most
-// of the work and the grid would pull unevenly under the hand.
-//
-// **An edge asks only the axis it faces**, which is the whole of what an edge
-// handle is for. Its other axis is a span of zero — the handle and its pivot
-// share that coordinate — so there is no ratio there to take, and movement along
-// the edge is not a magnification of anything.
-//
-// A drag straight past the pivot is a magnification of nothing, and the size
-// clamp is what catches it.
+// How far the handle has been pulled, as one number. Each axis says how far the
+// pointer now stands from the pivot against how far the handle stood from it. A
+// corner averages the two (not a diagonal distance, which would let a wide map's
+// sideways movement dominate); an edge asks only the axis it faces. The size
+// clamp catches a drag straight past the pivot.
 function scaleGridDrag(map, drag, w) {
   const held = drag.held, pivot = drag.pivot;
   const spanX = held.x - pivot.x, spanY = held.y - pivot.y;
@@ -747,7 +641,7 @@ function slideGridDrag(map, drag, e) {
   drag.grid = { ...drag.grid0, ...slideGridBy(drag.grid0, dx, dy) };
 }
 
-// The cursor a handle deserves: an edge moves one way, a corner both.
+// An edge moves one way, a corner both.
 function gridHandleCursor(h) {
   if (h.axis === 'x') return 'ew-resize';
   if (h.axis === 'y') return 'ns-resize';
@@ -755,8 +649,8 @@ function gridHandleCursor(h) {
 }
 
 // The handles, and — while one is held — what the drag has made of the squares.
-// A corner is a square block and an edge is a bar lying along the edge it
-// belongs to, so which axis a handle will move is legible before it is touched.
+// A corner is a square block, an edge a bar along its own edge, so which axis a
+// handle moves is legible before it is touched.
 function drawGridHandles(ctx, map) {
   const accent = 'rgba(255, 196, 64, ';
   const px = 1 / mapCam.scale;           // one screen pixel, in image pixels
@@ -771,13 +665,9 @@ function drawGridHandles(ctx, map) {
   mapGridHandles(map).forEach(h => {
     const on = held && held.ix === h.ix && held.iy === h.iy;
     ctx.fillStyle = accent + (on ? '1)' : '0.9)');
-    // Lying along its own edge, and thin across it: the shape of a handle says
-    // which way it will move before it is touched.
     const w = h.axis === 'y' ? LONG : h.axis === 'x' ? THIN : size;
     const t = h.axis === 'y' ? THIN : h.axis === 'x' ? LONG : size;
-    // Tucked inside the picture rather than centred on the rim: half a handle
-    // hanging off the map is half a handle to aim at, and the rim is exactly
-    // where the reader has the least room.
+    // Tucked inside the picture — half a handle off the map is half a handle to aim at.
     const x = h.x - (h.ix === 1 ? w : h.ix === 0.5 ? w / 2 : 0);
     const y = h.y - (h.iy === 1 ? t : h.iy === 0.5 ? t / 2 : 0);
     ctx.fillRect(x, y, w, t);
@@ -787,9 +677,8 @@ function drawGridHandles(ctx, map) {
   ctx.restore();
 }
 
-// The size the squares have reached, said at the handle being pulled. The bar
-// under the map says it too, but a reader mid-drag is looking at the handle in
-// their hand and at the lines moving under it, not at a caption by their knee.
+// The size the squares have reached, said at the handle being pulled (the reader
+// mid-drag is looking there, not at the bar by their knee).
 function drawGridScaleLabel(ctx, map, held) {
   const text = roundGridValue(viewCellSize(map)) + ' px per square';
   const fs = 13 / mapCam.scale;
@@ -797,9 +686,8 @@ function drawGridScaleLabel(ctx, map, held) {
 
   ctx.save();
   ctx.font = '600 ' + fs + 'px system-ui, sans-serif';
-  // Pushed inwards off whichever edges the handle sits on, and centred on the
-  // one it sits in the middle of — so the readout is on the board wherever the
-  // handle is.
+  // Pushed inwards off whichever edges the handle sits on, centred on the one it
+  // sits in the middle of.
   ctx.textAlign = held.ix === 0 ? 'left' : held.ix === 1 ? 'right' : 'center';
   ctx.textBaseline = held.iy === 0 ? 'top' : held.iy === 1 ? 'bottom' : 'middle';
   const w = ctx.measureText(text).width;
@@ -818,7 +706,7 @@ function drawGridScaleLabel(ctx, map, held) {
 // THE POINTER
 // =============================================================================
 function tokenAtPoint(map, x, y) {
-  // Backwards, so the one drawn last — the one on top — is the one hit.
+  // Backwards, so the one drawn last (on top) is the one hit.
   const tokens = mapTokens(map);
   for (let i = tokens.length - 1; i >= 0; i--) {
     const t = tokens[i];
@@ -836,17 +724,15 @@ function onMapPointerDown(e) {
   mapCanvas.setPointerCapture(e.pointerId);
   const w = screenToWorld(e.clientX, e.clientY);
 
-  // The middle and right buttons always pan, whatever tool is up: reaching the
-  // far side of a map must not mean putting a tool down first.
+  // Middle and right buttons always pan, whatever tool is up.
   if (e.button === 1 || e.button === 2) { mapPan = { sx: e.clientX, sy: e.clientY, camX: mapCam.x, camY: mapCam.y }; return; }
   if (e.button !== 0) return;
 
   if (mapTool === 'erase') { eraseMapPieceAt(map, w); return; }
 
-  // The Grid tool is the picture: a corner or an edge of the map magnifies the
-  // grid about the point opposite, anywhere else slides the whole thing. Sliding
-  // from anywhere rather than from some handle is deliberate — the grid runs over
-  // the whole picture, so the whole picture is its middle.
+  // Grid tool: a corner or edge magnifies about the point opposite, anywhere
+  // else slides the whole grid (it runs over the whole picture, so the whole
+  // picture is its middle).
   if (mapTool === 'grid') {
     const handle = gridHandleAtPoint(map, e.clientX, e.clientY);
     const grid0 = mapGrid(map);
@@ -900,10 +786,7 @@ function onMapPointerMove(e) {
     mapTokenDrag.x = w.x + mapTokenDrag.dx;
     mapTokenDrag.y = w.y + mapTokenDrag.dy;
     mapTokenDrag.moved = true;
-    // **The fog does not follow the drag.** It is rebuilt when the creature is
-    // let go, and not before — see the note on onMapPointerUp(). So the token
-    // moves under the cursor and the dark stays where it was until the move is
-    // a move rather than a look.
+    // The fog does not follow the drag — it settles on pointerup (see below).
     drawBattlemap();
     return;
   }
@@ -915,11 +798,9 @@ function onMapPointerMove(e) {
     return;
   }
 
-  // Nothing is held: whatever creature is under the cursor is lit in the turn
-  // order, which is the board's half of the panel's hover. It is asked on every
-  // move, so it is `noteMapTokenHover()`'s business to notice that the answer
-  // has not changed and do nothing — a redraw per pointermove for the same
-  // answer is exactly what this map does not do.
+  // Nothing held: whatever creature is under the cursor is lit in the turn
+  // order. Asked on every move, so noteMapTokenHover() returns early when the
+  // answer has not changed — no redraw per pointermove for the same answer.
   noteMapTokenHover(map, (tokenAtPoint(map, w.x, w.y) || {}).id || null);
 
   if (mapTool === 'grid') {
@@ -933,16 +814,12 @@ function onMapPointerUp(e) {
   const map = viewedMap();
   mapPan = null;
 
-  // The grid is written **once, on release**. Every pointermove has already
-  // been drawn from the pending copy, so the reader has watched the answer the
-  // whole way — but a write per move would be a write per move into a database
-  // every other member of the party is reading.
+  // The grid is written once, on release — a write per pointermove would be a
+  // write per move into a database every other member is reading.
   if (mapGridDrag) {
     const drag = mapGridDrag;
     mapGridDrag = null;
-    // A click that never moved is not an edit. Without this every stray click
-    // with the tool up would write the grid back to itself, and every member of
-    // the party would be handed a snapshot to redraw for nothing.
+    // A click that never moved is not an edit.
     if (map && drag.moved) updateMapGrid(map.id, drag.grid);
 
     syncGridHint();
@@ -958,11 +835,10 @@ function onMapPointerUp(e) {
       const snapped = snapToGrid(map, drag.x, drag.y, token ? token.size : 1);
       updateToken(map.id, drag.id, snapped);
     }
-    // **The fog settles here, and only here.** A creature carries the light, so
-    // a fog that followed the drag would let anyone sweep their own token across
-    // the board and read the whole map back out of the shadows without ever
-    // letting go — a look costing nothing, and undoable. Where a creature is put
-    // down is a decision; where it passed through on the way is not.
+    // The fog settles here, and only here: a fog that followed the drag would
+    // let anyone sweep their token across the board and read the whole map back
+    // out of the shadows without letting go. Where a creature is put down is a
+    // decision; where it passed through is not.
     fogDirty = true;
     drawBattlemap();
     return;
@@ -980,8 +856,7 @@ function onMapDoubleClick(e) {
   if (!map) return;
   const w = screenToWorld(e.clientX, e.clientY);
   const token = tokenAtPoint(map, w.x, w.y);
-  // A double-click on a creature edits it; on bare board it puts a new one
-  // exactly where the pointer is, which is the fastest way to lay out a fight.
+  // On a creature: edit it. On bare board: put a new one where the pointer is.
   if (token) openCreatureModal(map.id, token.id, null);
   else if (canAddCreature()) openCreatureModal(map.id, null, w);
 }
@@ -1011,8 +886,7 @@ function commitMapDrawing(map, d) {
   fogDirty = true;
 }
 
-// The eraser takes whatever the GM drew, topmost first — a fog edit sits over a
-// wall on the screen, so it comes off first too.
+// Topmost first — a fog edit sits over a wall on screen, so it comes off first.
 function eraseMapPieceAt(map, w) {
   const mask = mapMasks(map).slice().reverse()
     .find(m => w.x >= m.x && w.x <= m.x + m.w && w.y >= m.y && w.y <= m.y + m.h);
@@ -1024,9 +898,8 @@ function eraseMapPieceAt(map, w) {
 // =============================================================================
 // THE TOOLBAR
 // =============================================================================
-// Rebuilt whenever what it can offer changes, because most of what it offers is
-// conditional: the drawing tools are the GM's, the creature buttons need a
-// selection, and a player's strip is the short one that is left.
+// Rebuilt whenever what it can offer changes: the drawing tools are the GM's,
+// the creature buttons need a selection.
 const MAP_TOOLS = [
   { id: 'select',      label: 'Select',  hint: 'Move creatures · drag the board to pan',   gm: false },
   { id: 'grid',        label: 'Grid',    hint: 'Line the grid up: drag a corner or edge of the map to size the squares, anywhere else to slide them', gm: true },
@@ -1037,14 +910,9 @@ const MAP_TOOLS = [
   { id: 'erase',       label: 'Erase',   hint: 'Click a wall or a fog edit to remove it',   gm: true },
 ];
 
-// **The Grid tool's own bar, under the map**: what the two gestures are, and
-// what the grid is at this moment. A gesture nobody can guess at needs saying
-// once, where it is being done — and the numbers beside it are the same three
-// the Maps pane has in boxes, so a reader watching the lines move can read what
-// they have arrived at without looking away from the picture.
-//
-// There is nothing to set here. Everything the tool needs is on the map: the
-// corners of the picture, and everywhere else.
+// The Grid tool's own bar, under the map: what the two gestures are, and what
+// the grid is at this moment (the same three numbers the Maps pane has in
+// boxes). There is nothing to set here.
 function syncGridHint() {
   const el = document.getElementById('map-grid-hint');
   if (!el) return;
@@ -1063,9 +931,6 @@ function renderMapToolbar() {
   const map = viewedMap();
   document.getElementById('map-title').textContent = map ? map.name : 'Battle Map';
 
-  // No role badge here any more: the map shares the panel with the header's
-  // party badge now rather than covering it, and this strip has to survive
-  // being squeezed into a middle panel the reader has dragged narrow.
   const gm = canEditMap();
 
   const tools = document.getElementById('map-tools');
@@ -1078,8 +943,7 @@ function renderMapToolbar() {
     b.title = t.hint;
     b.addEventListener('click', () => {
       mapTool = t.id;
-      // The resize cursor belongs to the Grid tool, so it is put down with it.
-      if (mapTool !== 'grid' && mapCanvas) mapCanvas.style.cursor = '';
+      if (mapTool !== 'grid' && mapCanvas) mapCanvas.style.cursor = ''; // the resize cursor is the Grid tool's
       renderMapToolbar();
       drawBattlemap();
     });
@@ -1146,14 +1010,13 @@ document.getElementById('map-close-btn').addEventListener('click', closeBattlema
 document.addEventListener('keydown', e => {
   if (!mapOpen) return;
   if (document.querySelector('.modal:not(.hidden)')) return;
-  // The map lives in a panel now, beside a chat box and a sheet full of fields.
-  // A key pressed into one of those is not a key pressed at the board.
+  // The map is in a panel beside a chat box and a sheet full of fields — a key
+  // pressed into one of those is not a key pressed at the board.
   const t = e.target;
   if (t && t.matches && t.matches('input, textarea, select')) return;
   if (t && t.isContentEditable) return;
   if (e.key === 'Escape') {
-    // A shape half drawn — or a grid half dragged — is what Escape is refusing,
-    // not the whole map.
+    // A shape half drawn — or a grid half dragged — is what Escape refuses, not the map.
     if (mapDrawing) { mapDrawing = null; drawBattlemap(); return; }
     if (mapGridDrag) { mapGridDrag = null; drawBattlemap(); return; }
     closeBattlemap();

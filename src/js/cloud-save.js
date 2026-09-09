@@ -147,18 +147,16 @@ function applyCloudSave(remote, { force = false } = {}) {
   }
 
   applySavePayload(payload);
-  autoSave(); // keep the local copy in step; deliberately not debouncedSync(),
-              // which would push this straight back where it came from
+  autoSave(); // keep the local copy in step — NOT debouncedSync(), which would push it back
   renderLiveCharacter(); // the whole working copy was just replaced
-  renderHomeScreen();    // a no-op unless the roster is what is on screen
+  renderHomeScreen();
   setCloudStatus('synced');
 }
 
 // =============================================================================
 // FIRST SIGN-IN: TWO INVENTORIES
 // =============================================================================
-// A save is a whole roster now, so the summary names the active character and
-// counts the rest. `describeSavePayload` in characters.js reads either version.
+// `describeSavePayload` in characters.js reads either save version.
 function describeSave(payload, savedAt) {
   const when = savedAt ? new Date(savedAt).toLocaleString() : 'unknown date';
   return `${describeSavePayload(payload)}\nlast saved ${when}`;

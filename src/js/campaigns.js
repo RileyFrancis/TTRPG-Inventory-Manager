@@ -33,9 +33,8 @@ function normalizeCampaign(raw, code) {
     code: String(c.code ?? code ?? '').toUpperCase(),
     name: String(c.name ?? '').slice(0, CAMPAIGN_NAME_MAX),
     role: c.role === 'gm' ? 'gm' : 'player',
-    // Which of *your* characters plays here. Null for a GM, who has none, and
-    // null for a bookmark written before the field existed — `enterCampaign()`
-    // falls back to whoever is active and writes the answer back.
+    // Which of your characters plays here. Null for a GM, and null for a bookmark
+    // written before the field existed — `enterCampaign()` fills it in.
     characterId: c.characterId ?? null,
     gmName: String(c.gmName ?? ''),
     memberCount: Number.isFinite(c.memberCount) ? c.memberCount : 0,
@@ -53,15 +52,13 @@ function normalizeCampaigns(raw) {
   return out;
 }
 
-// Most recently played first. A campaign you were at last night is the one you
-// are most likely reaching for, and a table you left behind sinks on its own
-// without anyone having to archive it.
+// Most recently played first — a table you left behind sinks on its own.
 function campaignList() {
   return Object.values(state.campaigns).sort((a, b) => b.lastPlayed - a.lastPlayed);
 }
 
-// What to call a campaign in a sentence. A party made before campaigns had names
-// has only its code, and the code is a perfectly good name for it.
+// What to call a campaign in a sentence — the code is a good name for a party
+// made before campaigns had names.
 function campaignDisplayName(code) {
   const c = state.campaigns[code];
   if (c && c.name) return c.name;
@@ -84,13 +81,9 @@ function forgetCampaign(code) {
   renderHomeScreen();
 }
 
-// The two refreshes, called from party.js's subscriptions. Both are no-ops for a
-// campaign we hold no bookmark for — a GM looking at a party they joined by code
-// on someone else's machine should not have one minted behind their back.
-//
-// Neither calls `debouncedSync()`: these fire on every roster update, and a save
-// per snapshot to cache a head count would be a great deal of writing for a
-// number nobody is waiting on. The next real edit carries them.
+// The two refreshes, from party.js's subscriptions. No-ops for a campaign we
+// hold no bookmark for. Neither calls `debouncedSync()` — a save per snapshot to
+// cache a head count is a lot of writing for a number nobody is waiting on.
 function noteCampaignMeta(code, meta) {
   const entry = state.campaigns[code];
   if (!entry || !meta) return;
@@ -106,10 +99,9 @@ function noteCampaignRoster(code, players) {
   renderHomeScreen();
 }
 
-// A player switching characters from the roster page while seated at a table is
-// changing which character sits in that seat — so the campaign remembers the new
-// one. Called from `activateCharacter()`; the republish to the party roster is
-// already handled by the `debouncedSync()` there.
+// A player switching characters while seated at a table changes which character
+// sits in that seat. Called from `activateCharacter()`; the republish is handled
+// by the `debouncedSync()` there.
 function noteActiveCharacterForCampaign() {
   const { active, code, role } = state.party;
   if (!active || role !== 'player' || !state.campaigns[code]) return;
@@ -119,10 +111,9 @@ function noteActiveCharacterForCampaign() {
 // =============================================================================
 // ENTERING AND LEAVING
 // =============================================================================
-// The one path in, from a card on the home screen. It asks the *party* what role
-// we hold rather than trusting the bookmark: a GM signed in on a new browser, or
-// a bookmark written by an older version, must still land in the right chair,
-// and `meta.gmUid` is the only thing that actually knows.
+// The one path in, from a card on the home screen. It asks the PARTY what role
+// we hold (`meta.gmUid`) rather than trusting the bookmark — a GM signed in on a
+// new browser must still land in the right chair.
 async function enterCampaign(code) {
   if (!isSignedIn()) {
     requireAuth('Campaigns need an account, so your table knows who is who.', () => enterCampaign(code));
@@ -144,9 +135,8 @@ async function enterCampaign(code) {
   const uid = ownPlayerId();
   const asGM = !!meta.gmUid && meta.gmUid === uid;
 
-  // A player brings the character this campaign remembers. Switching to them
-  // *before* the join is what makes the roster entry right the first time,
-  // rather than publishing whoever happened to be on screen and correcting it.
+  // A player brings the character this campaign remembers — switching to them
+  // BEFORE the join is what makes the roster entry right the first time.
   if (!asGM) {
     const wanted = state.campaigns[code]?.characterId;
     if (wanted && state.characters[wanted] && wanted !== state.activeCharacterId) activateCharacter(wanted);
@@ -169,12 +159,9 @@ async function enterCampaign(code) {
   closeHomeScreen();
 }
 
-// Resigning the seat, as against ending the session. Leave Party stops
-// connecting; this stops belonging — the roster entry goes, so the GM's list
-// stops carrying you and rejoining needs the code again.
-//
-// A GM's campaign is not theirs to resign from: with nobody running it the
-// record is dead, so their version deletes it outright and says so.
+// Resigning the seat (as against ending the session). The roster entry goes.
+// A GM's campaign is not theirs to resign from — with nobody running it the
+// record is dead, so their version deletes it outright.
 async function leaveCampaign(code) {
   const entry = state.campaigns[code];
   if (!entry) return;
@@ -220,11 +207,8 @@ async function renameCampaign(code, name) {
 // =============================================================================
 // THE HOME SCREEN SECTION
 // =============================================================================
-// Above the character roster, because it is the larger question: *which table*
-// comes before *which character*, and a player arriving for a session is
-// reaching for the campaign, not for a card they would then have to remember to
-// connect. The two sections are deliberately the same kind of thing to look at —
-// a grid of cards under a ruled heading — so the page reads as one page.
+// Above the character roster — which table comes before which character. The two
+// sections are the same kind of thing to look at, so the page reads as one page.
 
 const campaignGridEl = document.getElementById('campaign-card-grid');
 const campaignNoteEl = document.getElementById('campaign-note');
@@ -235,11 +219,9 @@ let openCampaignMenuCode = null;
 function renderCampaignSection() {
   if (state.screen !== 'home') return;
 
-  // Signed out there is nothing to list: a seat at a table is held by an account.
-  // Saying so beats an empty grid — but the buttons stay live, because
-  // `requireAuth()` is how every other gated entry point in this app behaves and
-  // a disabled button would leave the note pointing at a door that cannot be
-  // opened. Pressing one asks for the account and then does what was asked.
+  // Signed out there is nothing to list. The buttons stay live — `requireAuth()`
+  // is how every other gated entry point behaves, and a disabled button would
+  // point the note at a door that cannot be opened.
   const signedIn = isSignedIn();
   campaignNoteEl.classList.toggle('hidden', signedIn);
   if (!signedIn) {
@@ -294,9 +276,8 @@ function campaignCard(c) {
   roleEl.textContent = isGM ? 'Game Master' : 'Player';
   card.appendChild(roleEl);
 
-  // Every row is drawn whether it is filled or not, for the reason the sheet's
-  // identity block gives: a row that vanished would shuffle the others along and
-  // leave the reader working out which one went.
+  // Every row is drawn whether filled or not — a row that vanished would shuffle
+  // the others along (same as the sheet's identity block).
   const playing = isGM
     ? '—'
     : (state.characters[c.characterId]?.character.name ?? 'Not chosen yet');
@@ -333,8 +314,7 @@ function campaignCard(c) {
   return card;
 }
 
-// Coarse on purpose: "when did I last sit at this table" wants a shape, not a
-// timestamp, and the list is already ordered by the real number.
+// Coarse on purpose — the list is already ordered by the real number.
 function describeLastPlayed(ms) {
   const days = Math.floor((Date.now() - ms) / 86400000);
   if (days <= 0) return 'today';
@@ -372,10 +352,8 @@ function closeCampaignMenu() {
 // =============================================================================
 // THE CAMPAIGN MODAL
 // =============================================================================
-// One dialog, two jobs, exactly as the character modal is one dialog for three:
-// creating a table and joining one are the same question asked from either side,
-// and splitting them into two dialogs is how two dialogs come to disagree about
-// what a campaign is.
+// One dialog, two jobs — creating a table and joining one are the same question
+// asked from either side.
 let campaignModalMode = 'create'; // 'create' | 'join'
 
 function openCampaignModal(mode = 'create') {
@@ -399,8 +377,7 @@ function setCampaignModalMode(mode) {
   document.getElementById('campaign-confirm-btn').textContent = join ? 'Join Campaign' : 'Create Campaign';
 }
 
-// The character who will sit in the seat. A GM picks none, so this appears on
-// the join form only.
+// The character who will sit in the seat — join form only.
 function fillCampaignCharacterSelect() {
   const sel = document.getElementById('campaign-character-select');
   sel.innerHTML = '';
@@ -451,8 +428,8 @@ async function submitCampaignJoin() {
   const meta = await fetchCampaignMeta(code);
   if (!meta) { alert('No campaign with that code. Check it and try again.'); return; }
 
-  // Bookmark the seat *before* entering, so `enterCampaign()` finds the chosen
-  // character where it looks for it rather than publishing whoever was on screen.
+  // Bookmark the seat BEFORE entering, so `enterCampaign()` finds the chosen
+  // character where it looks for it.
   rememberCampaign({
     code,
     name: meta.name ?? '',

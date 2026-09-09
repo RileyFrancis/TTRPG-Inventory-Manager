@@ -3,24 +3,11 @@
 // =============================================================================
 'use strict';
 
-// Loaded with a synchronous XHR, the same way items.js loads data/items.csv, so
-// FIREBASE_CONFIG is populated before init() runs.
-//
-// Two sources, same KEY=value text, first hit wins:
-//
-//   .env          the local development copy at the project root (gitignored —
-//                 see .env.example).
-//   /firebase-env the deployed site's Cloudflare Pages Function
-//                 (functions/firebase-env.js), which reads the FIREBASE_*
-//                 variables from the Pages dashboard. The deploy needs it
-//                 because `.env` is gitignored and so never reaches the host —
-//                 and Pages will not serve a dot-prefixed path in any case.
-//
-// Whichever answers, the browser receives the values, so they are readable by
-// anyone who can reach the site. That is unavoidable — the client cannot connect
-// to Firebase without them — and fine for Firebase web config, which is public
-// by design and guarded by your Realtime Database rules. Never put real secrets
-// in either source.
+// Synchronous XHR, the same way items.js loads data/items.csv, so
+// FIREBASE_CONFIG is populated before init() runs. Two sources, same KEY=value
+// text, first hit wins: `.env` locally (gitignored), `/firebase-env` on a deploy
+// (a Cloudflare Pages Function). The values reach the browser and are public by
+// design — never put real secrets in either. See CLAUDE.md § Configuration.
 
 // .env key → Firebase config key
 const FIREBASE_ENV_KEYS = {
@@ -52,18 +39,15 @@ function parseEnv(text) {
   return env;
 }
 
-// Ordered by where the page is running, so neither environment pays for a
-// request that is certain to miss: a deploy has no `.env`, and a plain local
-// static server has no Functions runtime to answer /firebase-env.
+// Ordered by where the page is running, to avoid a request certain to miss (a
+// deploy has no `.env`; a plain local server has no /firebase-env).
 const FIREBASE_ENV_SOURCES =
   ['localhost', '127.0.0.1', '[::1]', ''].includes(location.hostname)
     ? ['.env', 'firebase-env']
     : ['firebase-env', '.env'];
 
-// Null when nothing is there. Note the HTML guard: a static host that answers
-// 404s with its index page (Cloudflare Pages does) returns 200 and a pageful of
-// markup for a path that does not exist, which would otherwise parse as an env
-// file with no keys in it.
+// Null when nothing is there. The `<` guard: a host that answers 404s with its
+// index page (Cloudflare Pages does) returns 200 and a pageful of markup.
 function readEnvFile(path) {
   try {
     const xhr = new XMLHttpRequest();
@@ -90,8 +74,8 @@ function loadFirebaseConfig() {
       else missing.push(envKey);
     });
 
-    // databaseURL is the only value party sync genuinely cannot work without.
-    // Without it the file tells us nothing, so keep looking rather than give up.
+    // databaseURL is the one value party sync cannot work without — without it,
+    // keep looking rather than give up.
     if (!config.databaseURL) {
       console.warn(`${path} is missing ` + missing.join(', ') + ' — ignoring it.');
       continue;

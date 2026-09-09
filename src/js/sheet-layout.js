@@ -19,25 +19,20 @@
 
 const SHEET_LAYOUT_KEY = 'dnd_inventory_sheet_layout';
 
-// How far inside the layout's rim a drop targets the *root* — a full-width band
-// or a full-height column — rather than splitting the section under the cursor.
+// How far inside the layout's rim a drop targets the *root* (a full-width band /
+// full-height column) rather than splitting the section under the cursor.
 const SHEET_RIM = 24;
 
-// The narrowest a section is allowed to be, and the one number that answers
-// both halves of that: a seam will not drag a column below it, and a row whose
-// width cannot give every child that much stops being a row and stacks instead
-// (`foldNarrowRows`). One constant rather than two, because they are the same
-// judgement — a stat tile and a pair of ability columns need the room they need,
-// and it makes no difference whether the squeeze came from a seam or from the
-// panel being dragged narrower.
+// The narrowest a section may be — one number for both: a seam will not drag a
+// column below it, and a row whose width cannot give every child that much stops
+// being a row and stacks (`foldNarrowRows`).
 const SHEET_MIN_COL = 200;
 
-// The movement that turns a press on a title into a drag rather than a click.
+// Movement that turns a press on a title into a drag rather than a click.
 const SHEET_DRAG_SLOP = 4;
 
-// The widgets, in the order they appear in index.html. Read from the markup
-// rather than written out again here: the sections *are* the markup, and a
-// second list would only be somewhere for the two to disagree.
+// The widgets, in index.html order. Read from the markup, not written out again
+// here — the sections ARE the markup.
 const SHEET_WIDGET_IDS = Array.from(
   document.querySelectorAll('#sheet-widget-store .sheet-widget')
 ).map(el => el.dataset.widget);
@@ -45,20 +40,15 @@ const SHEET_WIDGET_IDS = Array.from(
 // =============================================================================
 // THE TREE
 // =============================================================================
-// A node is either a widget or a split:
-//
-//   { t: 'w', id: 'combat', size: 1 }
-//   { t: 's', dir: 'row' | 'col', size: 1, kids: [node, …] }
-//
-// `size` is the node's share of its parent — used only by `row` parents, for
-// the reason above. It is stored on the node rather than in a parallel array on
-// the parent so that it travels with the node when one is moved.
+// A node is `{ t:'w', id, size }` or `{ t:'s', dir:'row'|'col', size, kids:[…] }`.
+// `size` is the node's share of its parent — used only by `row` parents. Stored
+// on the node so it travels with the node when one is moved.
 
 function sheetWidgetNode(id, size) { return { t: 'w', id, size: size ?? 1 }; }
 
-// The sheet as it has always looked below the identity block: Abilities &
-// Skills beside a column of the shorter boxes, at the same 2:1 the hand-written
-// `flex: 2 1 420px` used to give it.
+// The sheet as it has always looked below the identity block: Abilities & Skills
+// beside a column of the shorter boxes, at the same 2:1 `flex: 2 1 420px` used
+// to give it.
 function defaultSheetLayout() {
   return {
     t: 's', dir: 'col', size: 1,
@@ -73,11 +63,9 @@ function defaultSheetLayout() {
           },
         ],
       },
-      // Bands across the bottom. A run of feature cards reads badly in a narrow
-      // column and there is no telling how many levels' worth there will be;
-      // the written sections want the width for the same reason a page of prose
-      // does. Species sits beside Class Features because the two are read
-      // together — what your character *is*, either side of one row.
+      // Bands across the bottom — a run of feature cards and the written sections
+      // want the width. Species sits beside Class Features because the two read
+      // together.
       {
         t: 's', dir: 'row', size: 1,
         kids: [sheetWidgetNode('features'), sheetWidgetNode('species')],
@@ -90,14 +78,11 @@ function defaultSheetLayout() {
 
 let sheetLayout = null;
 
-// Tidies a tree into the one canonical shape for what it draws, and is run
-// after every edit. Without it the tree accumulates rubbish that changes
-// nothing on screen but makes the next drop behave oddly — a split holding one
-// child, a row nested directly inside a row, an empty container left behind by
-// the section that was just dragged out of it.
-//
-// Mutates and returns, preserving node identity, because a drop holds a
-// reference to the node it landed on and has to find it again afterwards.
+// Tidies a tree into one canonical shape, after every edit — without it the tree
+// accumulates rubbish (a split holding one child, a row nested in a row, an
+// emptied container) that makes the next drop behave oddly. Mutates and returns,
+// preserving node identity, because a drop holds a reference to the node it
+// landed on.
 function normalizeSheetLayout(node) {
   if (!node) return null;
   if (node.t === 'w') return node;
@@ -107,7 +92,7 @@ function normalizeSheetLayout(node) {
     const n = normalizeSheetLayout(kid);
     if (!n) return;
     if (n.t === 's' && n.dir === node.dir) {
-      // A row inside a row is the same row. Fold it in, scaling its children so
+      // A row inside a row is the same row — fold it in, scaling its children so
       // they keep between them exactly the share the container had.
       const total = n.kids.reduce((sum, k) => sum + k.size, 0) || 1;
       n.kids.forEach(k => { k.size = k.size / total * n.size; kids.push(k); });
@@ -122,7 +107,6 @@ function normalizeSheetLayout(node) {
   return node;
 }
 
-// Walks every node, in tree order.
 function eachSheetNode(node, fn) {
   if (!node) return;
   fn(node);
@@ -146,8 +130,7 @@ function findSheetParent(node, child) {
 }
 
 // Takes a widget out of the tree wherever it is. The caller normalizes after —
-// this deliberately leaves the hole, because the same pass that closes it is
-// the one that folds the emptied containers away.
+// the same pass that closes the hole is the one that folds emptied containers away.
 function detachSheetWidget(node, id) {
   if (!node || node.t !== 's') return false;
   const i = node.kids.findIndex(k => k.t === 'w' && k.id === id);
@@ -155,9 +138,9 @@ function detachSheetWidget(node, id) {
   return node.kids.some(k => detachSheetWidget(k, id));
 }
 
-// Every widget exactly once, no unknown ids, and a shape that draws. Runs on
-// whatever came out of localStorage, which may have been written by an older
-// version of the sheet with a different set of sections.
+// Every widget exactly once, no unknown ids, a shape that draws. Runs on whatever
+// came out of localStorage, which may be from an older version with a different
+// set of sections.
 function sanitizeSheetLayout(raw) {
   const seen = new Set();
 
@@ -179,8 +162,8 @@ function sanitizeSheetLayout(raw) {
 
   let tree = normalizeSheetLayout(walk(raw));
 
-  // A section added to the sheet after this layout was stored has nowhere to be.
-  // Down the bottom is the one answer that never displaces anything.
+  // A section added after this layout was stored — down the bottom is the one
+  // answer that displaces nothing.
   const missing = SHEET_WIDGET_IDS.filter(id => !seen.has(id));
   if (missing.length) {
     const added = missing.map(id => sheetWidgetNode(id));
@@ -210,10 +193,9 @@ function saveSheetLayout() {
   try { localStorage.setItem(SHEET_LAYOUT_KEY, JSON.stringify(sheetLayout)); } catch (e) { /* full or blocked */ }
 }
 
-// Nothing on the sheet calls this yet — the button it used to sit behind has
-// been taken off the page, and it is waiting to be wired up somewhere better
-// (Settings is the obvious home). Kept because the arrangement is otherwise
-// only recoverable by clearing the browser's storage.
+// No caller yet — the button it used to sit behind has been taken off the page,
+// waiting to be wired up somewhere better (Settings). Kept because the
+// arrangement is otherwise only recoverable by clearing browser storage.
 function resetSheetLayout() {
   sheetLayout = normalizeSheetLayout(defaultSheetLayout());
   saveSheetLayout();
@@ -224,13 +206,10 @@ function resetSheetLayout() {
 // RENDERING
 // =============================================================================
 // Builds the split containers and *moves* the widget elements into them. The
-// widgets themselves are never rebuilt — they are the static markup from
-// index.html, with every id, value and listener the sheet has put on them — so
-// a rearrange cannot cost an input its contents.
-//
-// Called once when the sheet is first built, and again after a drop or a reset.
-// Not from `renderCharacterSheet()`, which runs on every party roster update:
-// re-parenting the whole sheet a few times a second would be absurd.
+// widgets are never rebuilt — they are the static markup from index.html, with
+// every id, value and listener — so a rearrange cannot cost an input its
+// contents. Called when the sheet is first built and after a drop or reset; NOT
+// from `renderCharacterSheet()`, which runs on every roster update.
 function renderSheetLayout() {
   const host = document.getElementById('sheet-layout');
   const store = document.getElementById('sheet-widget-store');
@@ -238,7 +217,7 @@ function renderSheetLayout() {
   if (!sheetLayout) loadSheetLayout();
 
   // Park the widgets before clearing the scaffolding, or emptying the host
-  // would destroy them along with it.
+  // destroys them with it.
   host.querySelectorAll('.sheet-widget').forEach(el => store.appendChild(el));
   host.innerHTML = '';
   host.appendChild(buildSheetNode(sheetLayout));
@@ -257,7 +236,7 @@ function buildSheetSplit(node) {
   box.dataset.dir = node.dir;
 
   node.kids.forEach((kid, i) => {
-    // A seam per gap, and only in a row: a column's children are their own
+    // A seam per gap, and only in a row — a column's children are their own
     // height and have nothing to divide.
     if (i > 0 && node.dir === 'row') box.appendChild(sheetSeamEl(node, i - 1));
     box.appendChild(buildSheetNode(kid));
@@ -265,33 +244,20 @@ function buildSheetSplit(node) {
   return box;
 }
 
-// A node's share of its parent, and *only* that. Whether the share is spent on
-// width or ignored in favour of natural height is the parent's business and is
-// settled in sheet-layout.css by the parent's direction — which is what lets a
-// row that has run out of room fold into a column with one class, without
-// anything here having to rewrite every child's `flex`.
+// A node's share of its parent, and only that. Whether it is spent on width or
+// ignored for natural height is settled in sheet-layout.css by the parent's
+// direction — which is what lets a row fold into a column with one class.
 function applySheetNodeSize(el, node) {
   el.style.setProperty('--share', node.size);
 }
 
 // A row too narrow to give every child `SHEET_MIN_COL` stops being a row and
-// stacks instead. The panel is resizable, so this is not a rare edge — it is
-// the same fold the sheet has always done, moved from `flex-wrap` (which cannot
-// honour the shares the seams set) to a measurement.
-//
-// Applied **outermost-in**, which `querySelectorAll`'s document order gives for
-// free: a row that folds hands its whole width back to the rows inside it, so
-// those may no longer need to fold at all. Reading a row's width flushes the
-// folds already applied above it, so each measurement sees the layout its
-// ancestors have settled on. A folded row still fills its slot, so the width
-// read is the one it would have either way and the test does not depend on
-// which state it is in.
-//
-// **The hysteresis is not a nicety.** Folding makes the sheet taller, a taller
-// sheet can bring in `#character-sheet`'s scrollbar, and the scrollbar takes
-// back the very width that was measured — a row right on the threshold would
-// otherwise fold and unfold against its own scrollbar forever. `scrollbar-
-// gutter: stable` in the CSS takes most of that away; this is what makes it
+// stacks — the same fold the sheet has always done, moved from `flex-wrap`
+// (which cannot honour the shares the seams set) to a measurement. Applied
+// outermost-in, which `querySelectorAll`'s document order gives for free. The
+// hysteresis is not a nicety: folding makes the sheet taller, a taller sheet can
+// bring in the scrollbar, and the scrollbar takes back the width that was
+// measured. `scrollbar-gutter: stable` removes most of it; this makes it
 // impossible.
 const SHEET_FOLD_SLACK = 28;
 
@@ -322,9 +288,8 @@ function sheetWidgetLabel(id) {
 // =============================================================================
 // RESIZING A ROW
 // =============================================================================
-// The seam between two of a row's children. Dragging it moves width from one to
-// the other and leaves every other child alone, so a three-way row can be tuned
-// a pair at a time. Double-click evens the two out again.
+// The seam between two of a row's children moves width from one to the other and
+// leaves every other child alone. Double-click evens the two out.
 function sheetSeamEl(split, index) {
   const seam = document.createElement('div');
   seam.className = 'sheet-seam';
@@ -345,8 +310,7 @@ function sheetSeamEl(split, index) {
     const totalSize = a.size + b.size;
 
     const onMove = ev => {
-      // Clamped in pixels rather than in shares: what "too narrow" means is a
-      // width on screen, and a share means nothing without the row's width.
+      // Clamped in pixels, not shares — "too narrow" is a width on screen.
       const wanted = Math.max(SHEET_MIN_COL, Math.min(totalPx - SHEET_MIN_COL, aPx + (ev.clientX - startX)));
       a.size = totalSize * (wanted / totalPx);
       b.size = totalSize - a.size;
@@ -379,19 +343,15 @@ function sheetSeamEl(split, index) {
 // =============================================================================
 // DRAGGING A SECTION
 // =============================================================================
-// Press on a section's title and move, and the section follows the cursor as a
-// choice of slot. Not the HTML5 drag-and-drop API: the rest of the app drags
-// with pointer events and bounding-rect hit tests, and this has to agree with
-// the drop feedback the browse list and equip rack already give.
+// Press on a section's title and move — pointer events and bounding-rect hit
+// tests, not the HTML5 DnD API, to agree with the browse list and equip rack.
 let sheetDrag = null;
 
 document.getElementById('character-sheet').addEventListener('pointerdown', e => {
   const title = e.target.closest('.widget-title');
   if (!title || e.button !== 0) return;
-  // A section's header may carry its own controls (Class Features has a
-  // show/hide toggle). Pressing one is not the start of a drag, and without
-  // this the button would work but the smallest wobble would pick the section
-  // up instead.
+  // A section's header may carry its own controls (Class Features's show/hide) —
+  // pressing one is not the start of a drag.
   if (e.target.closest('button, a, input, select, textarea')) return;
   const widget = title.closest('.sheet-widget');
   if (!widget || !widget.closest('#sheet-layout')) return;
@@ -415,7 +375,7 @@ document.getElementById('character-sheet').addEventListener('pointerdown', e => 
 function onSheetDragMove(e) {
   if (!sheetDrag) return;
   if (!sheetDrag.live) {
-    // A press that never moves is a click on a heading, not a drag.
+    // A press that never moves is a click on a heading.
     if (Math.abs(e.clientX - sheetDrag.startX) < SHEET_DRAG_SLOP &&
         Math.abs(e.clientY - sheetDrag.startY) < SHEET_DRAG_SLOP) return;
     sheetDrag.live = true;
@@ -429,8 +389,8 @@ function onSheetDragMove(e) {
   sheetDragRefresh(e.clientX, e.clientY);
 }
 
-// Re-run on a frame that auto-scrolled as well as on a real move: the cursor
-// has not moved but the sections under it have.
+// Re-run on a frame that auto-scrolled: the cursor has not moved but the
+// sections under it have.
 function sheetDragRefresh(x, y) {
   if (!sheetDrag) return;
   sheetDrag.target = sheetDropTargetAt(x, y);
@@ -467,17 +427,12 @@ function endSheetDrag() {
 // =============================================================================
 // WHERE THE DROP LANDS
 // =============================================================================
-// Two kinds of answer, and which one you get is the whole feature:
-//
-//   `root`  — the cursor is on the rim of the sheet, so the section becomes a
-//             band across the full width (or a column down the full height).
-//   a widget — the cursor is over a section, so that section's *slot* splits and
-//             the new arrival is stopped by whatever already bounds that slot.
-//
-// The rim is tested first and is deliberately thin. Everywhere else inside the
-// sheet resolves to a section, because a drag that lands on nothing reads as
-// broken — so a cursor in the gap between two sections takes the nearer one
-// rather than returning null.
+//   `root`   — cursor on the sheet's rim: a band across the full width / height.
+//   a widget — cursor over a section: that section's slot splits, and the arrival
+//              is stopped by whatever already bounds that slot.
+// The rim is tested first and is thin. Everywhere else resolves to a section (a
+// drag that lands on nothing reads as broken), so a cursor in a gap takes the
+// nearer one.
 function sheetDropTargetAt(x, y) {
   const host = document.getElementById('sheet-layout');
   const paper = document.querySelector('#character-sheet .sheet-scroll');
@@ -488,9 +443,8 @@ function sheetDropTargetAt(x, y) {
 
   const hr = host.getBoundingClientRect();
 
-  // Distances to the layout's four edges. Only an edge actually on screen can
-  // be close to the cursor: scroll the sheet away from the top and `dTop` grows
-  // past the band on its own, which is why the rim needs no scroll arithmetic.
+  // Distances to the layout's four edges. Only an on-screen edge can be close —
+  // scroll the sheet away from the top and `dTop` grows past the band on its own.
   const d = {
     top: y - hr.top, bottom: hr.bottom - y,
     left: x - hr.left, right: hr.right - x,
@@ -498,7 +452,7 @@ function sheetDropTargetAt(x, y) {
   const nearest = Object.keys(d).reduce((a, b) => (d[a] <= d[b] ? a : b));
   if (d[nearest] < SHEET_RIM) return { root: true, edge: nearest, rect: hr };
 
-  // Otherwise: the section under the cursor, or the nearest one to it.
+  // Otherwise: the section under the cursor, or the nearest to it.
   let best = null, bestDist = Infinity;
   host.querySelectorAll('.sheet-widget').forEach(el => {
     const r = el.getBoundingClientRect();
@@ -515,10 +469,8 @@ function sheetDropTargetAt(x, y) {
   return { root: false, node, el: best.el, rect: best.rect, edge: nearestEdgeOf(best.rect, x, y) };
 }
 
-// Which edge the cursor is nearest, measured as a *fraction* of each dimension
-// rather than in pixels. A section can be short and wide or tall and narrow;
-// comparing raw distances would make the long sides almost unreachable on one
-// and the short sides on the other.
+// Which edge the cursor is nearest, as a FRACTION of each dimension rather than
+// in pixels — a section can be short and wide or tall and narrow.
 function nearestEdgeOf(r, x, y) {
   const fx = (x - r.left) / (r.width || 1);
   const fy = (y - r.top) / (r.height || 1);
@@ -529,18 +481,17 @@ function nearestEdgeOf(r, x, y) {
 // =============================================================================
 // DROP FEEDBACK
 // =============================================================================
-// The shaded slab is where the section will go; the chip names the drop,
-// because on a long sheet the slab often runs off the bottom of the panel and
-// "full width" and "beside Combat" then look much the same. Both come out of
-// this one call, so they cannot disagree about what the drop will do.
+// The shaded slab is where the section will go; the chip names the drop, because
+// on a long sheet the slab often runs off the bottom and "full width" and
+// "beside Combat" then look the same. Both from this one call.
 function showSheetDropFeedback(target, x, y) {
   const zone = document.getElementById('sheet-drop-zone');
   const hint = document.getElementById('sheet-drop-hint');
   const paper = document.querySelector('#character-sheet .sheet-scroll');
   if (!zone || !hint || !paper) return;
 
-  // Dropping a section back onto itself is not a move. Say so rather than
-  // showing a slab exactly where the section already is.
+  // Dropping a section back onto itself is not a move — say so rather than
+  // showing a slab where it already is.
   const onSelf = target && !target.root && target.node.id === sheetDrag.id;
   if (!target || onSelf) {
     zone.classList.add('hidden');
@@ -605,10 +556,8 @@ function hideSheetDropFeedback() {
 // =============================================================================
 // APPLYING THE DROP
 // =============================================================================
-// Take the section out, tidy up after it, then put it back where the drop said.
-// In that order: removing first means the tree the insert works on is the one
-// the drop will actually produce, so a section dragged out of a two-section row
-// does not have to be inserted into a row that is about to collapse.
+// Take the section out, normalize, then put it back where the drop said — in
+// that order, so the tree the insert works on is the one the drop will produce.
 function applySheetDrop(id, target) {
   if (!target.root && target.node.id === id) return;
 
@@ -617,8 +566,7 @@ function applySheetDrop(id, target) {
 
   detachSheetWidget(sheetLayout, id);
   sheetLayout = normalizeSheetLayout(sheetLayout);
-  // Nothing left to be moved relative to — a one-section sheet has one slot,
-  // and it is already in it.
+  // Nothing left to be moved relative to.
   if (!sheetLayout || sheetLayout === moving) { sheetLayout = moving; return; }
   if (target.root) sheetLayout = insertAtSheetRoot(moving, target.edge);
   else sheetLayout = insertBesideSheetNode(moving, target.node, target.edge);
@@ -629,11 +577,9 @@ function applySheetDrop(id, target) {
 }
 
 // The section splits the target's slot. If the target already sits in a split
-// running the right way, the arrival simply joins that split beside it and
-// takes half of the target's share — so the other children do not shuffle. If
-// not, the target's slot becomes a new split holding the two of them, which is
-// what puts the arrival inside whatever bounds the target rather than across
-// the sheet.
+// running the right way, the arrival joins beside it and takes half its share
+// (so nothing else shuffles); otherwise the target's slot becomes a new split
+// holding the two.
 function insertBesideSheetNode(moving, target, edge) {
   const dir = (edge === 'left' || edge === 'right') ? 'row' : 'col';
   const before = (edge === 'left' || edge === 'top');
@@ -657,9 +603,8 @@ function insertBesideSheetNode(moving, target, edge) {
   return sheetLayout;
 }
 
-// The rim: the section becomes a band across the whole sheet. It joins the root
-// split when that already runs the right way, and otherwise the whole existing
-// layout is demoted to one side of a new one.
+// The rim: a band across the whole sheet. Joins the root split when it already
+// runs the right way, else the whole layout is demoted to one side of a new one.
 function insertAtSheetRoot(moving, edge) {
   const dir = (edge === 'left' || edge === 'right') ? 'row' : 'col';
   const before = (edge === 'left' || edge === 'top');
@@ -680,26 +625,24 @@ function insertAtSheetRoot(moving, edge) {
 // WIRING
 // =============================================================================
 // Called from `buildCharacterSheet()`, so the layout is put together with the
-// rest of the sheet the first time it is shown and not before — the sheet is
-// one of two views of a character and may never be opened at all.
+// rest of the sheet the first time it is shown and not before.
 function ensureSheetLayout() {
   loadSheetLayout();
   renderSheetLayout();
   watchSheetWidth();
 }
 
-// The panel is dragged wider and narrower by the resizer beside it, and whether
-// a row still has the room to be a row changes as that happens. Only the folds
-// are recomputed — never the tree, and never the DOM — so this costs nothing and
-// cannot pull an input out from under someone mid-keystroke.
+// The panel is dragged wider and narrower, and whether a row still has room to
+// be a row changes as it does. Only the folds are recomputed — never the tree,
+// never the DOM.
 let sheetWidthObserver = null;
 let lastSheetWidth = -1;
 
 function watchSheetWidth() {
   if (sheetWidthObserver || typeof ResizeObserver === 'undefined') return;
   sheetWidthObserver = new ResizeObserver(entries => {
-    // Width only. Folding a row changes the layout's *height*, which would
-    // otherwise call this straight back — and answer the same question again.
+    // Width only. Folding a row changes the layout's height, which would
+    // otherwise call this straight back to answer the same question.
     const w = Math.round(entries[0].contentRect.width);
     if (w === lastSheetWidth) return;
     lastSheetWidth = w;

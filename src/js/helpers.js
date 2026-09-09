@@ -4,11 +4,9 @@
 'use strict';
 
 // ─── STACKING ──────────────────────────────────────────────────────────────
-// A template's `stackSize` is how many of the item fit in one grid cell. A cell
-// is 1 lb, so each unit weighs 1 / stackSize. A stackSize of 1 (or absent) means
-// the item does not stack. Templates written before stackSize existed carry
-// `stackable` + `weightEach` instead — old saves and party data are read through
-// these helpers, so they keep working.
+// `stackSize` = units per cell; each weighs 1 / stackSize lb. Absent or 1 = does
+// not stack. These helpers also translate the pre-`stackSize` `stackable` +
+// `weightEach` pair still in old saves and party data.
 function stackSizeOf(t) {
   if (t?.stackSize) return t.stackSize;
   if (t?.stackable && t.weightEach) return Math.round(1 / t.weightEach);
@@ -51,12 +49,9 @@ function formatCost(cost) {
 }
 
 // ─── ICONS ─────────────────────────────────────────────────────────────────
-// One icon from img/icon, as an element. The picture is a CSS mask over
-// currentColor (see icons.css), so the caller sets no colour — the icon takes
-// whatever the surrounding text is, in either theme.
-//
-// `lead` adds the gap for an icon sitting in front of a button's label. Pass
-// it only where the parent is not already spacing its children.
+// One icon from img/icon, as an element — a CSS mask over currentColor
+// (icons.css), so the caller sets no colour. `lead` adds the gap for an icon in
+// front of a button's label.
 function iconEl(name, lead) {
   const el = document.createElement('span');
   el.className = 'ico ico-' + name + (lead ? ' lead' : '');
@@ -71,12 +66,10 @@ function setIconLabel(el, name, text) {
 }
 
 // ─── COINS ─────────────────────────────────────────────────────────────────
-// The coin templates are found in the database, never hard-coded: a default
-// item's id is its row number in data/items.csv, so any id written into the
-// code breaks the moment a row is inserted above it (which is exactly how the
-// purse went dead). A coin identifies itself instead — it is the `currency`
-// item whose cost is one of its own denomination, and nothing else costs
-// exactly 1cp but a copper piece.
+// Coin templates are found by identity, never hard-coded — a default item's id
+// is its data/items.csv row number and changes when a row is inserted above it
+// (which is how the purse once went dead). A coin is the `currency` item whose
+// cost is exactly one of its own denomination. See CLAUDE.md § Coins.
 const COIN_DENOMS = ['cp', 'sp', 'ep', 'gp', 'pp'];
 
 function getCoinTemplates() {
@@ -109,9 +102,7 @@ function getCoinCounts() {
 }
 
 // Add units of a stackable item, topping up part-filled stacks before starting
-// new ones in the stash. Coins were the first caller; shop purchases are the
-// second — neither wants a screenful of ×1 stacks. Mutation only: the caller
-// re-renders, so a run of these costs one redraw rather than one each.
+// new ones in the stash. Mutation only — the caller re-renders.
 function addStackableUnits(templateId, totalToAdd) {
   if (totalToAdd <= 0) return;
   const t = state.db[templateId];
@@ -210,10 +201,9 @@ function openRemoveCoinsModal(templateId) {
 }
 
 // ─── RARITY COLOURS ────────────────────────────────────────────────────────
-// The palette lives in CSS (--rarity-*) so each theme can tune it: the neon
-// greens that read well on the dark ground would vanish on parchment. These
-// values get baked into inline styles at render time, so theme.js clears the
-// cache and re-renders on a palette swap.
+// The palette lives in CSS (--rarity-*) so each theme can tune it. These values
+// are baked into inline styles at render time, so theme.js clears the cache and
+// re-renders on a palette swap.
 let _rarityColorCache = {};
 
 function rarityColor(rarity) {
@@ -225,8 +215,7 @@ function rarityColor(rarity) {
   return color;
 }
 
-// Coin metals get the same treatment: bright gold and silver disappear
-// against parchment, so each theme names its own.
+// Coin metals get the same treatment — bright gold and silver vanish on parchment.
 function coinColor(denom) {
   const key = 'coin:' + denom;
   if (_rarityColorCache[key]) return _rarityColorCache[key];

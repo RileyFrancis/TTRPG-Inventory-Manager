@@ -21,8 +21,8 @@ function newCharacterId() {
   return 'c_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
 }
 
-// Every field a card shows, in the shape the rest of the app expects. `id` is
-// carried on the character itself so a slot and its meta can never be orphaned.
+// `id` is carried on the character itself so a slot and its meta can never be
+// orphaned.
 function blankCharacterMeta(name = 'Unnamed Hero') {
   return normalizeCharacterMeta({ id: newCharacterId(), name, strength: 10, level: 1, race: '', classLevels: [] });
 }
@@ -31,44 +31,21 @@ function blankCharacterMeta(name = 'Unnamed Hero') {
 // CLASS LEVELS — the authoritative multiclass model
 // =============================================================================
 // A character's classes are `classLevels`: an ordered list of
-// `{ name, level, subclass }`, one entry per class, each carrying **its own**
-// level and **its own** subclass. A Warlock 5 / Bard 2 is two entries, and the
-// character is level 7.
-//
-// The three fields that came before it — `classes` (names), `level` (one
-// number) and `subclass` (one name) — are kept as **mirrors**, written only by
-// `normalizeCharacterMeta()` and read by everything that only wants the summary:
-// the home cards, the party panel, the proficiency bonus, the species traits.
-// This is exactly the arrangement `strength` and `abilities.str` already have,
-// and for the same two reasons: every existing reader keeps working untouched,
-// and a party member running an older client still renders a sensible line
-// instead of `[object Object]`.
-//
-//   classLevels  [{ name: 'Warlock', level: 5, subclass: 'The Fiend' },
-//                 { name: 'Bard',    level: 2, subclass: '' }]   authoritative
-//   classes      ['Warlock', 'Bard']                             mirror
-//   level        7                                               mirror (the sum)
-//   subclass     'The Fiend'                                      mirror (the first)
-//
-// One writer means the two can never drift. Nothing outside this function may
-// write a mirror — writing a bare `level` on a character that has classes is
-// ignored, precisely as writing a bare `strength` is.
+// `{ name, level, subclass }`, one entry per class, each with its own level and
+// subclass. `classes` (names), `level` (the sum) and `subclass` (the first) are
+// MIRRORS, written only by `normalizeCharacterMeta()` — the same arrangement
+// `strength` / `abilities.str` have. Writing a bare `level` on a character that
+// has classes is ignored. See CLAUDE.md § Multiclassing.
 const MAX_LEVEL = 20;
 
 function blankClassEntry(name = '') {
   return { name: String(name).trim(), level: 1, subclass: '' };
 }
 
-// Reads the new field when it is there, and folds the old three into it when it
-// is not — an older save, or a party member on an older client.
-//
-// **The split is a guess, and only for a multiclass.** The old model had one
-// level that every listed class was read at, so a "Fighter, Rogue" at level 5
-// says nothing about how those five levels were spent. The first class is given
-// what is left after one level each for the rest, so the *total* — which is what
-// the proficiency bonus and the species traits are worked out from — comes
-// through exactly right. A single class, which is nearly every character, is
-// migrated with no guessing at all.
+// Reads `classLevels` when present, folds the old three into it when not (an
+// older save, or a party member on an older client). The split is a guess, and
+// only for a multiclass — the first class gets what is left after one level each
+// for the rest, so the total comes through exactly right.
 function normalizeClassLevels(m) {
   if (Array.isArray(m.classLevels)) return sanitizeClassLevels(m.classLevels);
 
@@ -99,36 +76,24 @@ function sanitizeClassLevels(raw) {
 
 function clampLevel(n) { return Math.max(1, Math.min(MAX_LEVEL, n)); }
 
-// **The one way to read a character's classes.** Everything that wants to know
-// what someone is — the feature registry, the cards, the party panel — asks
-// here rather than reaching for `classLevels` or `classes` directly.
-//
-// A character that has been through `normalizeCharacterMeta()` hands its list
-// straight back. Anything that has not been — a party roster entry written by an
-// older client, which carries only names and one level — is folded on the way
-// out, so a caller never has to know which kind it was given.
+// The one way to read a character's classes. A normalized character hands its
+// list back; anything older (a party roster entry with only names and one level)
+// is folded on the way out.
 function classEntriesOf(c) {
   if (Array.isArray(c?.classLevels) && c.classLevels.length) return c.classLevels;
   return normalizeClassLevels(c ?? {});
 }
 
-// The character's level: the sum of what they have taken in each class, capped
-// at 20. A character with no class at all still has a level, and there it is the
-// typed one — the Character Setup modal offers the box in exactly that case.
+// The sum of what they have taken in each class, capped at 20. A classless
+// character still has a level, and there it is the typed one.
 function totalLevelOf(entries, fallbackLevel) {
   if (!entries.length) return clampLevel(parseInt(fallbackLevel, 10) || 1);
   return clampLevel(entries.reduce((sum, e) => sum + e.level, 0));
 }
 
-// Old saves — and party data from an older client — carry only name + strength.
-// Every sheet field is filled in from `defaultSheetFields()` here, so nothing
-// downstream has to cope with a character that has half of them.
-//
-// `strength` is a **mirror of `abilities.str`**, and this is the only place that
-// writes it. The inventory grid has always sized itself from `strength`, so the
-// field stays exactly where every existing reader expects it — including party
-// members running an older client — while the sheet edits the six abilities as
-// one symmetric group. One writer means the two cannot drift apart.
+// Old saves (and older party data) carry only name + strength — every sheet
+// field is filled in from `defaultSheetFields()` here. `strength` is a mirror of
+// `abilities.str`, written only here.
 function normalizeCharacterMeta(meta, id) {
   const m = meta ?? {};
   const abilities = normalizeAbilities(m.abilities, m.strength);
@@ -136,8 +101,8 @@ function normalizeCharacterMeta(meta, id) {
 
   Object.keys(sheet).forEach(key => {
     if (m[key] === undefined || m[key] === null) return;
-    // The nested groups merge field by field, so a save written before one of
-    // them gained a key keeps the default for that key rather than losing it.
+    // Nested groups merge field by field, so a save from before one gained a key
+    // keeps the default for that key.
     sheet[key] = (typeof sheet[key] === 'object' && !Array.isArray(sheet[key]))
       ? { ...sheet[key], ...m[key] }
       : m[key];
@@ -151,14 +116,13 @@ function normalizeCharacterMeta(meta, id) {
     race: String(m.race ?? ''),
     abilities,
     ...sheet,
-    // The authoritative multiclass model, and the three mirrors derived from it.
-    // They come last so nothing merged in above can overwrite one — see the
-    // note on `normalizeClassLevels()`.
+    // The authoritative model and its three mirrors, last so nothing merged in
+    // above can overwrite one.
     classLevels,
     classes: classLevels.map(e => e.name),
     level: totalLevelOf(classLevels, m.level),
     subclass: classLevels.find(e => e.subclass)?.subclass ?? '',
-    strength: abilities.str, // mirror — see above
+    strength: abilities.str, // mirror
   };
 }
 
@@ -172,14 +136,12 @@ function characterSlot(meta, rest = {}) {
   };
 }
 
-// Insertion order — the order they were created in, which is the order the cards
-// appear in and the order the roster reads.
+// Insertion order — the order they were created in.
 function characterList() {
   return Object.values(state.characters);
 }
 
-// The roster is never empty: deleting the last character hands back a fresh one
-// rather than leaving the app with no character to be.
+// The roster is never empty: deleting the last character hands back a fresh one.
 function ensureCharacter() {
   if (state.activeCharacterId && state.characters[state.activeCharacterId]) return;
   const first = characterList()[0];
@@ -193,9 +155,8 @@ function ensureCharacter() {
 // =============================================================================
 // THE BRIDGE: LIVE STATE ⇄ SLOT
 // =============================================================================
-// True only when what is on screen is genuinely this account's active character.
-// A GM has no character of their own, and while another member's sheet is up the
-// working copy is theirs — in both cases the slot must be left alone.
+// True only when what is on screen is genuinely this account's active character
+// (not a GM, not another member's sheet) — otherwise the slot must be left alone.
 function liveStateIsOwnCharacter() {
   if (!state.activeCharacterId || !state.characters[state.activeCharacterId]) return false;
   if (state.party.active && state.party.viewingPlayerId !== null) return false;
@@ -215,8 +176,7 @@ function commitActiveCharacter() {
 }
 
 // The custom item catalogue is per character, so it is rebuilt from the defaults
-// each time rather than merged — otherwise a character would inherit the custom
-// items of whoever was on screen before them.
+// each time rather than merged.
 function loadActiveCharacterIntoLive() {
   const slot = state.characters[state.activeCharacterId];
   if (!slot) return;
@@ -227,15 +187,14 @@ function loadActiveCharacterIntoLive() {
   state.db = {};
   DEFAULT_ITEMS.forEach(t => { state.db[t.id] = t; });
   Object.assign(state.db, slot.db ?? {});
-  // A character with no layout of its own — a new one, or a save from before
-  // layouts were stored — goes through loadSlotConfig() rather than straight to
-  // the defaults, so this browser's pre-layout `dnd_slot_config` is still
-  // migrated. It returns early once a layout is set, so this cannot clobber one.
+  // A character with no layout of its own goes through loadSlotConfig(), so this
+  // browser's pre-layout `dnd_slot_config` is still migrated. It returns early
+  // once a layout is set.
   if (!state.equipLayout.length) loadSlotConfig();
   syncNextId();
 }
 
-// Everything that has to be redrawn when the working copy is replaced wholesale.
+// Everything redrawn when the working copy is replaced wholesale.
 function renderLiveCharacter() {
   rebuildGrid();
   renderItemList();
@@ -253,9 +212,7 @@ function activateCharacter(id) {
   state.activeCharacterId = id;
   loadActiveCharacterIntoLive();
   renderLiveCharacter();
-  // Swapping characters while seated at a table is changing who sits in that
-  // seat, so the campaign remembers the new one. The republish rides on the
-  // sync below, which the roster entry needs anyway.
+  // Swapping characters at a table changes who sits in that seat.
   noteActiveCharacterForCampaign();
   debouncedSync();           // saves, and republishes to the party roster
 }
@@ -279,8 +236,8 @@ function deleteCharacter(id) {
   renderHomeScreen();
 }
 
-// Writes a character's details back — to the slot, and to the working copy too
-// when that character is the one on screen.
+// Writes a character's details back — to the slot, and to the working copy when
+// that character is on screen.
 function updateCharacterMeta(id, meta) {
   const slot = state.characters[id];
   if (!slot) return;
@@ -296,10 +253,9 @@ function updateCharacterMeta(id, meta) {
   renderHomeScreen();
 }
 
-// The header's Edit Character edits *the character on screen*, which is not
-// always one of yours: a GM editing a player's Strength is editing the working
-// copy, and `debouncedSync()` publishes that to the player's roster entry. When
-// it is your own, the next save commits it back into the slot.
+// The gear edits the character on screen, not always one of yours: a GM editing
+// a player's Strength edits the working copy, and `debouncedSync()` publishes it
+// to the player's roster entry.
 function applyMetaToLiveCharacter(meta) {
   const next = normalizeCharacterMeta({ ...state.character, ...meta }, state.character.id ?? null);
   const strengthChanged = state.character.strength !== next.strength;
@@ -314,9 +270,8 @@ function applyMetaToLiveCharacter(meta) {
 // =============================================================================
 // SAVE PAYLOAD SHAPE
 // =============================================================================
-// Version 1 was a single character at the top level. It is still what an older
-// browser or an older cloud save holds, so it is read here and folded into a
-// one-character roster rather than migrated by hand anywhere else.
+// Version 1 was a single character at the top level — still what an older
+// browser or cloud save holds, folded into a one-character roster here.
 function normalizeSavePayload(data) {
   const characters = {};
   let activeId = null;
@@ -337,8 +292,8 @@ function normalizeSavePayload(data) {
   return { characters, activeCharacterId: activeId };
 }
 
-// What the cloud-conflict modal reads: one line about a whole save, whichever
-// version it happens to be written in.
+// What the cloud-conflict modal reads: one line about a whole save, in whichever
+// version it is written.
 function describeSavePayload(data) {
   const { characters, activeCharacterId } = normalizeSavePayload(data);
   const list = Object.values(characters);
@@ -353,9 +308,8 @@ function describeSavePayload(data) {
 // =============================================================================
 // THE HOME SCREEN
 // =============================================================================
-// A page of its own rather than a panel: picking a character is what you do
-// *before* there is an inventory to look at, and on a return visit it is the
-// first thing a signed-in player sees.
+// A page of its own, not a panel — picking a character is what you do before
+// there is an inventory, and where a signed-in player starts.
 
 const homeScreenEl = document.getElementById('home-screen');
 const homeGridEl   = document.getElementById('home-card-grid');
@@ -364,16 +318,14 @@ const homeMenuEl   = document.getElementById('char-card-menu');
 // Which card's ⋯ menu is open, or null.
 let openCardMenuId = null;
 
-// A GM is running the table, not playing a character — their panel is the
-// placeholder and the party tabs are how they look at anyone. Their own roster
-// is still theirs to edit, just not to step into from here.
+// A GM's cards are not selectable — they are running the table, not playing a
+// character. Their roster is still theirs to edit.
 function canSelectCharacter() {
   return !(state.party.active && state.party.role === 'gm');
 }
 
 function openHomeScreen() {
-  // Somebody else's sheet must not still be the working copy when a card is
-  // clicked — hand the view back before the roster becomes selectable.
+  // Somebody else's sheet must not still be the working copy when a card is clicked.
   if (state.party.viewingPlayerId !== null) switchViewToOwn();
   state.screen = 'home';
   homeScreenEl.classList.remove('hidden');
@@ -386,10 +338,8 @@ function closeHomeScreen() {
   homeScreenEl.classList.add('hidden');
 }
 
-// "Fighter" for one class, "Warlock 5 / Bard 2" for a multiclass — the level is
-// worth saying only when the classes disagree about it. A single class is
-// already at the character's own level, which the card and the sheet print
-// beside this.
+// "Fighter" for one class, "Warlock 5 / Bard 2" for a multiclass — the per-class
+// level is worth saying only when the classes disagree about it.
 function describeCharacterClasses(c) {
   const entries = classEntriesOf(c);
   if (!entries.length) return '';
@@ -400,9 +350,7 @@ function describeCharacterClasses(c) {
 function renderHomeScreen() {
   if (state.screen !== 'home') return;
 
-  // The campaigns above the roster. Same page, two questions — which table, and
-  // then which character — so they are drawn from the one call rather than
-  // leaving each caller to remember both.
+  // The campaigns above the roster — same page, two questions.
   renderCampaignSection();
 
   const note = document.getElementById('home-note');
@@ -410,9 +358,7 @@ function renderHomeScreen() {
     note.classList.add('hidden');
   } else {
     // A GM's cards are not selectable, so the gesture that closes this page for
-    // everyone else is not available to them. Their campaign card is — clicking
-    // the one they are already in drops them back into it — so the note says so
-    // rather than leaving Escape as the only way out anyone could guess at.
+    // everyone else is not theirs — the note points at their campaign card.
     note.textContent = 'You are running ' + campaignDisplayName(state.party.code) +
                        ' as Game Master, so no character of your own is in play. Your ' +
                        'roster is still yours to edit — pick a player from the character ' +
@@ -566,12 +512,10 @@ document.addEventListener('keydown', e => {
 // =============================================================================
 // LANDING HERE ON A RETURN VISIT
 // =============================================================================
-// A signed-in player is a player with a roster, so the roster is where they
-// start. Firebase restores its session asynchronously, though, and waiting for
-// it would mean painting the inventory first and yanking it away a moment
-// later — so the last known sign-in is remembered here, in this browser, purely
-// to know which screen to open at boot. auth.js keeps it honest, clearing it the
-// moment Firebase reports nobody is signed in.
+// Firebase restores its session asynchronously, and waiting would mean painting
+// the inventory and yanking it away. So the last known sign-in is remembered
+// here, in this browser, purely to know which screen to open at boot. auth.js
+// clears it the moment Firebase reports nobody is signed in.
 const LAST_SIGNIN_KEY = 'dnd_inventory_last_signin';
 
 function rememberSignedIn(signedIn) {

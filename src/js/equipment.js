@@ -149,8 +149,7 @@ function renderEquipPanel() {
     cnt.textContent = count.toLocaleString();
     item.appendChild(lbl);
     item.appendChild(cnt);
-    // No template for this denomination means nothing to add or remove — show
-    // the tally, but don't offer buttons that could only fail.
+    // No template for this denomination — show the tally, offer no buttons.
     if (!isReadOnly() && templateId) {
       item.classList.add('clickable');
       const actions = document.createElement('div');
@@ -190,8 +189,8 @@ function openEquipSettings() {
 
   const list = document.getElementById('equip-settings-list');
 
-  // Index of the row being dragged, or null. The rows are rebuilt on every
-  // crossing, so the drag is tracked by position in `draft`, not by element.
+  // Index of the row being dragged — tracked by position in `draft`, not by
+  // element (the rows are rebuilt on every crossing).
   let dragIndex = null;
 
   function renderDraft() {
@@ -255,9 +254,8 @@ function openEquipSettings() {
     });
   }
 
-  // Grab a row by its grip and drag it through the list. The move/up listeners
-  // live on the document, not the grip: re-rendering destroys the element the
-  // drag started on, which would drop a pointer capture on the spot.
+  // The move/up listeners live on the document, not the grip — re-rendering
+  // destroys the element the drag started on.
   function startRowDrag(e, idx) {
     if (e.button !== 0) return;
     e.preventDefault(); // no text selection, and the label input keeps its focus
@@ -266,8 +264,7 @@ function openEquipSettings() {
     renderDraft();
 
     const onMove = me => {
-      // Reorder as soon as the cursor passes another row's midpoint, so the
-      // list under the cursor always shows where the row would land.
+      // Reorder as the cursor passes another row's midpoint.
       const rows = [...list.querySelectorAll('.es-row')];
       let target = rows.findIndex(r => {
         const b = r.getBoundingClientRect();
@@ -301,8 +298,7 @@ function openEquipSettings() {
 
   renderDraft();
 
-  // New rows land at the bottom of the list, which the pinned toolbar is no
-  // longer next to — scroll down so the row you just added is on screen.
+  // New rows land at the bottom — scroll down so the one just added is on screen.
   function addRow(item) {
     draft.push(item);
     renderDraft();

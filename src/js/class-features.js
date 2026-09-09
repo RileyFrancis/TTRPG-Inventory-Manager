@@ -26,21 +26,19 @@ function loadDefaultClasses() {
     xhr.open('GET', 'data/classes.json', false); // synchronous
     xhr.send();
     if (xhr.status !== 200) throw new Error(`HTTP ${xhr.status}`);
-    // A host that answers unknown paths with its index page would otherwise
-    // "find" a class list made of HTML — the same guard firebase-config.js uses.
+    // A host answering unknown paths with its index page would otherwise "find"
+    // a class list made of HTML — the guard firebase-config.js uses.
     const body = xhr.responseText.trim();
     if (body.startsWith('<')) throw new Error('not JSON');
     DEFAULT_CLASSES = sanitizeClassList(JSON.parse(body).classes);
   } catch (e) {
-    // Not fatal. The sheet is perfectly usable with no classes known — the
-    // section simply says it has never heard of whatever was typed.
+    // Not fatal — the sheet is usable with no classes known.
     DEFAULT_CLASSES = [];
   }
 }
 
-// Whatever came out of the file, reduced to the shape the rest of this file
-// promises. A class with no usable features is dropped rather than left to
-// render as an empty heading.
+// Reduce the file to the shape the rest of this file promises. A class with no
+// usable features is dropped.
 function sanitizeClassList(raw) {
   if (!Array.isArray(raw)) return [];
   return raw.map(c => {
@@ -57,10 +55,8 @@ function sanitizeClassList(raw) {
   }).filter(Boolean);
 }
 
-// A subclass is a class in miniature: an id, a name, its own `source`, and a
-// list of features gated by the character's total level exactly as the class's
-// own are. It carries no `subclasses` of its own. One with no usable features
-// is dropped, like a class.
+// A subclass is a class in miniature — an id, name, own `source`, and features
+// gated by the character's total level. It carries no `subclasses` of its own.
 function sanitizeSubclassList(raw) {
   if (!Array.isArray(raw)) return [];
   return raw.map(s => {
@@ -76,8 +72,7 @@ function sanitizeSubclassList(raw) {
   }).filter(Boolean);
 }
 
-// Source material — a short label like "PHB", free text and trimmed. Absent
-// reads as "" and the section simply says nothing about where a class is from.
+// Short book label ("PHB"), free text and trimmed.
 function cleanSource(raw) {
   return String(raw ?? '').trim().slice(0, 40);
 }
@@ -95,44 +90,21 @@ function sanitizeFeature(f) {
   };
 }
 
-// One key or several, always read back as an array — so the JSON can say either
-// and nothing downstream has to check which.
+// One key or several, always read back as an array.
 function normalizeUnlocks(raw) {
   if (!raw) return [];
   const list = Array.isArray(raw) ? raw : [raw];
   return list.map(k => String(k).trim()).filter(Boolean);
 }
 
-// **A description is Markdown**, rendered by markdown.js exactly as a backstory
-// is — so a feature can bold the name of a mechanic and list what it grants
-// rather than running it all together in one sentence.
-//
-// JSON has no multi-line string, and a bulleted feature written as one
-// `"...\n- one\n- two"` line is unreadable in the file it has to be edited in.
-// So an **array is accepted**, which is the convention `data/classes.json`
-// already uses for its own `_comment` block. Shared with species-traits.js,
-// whose traits are the same kind of thing.
-//
-// **An entry is a block, not a line.** Blocks are separated by a blank line,
-// so a paragraph is one entry and nothing has to type `""` between them:
-//
-//     [ "Enter a Rage as a Bonus Action.",     ->  <p>Enter a Rage…</p>
-//       "- **Damage Resistance.** …",          ->  <ul><li>…</li>
-//       "- **Rage Damage.** …",                ->      <li>…</li></ul>
-//       "It lasts until your next turn." ]     ->  <p>It lasts…</p>
-//
-// **Except a list item, which joins to the line above it.** A blank line
-// between two bullets does not make a longer list — `collectListItems()` stops
-// at it, so they come out as two separate one-item lists with a gap between.
-// Nobody writing `- a` and `- b` on two entries means that, so the one case
-// where the blank line would be wrong is the one case it is not inserted.
-// `MD_LIST_RE` is markdown.js's own test, borrowed rather than copied, so what
-// counts as a list line here cannot drift from what the parser does with it.
-//
-// **A nested array is one block whose lines are kept together**, for the two
-// things that need consecutive lines and are not lists: a hand-written
-// `<table>` (the raw-HTML branch reads to the next blank line) and a stanza
-// wanting hard breaks mid-paragraph.
+// A description is Markdown. JSON has no multi-line string, so an ARRAY is also
+// accepted (the convention `data/classes.json`'s own `_comment` block uses).
+// Blocks are separated by a blank line — except two consecutive list items,
+// which run on (`collectListItems()` stops at a blank line, so a blank between
+// two bullets would split them). `MD_LIST_RE` is markdown.js's own test,
+// borrowed not copied. A nested array is one block whose lines are kept together
+// (a hand-written `<table>`, or a stanza wanting hard breaks). Shared with
+// species-traits.js. See CLAUDE.md § Class features.
 function normalizeDescription(raw) {
   if (!Array.isArray(raw)) return String(raw ?? '');
 
@@ -154,26 +126,21 @@ loadDefaultClasses();
 // =============================================================================
 // THE REGISTRY
 // =============================================================================
-// Every class the app knows. The single seam custom classes will come through:
-// add the player's own definitions here and the section, the lookup and the
-// unlocks all follow.
+// The single seam custom classes will come through.
 function allClasses() {
   return DEFAULT_CLASSES.slice();
 }
 
-// Names are typed by hand, so match loosely — trimmed and case-insensitive.
-// Ids are matched too, so a stored id keeps working if the display name is
-// ever edited.
+// Names are typed by hand — trimmed, case-insensitive; ids matched too, so a
+// stored id survives a display-name edit.
 function findClassByName(name) {
   const key = String(name ?? '').trim().toLowerCase();
   if (!key) return null;
   return allClasses().find(c => c.name.toLowerCase() === key || c.id === key) ?? null;
 }
 
-// A character has one free-text `subclass` field, like `classes` — matched
-// against the subclasses of whichever class they hold. Loose match on name or
-// id, as everywhere else. A name matching nothing is not an error: the app has
-// simply not been taught that subclass, and its features do not appear.
+// A character's free-text `subclass` field, matched against the subclasses of
+// whichever class they hold.
 function findSubclassByName(classDef, name) {
   const key = String(name ?? '').trim().toLowerCase();
   if (!key || !classDef) return null;
@@ -181,31 +148,24 @@ function findSubclassByName(classDef, name) {
     s => s.name.toLowerCase() === key || s.id === key) ?? null;
 }
 
-// The level a character counts as **for one particular class** — the entry's own
-// level, not the character's total. This is the place the file header always
-// said per-class levels would land, and they have: a Warlock 5 / Bard 2 reads
-// the Warlock list at 5 and the Bard list at 2.
-//
-// The fallback is the character's total level, and it is for a class we were
-// handed but cannot find an entry for — party data mid-edit, or a caller passing
-// a class the character does not actually hold.
+// The level a character counts as for ONE particular class — the entry's own
+// level, not the total. Falls back to the total level for a class we were handed
+// but have no entry for.
 function characterClassLevel(character, classDef) {
   const entry = classEntriesOf(character).find(e => matchesClass(classDef, e.name));
   if (entry) return entry.level;
   return Math.max(1, Math.min(20, parseInt(character?.level, 10) || 1));
 }
 
-// Whether a typed name is this class — the same loose test `findClassByName()`
-// makes, asked the other way round.
 function matchesClass(classDef, name) {
   if (!classDef) return false;
   const key = String(name ?? '').trim().toLowerCase();
   return key === classDef.name.toLowerCase() || key === classDef.id;
 }
 
-// Everything the character's classes offer, in the order the section shows it:
-// by level, then by class, then as written. `owned` is what the level gate
-// decides — the list is always complete, and the *section* chooses what to draw.
+// Everything the character's classes offer, in section order: by level, then
+// class, then as written. `owned` is what the level gate decides — the list is
+// always complete, and the section chooses what to draw.
 function classFeaturesFor(character) {
   const entries = classEntriesOf(character);
   const multi = entries.length > 1;
@@ -214,9 +174,7 @@ function classFeaturesFor(character) {
   entries.forEach(entry => {
     const def = findClassByName(entry.name);
     if (!def) return;
-    // **The entry's own level**, so each half of a multiclass is read at the
-    // level it was actually taken to.
-    const level = entry.level;
+    const level = entry.level; // the entry's own level
 
     def.features.forEach((f, i) => rows.push({
       ...f,
@@ -227,10 +185,8 @@ function classFeaturesFor(character) {
       owned: f.level <= level,
     }));
 
-    // The chosen subclass's own features, if this class recognises what the
-    // character typed. They interleave with the base features by level but
-    // sort after them at a shared level, and always carry the subclass name.
-    // The subclass is the *entry's* — each class picks its own.
+    // The chosen subclass's features — interleaved by level, sorted after base
+    // features at a shared level, always tagged with the subclass name.
     const subclass = findSubclassByName(def, entry.subclass);
     if (subclass) {
       subclass.features.forEach((f, i) => rows.push({
@@ -253,8 +209,7 @@ function classFeaturesFor(character) {
   return rows;
 }
 
-// The names typed that this app has never heard of. Not an error — the section
-// says so, and it is the honest answer until custom classes exist.
+// Names typed that this app has never heard of. Not an error — the section says so.
 function unknownClassNames(character) {
   return classEntriesOf(character).map(e => e.name).filter(n => !findClassByName(n));
 }
@@ -263,22 +218,13 @@ function unknownClassNames(character) {
 // UNLOCKS — sheet parts that arrive with a feature
 // =============================================================================
 // A feature may name parts of the sheet it brings with it (`"unlocks":
-// ["subclass"]`). Markup marks those parts `data-unlocked-by="subclass"`, and
-// they stay hidden until some *owned* feature names them.
-//
-// The key is a plain string shared between the JSON and the markup, rather than
-// a selector or an element id, so the data never has to know how the sheet is
-// built — a part can move, or be drawn by something else entirely, and the
-// class file is unaffected. `"subclass"` proved that: the field it gates moved
-// off the sheet and into the Character Setup modal without `data/classes.json`
-// changing a character.
-//
-// **The only key in use is asked per class, not of the character.** A Warlock 5
-// / Bard 2 has a patron and no Bard college, so the modal gates each class row's
-// Subclass field with `classUnlockKeys()` — that class, at that class's level.
-// The character-wide question below is the right one for a part of the *sheet*,
-// which belongs to nobody's class in particular; it has no targets today, and is
-// what a species Lineage field will arrive through.
+// ["subclass"]`); markup marks them `data-unlocked-by="subclass"` and they stay
+// hidden until an owned feature names them. The key is a plain string shared
+// between JSON and markup — the data never has to know how the sheet is built.
+// See CLAUDE.md § Class features (Unlocks).
+
+// The character-wide question — right for a sheet part that belongs to no class
+// in particular. Has no targets today (a species Lineage field will arrive here).
 function unlockedSheetKeys(character) {
   const keys = new Set();
   classFeaturesFor(character).forEach(row => {
@@ -287,25 +233,17 @@ function unlockedSheetKeys(character) {
   return keys;
 }
 
-// **A class the app does not know disables the whole mechanism.** If someone
-// plays a Bard, this file has no idea what a Bard gets or when, so hiding their
-// Subclass field would be an invention — and one that looks like the app has
-// eaten a box they were using. Unlocks only speak when every class listed is
-// one we can actually reason about.
+// A class the app does not know disables the whole mechanism — hiding a box for
+// a class we cannot reason about would be an invention.
 function featureUnlocksAreAuthoritative(character) {
   const entries = classEntriesOf(character);
   return entries.length > 0 && entries.every(e => !!findClassByName(e.name));
 }
 
-// The unlock keys **one class alone** hands out at a given level, with a given
-// subclass. `unlockedSheetKeys()` above is the character-wide question; this is
-// the same question asked of a single class, which is what the Character Setup
-// modal needs — a Warlock 5 has a subclass to name and a Bard 2 does not, and
-// the two rows of one multiclass must be able to disagree.
-//
-// A class this app has never heard of returns `null`, not an empty set: as
-// everywhere else, not knowing is not the same as knowing there is nothing, and
-// the caller must show the field rather than hide one that should be there.
+// The unlock keys ONE class alone hands out at a given level and subclass — what
+// the Character Setup modal needs, since a Warlock 5 has a subclass to name and
+// a Bard 2 does not. A class this app has never heard of returns `null` (not an
+// empty set), and the caller must then show the field.
 function classUnlockKeys(classDef, subclassName, level) {
   if (!classDef) return null;
   const keys = new Set();
@@ -315,15 +253,10 @@ function classUnlockKeys(classDef, subclassName, level) {
   return keys;
 }
 
-// **Both registries feed one key space.** A species trait may unlock a part of
-// the sheet exactly as a class feature may, so the keys are unioned here and the
-// markup never has to know which kind of thing granted it. This function owns
-// the mechanism; species-traits.js supplies its half through the two functions
-// called below.
-//
-// The *authoritative* test is an AND, and has to be: if either half of what the
-// character is cannot be reasoned about, a hidden box might be one they should
-// have, and hiding it reads as the app having eaten a field they were using.
+// Both registries feed one key space. This owns the mechanism; species-traits.js
+// supplies its half. The authoritative test is an AND: if either half of what
+// the character is cannot be reasoned about, a hidden box might be one they
+// should have.
 function applyFeatureUnlocks() {
   const authoritative = featureUnlocksAreAuthoritative(state.character)
                      && speciesUnlocksAreAuthoritative(state.character);
@@ -334,8 +267,7 @@ function applyFeatureUnlocks() {
     speciesUnlockKeys(state.character).forEach(k => keys.add(k));
   }
 
-  // Scoped to the sheet, which is where a character-wide part would live. The
-  // setup modal's class rows are gated per class instead, and never from here.
+  // Scoped to the sheet — the setup modal's class rows are gated per class instead.
   document.querySelectorAll('#character-sheet [data-unlocked-by]').forEach(el => {
     const key = el.dataset.unlockedBy;
     el.classList.toggle('hidden', !!keys && !keys.has(key));
@@ -345,23 +277,13 @@ function applyFeatureUnlocks() {
 // =============================================================================
 // THE SECTION
 // =============================================================================
-// Session-only, and deliberately not persisted: which half of a list you are
-// looking at is a glance, not a setting, and the useful default — what you
-// actually have — is the one you want on opening the sheet.
+// Session-only, not persisted — the useful default is what you actually have.
 let showLockedFeatures = false;
 
-// Which cards are folded shut, for the same reason and by the same argument:
-// reading a long section by collapsing what you have already read is a glance,
-// not a property of the character. So it is a Set in memory — never in the save
-// file, never synced, gone on reload — and every card opens expanded, which is
-// the state that shows you what you have.
-//
-// **Keyed with the section's scope, not the bare id.** Class feature ids are
-// bare words (`rage`) where species trait ids are prefixed (`dwarf-darkvision`),
-// so the two files could collide on one, and a collision here would fold a card
-// in one section because you folded an unrelated one in the other. Ids in this
-// project are hand-written and the coin purse is the standing reminder of what
-// assuming they are unique costs.
+// Which cards are folded shut. Session-only Set, never saved or synced; every
+// card opens expanded. Keyed with the section's SCOPE, not the bare id — class
+// feature ids are bare words (`rage`), species trait ids prefixed
+// (`dwarf-darkvision`), so the two files could collide on one.
 const collapsedFeatures = new Set();
 
 function featureKey(row, scope) {
@@ -373,19 +295,15 @@ function toggleFeatureCollapsed(key) {
   return !collapsedFeatures.has(key);   // the new expanded state
 }
 
-// `renderCharacterSheet()` re-runs on every keystroke in any sheet field and on
-// every party-roster sync, but this section only changes with the character's
-// classes, subclass, level, and species (species feeds `applyFeatureUnlocks`),
-// plus the show-locked toggle. When none of those moved, the cards, the unlock
-// flags and the datalist are all still correct — so skip the rebuild, which is
-// what used to re-parse every card's Markdown on every stroke.
+// `renderCharacterSheet()` re-runs on every keystroke and every roster sync, but
+// this section only changes with classes, subclass, level, species and the
+// show-locked toggle. Skip the rebuild otherwise — it used to re-parse every
+// card's Markdown on every stroke.
 let classFeaturesSig = null;
 
 function classFeaturesSignature() {
   const c = state.character || {};
   return [
-    // Name, level and subclass of every class — the whole of what the section
-    // is drawn from, so a level moved from one class to another rebuilds it.
     classEntriesOf(c).map(e => `${e.name}:${e.level}:${e.subclass}`).join('␟'),
     c.level ?? '', c.race || '',
     showLockedFeatures ? '1' : '0',
@@ -397,8 +315,8 @@ function renderClassFeatures() {
   const btn = document.getElementById('feature-toggle-locked');
   if (!box) return;
 
-  // `applyFeatureUnlocks()` is cheap and left unconditional, so a hidden field
-  // is never left in the wrong state; the costly card rebuild below is gated.
+  // Cheap and left unconditional, so a hidden field is never in the wrong state;
+  // the costly card rebuild below is gated.
   applyFeatureUnlocks();
 
   const sig = classFeaturesSignature();
@@ -408,8 +326,7 @@ function renderClassFeatures() {
   const rows = classFeaturesFor(state.character);
   const locked = rows.filter(r => !r.owned).length;
 
-  // Nothing to toggle when nothing is out of reach — a button that cannot
-  // change what you see is noise.
+  // A toggle that cannot change what you see is noise.
   if (btn) {
     btn.classList.toggle('hidden', locked === 0);
     setIconLabel(btn, showLockedFeatures ? 'hide' : 'show',
@@ -431,10 +348,8 @@ function renderClassFeatures() {
     box.appendChild(featureCard(row));
   });
 
-  // Every feature is locked and the reader has chosen not to see them.
   if (!box.children.length) box.appendChild(featureNote('Nothing unlocked at this level yet.'));
 
-  // A quiet citation under the cards — class and subclass book(s).
   const sources = classSourceSummary(state.character);
   if (sources) box.appendChild(featureSourceNote(sources));
 
@@ -445,11 +360,9 @@ function renderClassFeatures() {
   }
 }
 
-// Parsed descriptions are cached by their raw Markdown string. A feature's text
-// never changes, so the parse + sanitize — a real cost now that descriptions
-// run to several paragraphs with lists and tables — happens once per distinct
-// string for the life of the page, and each card gets a fresh clone. The key
-// space is the fixed set of descriptions across every class and species.
+// Parsed descriptions are cached by their raw Markdown string — a feature's text
+// never changes, and the parse + sanitize is a real cost now that descriptions
+// run to several paragraphs. Each card gets a fresh clone.
 const featureDescCache = new Map();
 
 function renderFeatureDesc(el, src) {
@@ -463,15 +376,9 @@ function renderFeatureDesc(el, src) {
   el.appendChild(tpl.content.cloneNode(true));
 }
 
-// The level rides the card's top-left corner rather than sitting inside it —
-// the badge is what you scan the list by, so it breaks the edge to be read
-// before the card it belongs to. `.feature-list` carries the padding that keeps
-// the overhang from being clipped.
-//
-// **Shared with the species traits section**, which draws the same card from the
-// same list shape (see species-traits.js). `opts.badge` is what it varies: a
-// species grants almost everything at level 1, and a column of identical badges
-// is noise where information should be. Class features always carry theirs.
+// Shared with the species traits section (species-traits.js). `opts.badge` is
+// what it varies — a species grants almost everything at level 1, and a column
+// of identical badges is noise.
 function featureCard(row, opts = {}) {
   const withBadge = opts.badge !== false;
   const key = featureKey(row, opts.scope ?? 'class');
@@ -488,15 +395,10 @@ function featureCard(row, opts = {}) {
   level.textContent = row.level;
   level.title = `Unlocked at level ${row.level}`;
 
-  // **The name is a real `<button>` inside the heading**, which is the standard
-  // disclosure pattern: the heading keeps its meaning for anything reading the
-  // sheet's structure, and the button is a control that Tab reaches and Enter
-  // and Space work on without a keydown handler of our own. Styled back to bare
-  // text in the CSS, so the card looks exactly as it did before it could fold.
-  //
-  // Clicking anywhere on the card also toggles it — that is the delegated
-  // listener at the bottom of this file, which this button's click reaches by
-  // bubbling rather than by a second listener, so the two cannot double-fire.
+  // The name is a real `<button>` inside the heading (the standard disclosure
+  // pattern): Tab reaches it, Enter/Space work on it, no keydown handler of our
+  // own. Styled back to bare text in the CSS. Clicking anywhere on the card also
+  // toggles it — the delegated listener below, reached here by bubbling.
   const name = document.createElement('h4');
   name.className = 'feature-name';
 
@@ -507,9 +409,8 @@ function featureCard(row, opts = {}) {
   nameBtn.setAttribute('aria-expanded', String(expanded));
   name.appendChild(nameBtn);
 
-  // The small right-aligned tag: the class name when multiclassed (one class
-  // needs no label on every card), and the subclass name whenever a feature
-  // comes from one — that earns saying, single class or not.
+  // The class name when multiclassed, and the subclass name whenever a feature
+  // comes from one (single class or not).
   const tagText = row.subclassName
     ? (row.showClass ? `${row.className} · ${row.subclassName}` : row.subclassName)
     : (row.showClass ? row.className : '');
@@ -520,14 +421,10 @@ function featureCard(row, opts = {}) {
     name.appendChild(tag);
   }
 
-  // A `<div>`, not a `<p>`: the description is Markdown, and what comes back is
-  // block-level — a paragraph cannot legally hold a list or a second paragraph,
-  // and a browser would close it early and strand the rest outside the card.
-  //
-  // `renderMarkdownInto` is the *only* way markup may be built from a string
-  // here — it sanitizes on the way in. That matters even though today's
-  // descriptions are ours: a user-authored class will sync to Firebase and
-  // render in the GM's browser exactly as a player's backstory does.
+  // A `<div>`, not a `<p>`: the description is Markdown and comes back
+  // block-level. `renderMarkdownInto` is the only way markup may be built from a
+  // string here — it sanitizes on the way in, which matters because a
+  // user-authored class will sync to Firebase and render in the GM's browser.
   const desc = document.createElement('div');
   desc.className = 'feature-desc';
   desc.id = 'fd-' + key.replace(/[^\w-]/g, '-');
@@ -557,9 +454,8 @@ function featureNote(text) {
   return p;
 }
 
-// A quiet caption above the cards naming where each known class — and its
-// chosen subclass — comes from. Built only from what carries a `source`, and
-// skipped entirely when nothing does.
+// A quiet caption above the cards naming where each known class and subclass
+// comes from. Skipped when nothing carries a `source`.
 function classSourceSummary(character) {
   const parts = [];
   classEntriesOf(character).forEach(entry => {
@@ -580,8 +476,7 @@ function featureSourceNote(text) {
 }
 
 // Fills a `<datalist>` with names — the Character Setup modal's class and
-// subclass hints. A hint, never a constraint: both fields stay free text, so a
-// class or subclass this app has not been taught can still be typed in.
+// subclass hints. A hint, never a constraint.
 function fillDatalist(dl, names) {
   if (!dl) return;
   dl.textContent = '';
@@ -600,20 +495,11 @@ document.getElementById('feature-toggle-locked').addEventListener('click', () =>
 // =============================================================================
 // FOLDING A CARD SHUT
 // =============================================================================
-// **One listener per section, not one per card** — the same argument the sheet
-// makes about its ~80 inputs, and these sections are rebuilt on every render, so
-// per-card listeners would be re-attached each time. The containers themselves
-// are static markup and outlive every rebuild, so a listener on them does not.
-//
-// Both sections are wired from here because `featureCard()` is here: the card is
-// one kind of thing drawn off two registries, and a fold that worked in one
-// section but not the other would be the two copies drifting that sharing the
-// card exists to prevent.
-//
-// The toggle only flips classes and the aria state on the card that was hit. It
-// deliberately does **not** re-render the section: a render rebuilds every card,
-// which would throw away keyboard focus mid-click and cost a Markdown parse per
-// feature to change one `display`.
+// One listener per section, not one per card — the sections are rebuilt on every
+// render while the containers are static markup. Both wired from here because
+// `featureCard()` is (species traits fold too). The toggle only flips classes
+// and the aria state on the card that was hit — deliberately NOT a re-render,
+// which would throw away focus and cost a Markdown parse per feature.
 function initFeatureFolding() {
   ['sheet-features', 'sheet-species-traits'].forEach(id => {
     const box = document.getElementById(id);
@@ -625,14 +511,11 @@ function onFeatureCardClick(e) {
   const card = e.target.closest('.feature-card');
   if (!card) return;
 
-  // A description is Markdown and may hold a link — and the section's own
-  // controls sit in the title above it. Anything that is already a control
-  // keeps its own click.
+  // A description may hold a link, and the section's controls sit in the title.
   if (e.target.closest('a, input, textarea, select, label')) return;
   if (e.target.closest('button') && !e.target.closest('.feature-name-btn')) return;
 
-  // A click that ends a drag-select is the reader highlighting a passage to
-  // copy, not asking for the card to shut under their cursor.
+  // A click that ends a drag-select is a reader highlighting a passage to copy.
   const sel = window.getSelection();
   if (sel && !sel.isCollapsed && card.contains(sel.anchorNode)) return;
 

@@ -24,10 +24,8 @@
 // =============================================================================
 const MAP_GRID_DEFAULT = { type: 'square', size: 70, offsetX: 0, offsetY: 0, visible: true };
 
-// Hostility is the token's whole colour scheme, and the three are the three
-// answers a table actually gives about a creature on the board. The `color`
-// here is only the fallback: the real one is the `--hostility-*` token, so each
-// palette can tune it — see hostilityColor() below.
+// The `color` here is only the fallback — the real one is the `--hostility-*`
+// token (see hostilityColor()).
 const HOSTILITY = {
   party:   { label: 'Party',   color: '#2f7d3f' },
   neutral: { label: 'Neutral', color: '#b08108' },
@@ -35,10 +33,8 @@ const HOSTILITY = {
 };
 const HOSTILITY_ORDER = ['party', 'neutral', 'hostile'];
 
-// Sizes as the rules give them, measured in grid cells. A token's `size` is
-// stored as that number rather than as the word, so the geometry never has to
-// look one up — and a homebrew creature can be given a size the list has no
-// name for without anything breaking.
+// A token's `size` is stored as a number of cells, not a word, so the geometry
+// never has to look one up and a homebrew size still works.
 const CREATURE_SIZES = [
   { id: 'tiny',        label: 'Tiny',        cells: 0.5 },
   { id: 'medium',      label: 'Small / Medium', cells: 1 },
@@ -47,10 +43,8 @@ const CREATURE_SIZES = [
   { id: 'gargantuan',  label: 'Gargantuan',  cells: 4 },
 ];
 
-// The glyph in the middle of the disc. Deliberately a short, opinionated list
-// rather than a free text field: a token is read at a glance across a shared
-// map, and two characters of someone's own choosing is how you get a board
-// nobody else can parse.
+// A short opinionated list, not free text — a token is read at a glance across a
+// shared board.
 const CREATURE_ICONS = [
   '🗡️', '🏹', '🛡️', '🪄', '✨', '🎵', '🐺', '🐉', '🕷️', '🦇',
   '💀', '👹', '👻', '🧟', '🐻', '🐍', '🔥', '🧊', '⭐', '❓',
@@ -60,39 +54,28 @@ function mapGrid(map) {
   return { ...MAP_GRID_DEFAULT, ...(map?.grid ?? {}) };
 }
 
-// One cell, in image pixels. Never let this be zero: it divides.
+// One cell, in image pixels. Never zero — it divides.
 function mapCellSize(map) {
   const s = mapGrid(map).size;
   return Number.isFinite(s) && s >= 4 ? s : MAP_GRID_DEFAULT.size;
 }
 
-// **A grid figure is fractional, and stored to two places.** Somebody else's
-// picture of a dungeon is very rarely a whole number of pixels per square, and
-// a size rounded to one is out by up to half a pixel on every square — which
-// nobody can see on the first and everybody can see on the thirtieth. Two
-// decimals is under a pixel of drift across a hundred squares, and short enough
-// to read in a number box.
+// A grid figure is fractional, stored to two places — somebody else's picture is
+// rarely a whole number of pixels per square, and rounding to one drifts up to
+// half a pixel per square (unmissable by the thirtieth).
 function roundGridValue(v) {
   return Number.isFinite(v) ? Math.round(v * 100) / 100 : 0;
 }
 
-// An offset means the same thing every cell along, so it is kept inside one
-// cell. That is not arithmetic tidiness: it is what stops the drags below
-// writing an offset of 1840 into a box the reader then has to make sense of,
-// when what it means is 24.
+// An offset means the same thing every cell along, so it is kept inside one cell
+// — an offset of 1840 in a number box means 24.
 function wrapGridOffset(v, cell) {
   if (!Number.isFinite(v) || !(cell > 0)) return 0;
   return roundGridValue(((v % cell) + cell) % cell);
 }
 
-// **The grid is stretched and slid by dragging the picture**, not by typing
-// numbers at it — see THE GRID'S CORNERS in battlemap-view.js. What lands here
-// is the arithmetic those two gestures are: a scale about a point, and a
-// translation.
-
-// The size a grid may be given. The floor is what mapCellSize() will accept back
-// (a cell of nothing divides), and the ceiling is the number boxes' own, so a
-// dragged size and a typed one cannot disagree about what is allowed.
+// The size range a grid may be given. Floor is what mapCellSize() accepts back,
+// ceiling is the number boxes' own, so a dragged size and a typed one agree.
 const MAP_GRID_MIN_SIZE = 8;
 const MAP_GRID_MAX_SIZE = 600;
 
@@ -106,18 +89,11 @@ function gridSizeOf(grid) {
   return Number.isFinite(s) && s >= 4 ? s : MAP_GRID_DEFAULT.size;
 }
 
-// **Scaling the whole grid about one point.** Dragging a corner of the picture
-// stretches the grid from the corner opposite, so the lines are not resized —
-// they are *magnified*, pivot and all. A line at `x` lands at
-// `pivot + (x - pivot) * k`, which for the run of lines the offset names means
-// the offset moves by exactly that and the size multiplies. Nothing else has to
-// be worked out: one transform describes the whole grid, which is why the corner
-// the reader is not touching stays welded to the picture.
-//
-// The applied factor is read back off the *clamped* size rather than used as
-// asked. At the ends of the range the size stops moving, and an offset that went
-// on scaling past it would slide the grid sideways under a hand that was only
-// trying to make the squares bigger.
+// Scale the whole grid about one point: a line at `x` lands at
+// `pivot + (x - pivot) * k`, so the offset moves by that and the size multiplies
+// — one transform describes the whole grid. The applied factor is read off the
+// CLAMPED size, or an offset would go on scaling past the size limits and slide
+// the grid sideways.
 function scaleGridAbout(grid, pivot, k) {
   const base = gridSizeOf(grid);
   const size = clampGridSize(base * k);
@@ -129,8 +105,7 @@ function scaleGridAbout(grid, pivot, k) {
   };
 }
 
-// Sliding is the same grid moved bodily under the picture: the size is untouched
-// and both offsets take the pointer's delta.
+// Slide: the size is untouched and both offsets take the pointer's delta.
 function slideGridBy(grid, dx, dy) {
   const cell = gridSizeOf(grid);
   return {
@@ -149,16 +124,14 @@ function mapMasks(map) {
   return Object.values(map?.masks ?? {}).filter(m => m && m.id);
 }
 
-// A token's radius in image pixels. Tokens are circular — that is the whole of
-// how hostility is read — so one number describes the whole footprint.
+// A token's radius in image pixels. Tokens are circular.
 function tokenRadius(map, token) {
   return (token.size ?? 1) * mapCellSize(map) / 2;
 }
 
-// Read out of CSS and cached, exactly as rarityColor() is and for the same
-// reason: the value is baked into a canvas fill and into the icon buttons'
-// inline `--hc`, so a palette swap has to clear the cache and redraw. That is
-// `rerenderThemedContent()`'s job, and it calls the clear below.
+// Read out of CSS and cached, like rarityColor() — baked into a canvas fill and
+// the icon buttons' inline `--hc`, so a palette swap must clear the cache and
+// redraw (`rerenderThemedContent()`).
 let _hostilityColorCache = {};
 
 function hostilityColor(h) {
@@ -207,8 +180,7 @@ function unsubscribeFromBattlemap() {
   onBattlemapChanged();
 }
 
-// Everything that has to notice a map changing, in one place — the library
-// pane, the button that opens the map, and the map itself when it is up.
+// Everything that has to notice a map changing, in one place.
 function onBattlemapChanged() {
   syncLeftPanel();      // a first map makes the GM's Maps tab appear
   syncMapButton();
@@ -220,15 +192,12 @@ function onBattlemapChanged() {
 // =============================================================================
 function isMapGM() { return state.party.active && state.party.role === 'gm'; }
 
-// The GM alone edits the map itself. Adding a creature is everyone's — see
-// canAddCreature() — but the terrain, the grid and the fog are the GM's account
-// of the world, and two people redrawing a wall at once is not a feature.
+// The GM alone edits the terrain, the grid and the fog. Adding a creature is
+// everyone's — see canAddCreature().
 function canEditMap() { return isMapGM(); }
 
-// A creature is something anybody at the table puts on the board: a player
-// marking where their familiar went, the GM dropping in a wolf. Deliberately
-// not gated by isReadOnly() — that guards a *character*, and a token on a
-// shared map is not one.
+// A creature is anybody's — deliberately NOT gated by isReadOnly(), which guards
+// a *character*.
 function canAddCreature() { return state.party.active && isSignedIn(); }
 
 function allMaps() {
@@ -241,9 +210,8 @@ function mapById(id) { return id ? (state.battlemap?.maps ?? {})[id] ?? null : n
 
 function activeMapId() { return state.battlemap?.activeId ?? null; }
 
-// The map the party is standing on, as *this* reader is allowed to see it. A
-// GM always gets it; a player gets it only once it is revealed, so a GM can lay
-// the next room out with the party still in this one.
+// The map the party is on, as this reader may see it. A GM always gets it; a
+// player only once it is revealed.
 function mapForViewer() {
   const map = mapById(activeMapId());
   if (!map) return null;
@@ -293,8 +261,7 @@ function updateToken(mapId, tokenId, patch) {
   mapRef(mapId, 'tokens/' + tokenId).update(patch);
 }
 
-// A creature is removed by whoever put it there, or by the GM. The board is
-// shared, but a player sweeping away the GM's ambush is not a shared gesture.
+// Removed by whoever put it there, or by the GM.
 function canRemoveToken(token) {
   return canEditMap() || (token.ownerUid && token.ownerUid === ownPlayerId());
 }
@@ -331,21 +298,14 @@ function clearMapPieces(mapId, kind, label) {
 // =============================================================================
 // GEOMETRY — line of sight
 // =============================================================================
-// The players see in straight lines from every party member, and a wall the GM
-// has drawn stops the line where it meets it. That is the whole rule, and it is
-// worked out here as a *polygon per source* rather than as a grid of lit cells:
-// a map is a picture rather than a lattice, the grid can be moved under it, and
-// a shadow that steps in whole cells would be a different game's fog.
-//
-// **It is pacing, not security**, and for the same reason a shop's reveal is:
-// the fog is computed and drawn on the player's own machine from data every
-// member can read. Somebody reading the database directly sees the whole board.
-// Making that real would mean the GM's client publishing a per-player view, and
-// the trade is not obviously worth it for a table that has agreed to play.
+// Straight lines from every party member, stopped by a wall the GM drew. Worked
+// out as a polygon per source, not a grid of lit cells — a map is a picture, and
+// the grid can be moved under it. Pacing, not security (computed and drawn on
+// the reader's own machine).
 
-// A ray against an axis-aligned rectangle — the slab method. Returns the
-// distance to the near face, or null for a miss. The ray's direction is a unit
-// vector, so t comes back in image pixels.
+// A ray against an axis-aligned rectangle (slab method). Returns the distance to
+// the near face, or null for a miss. The ray direction is a unit vector, so t is
+// in image pixels.
 function rayRect(ox, oy, dx, dy, r) {
   let tmin = -Infinity, tmax = Infinity;
   const slab = (o, d, lo, hi) => {
@@ -382,23 +342,12 @@ function pointInWall(x, y, w) {
   return x >= w.x && x <= w.x + w.w && y >= w.y && y <= w.y + w.h;
 }
 
-// The angles worth casting at. A uniform sweep alone leaves a rectangle's
-// shadow with a scalloped edge — the polygon can only turn where a ray landed —
-// so every corner gets three rays, one either side of it by a hair. The pair
-// straddling the corner is what makes the shadow's edge a straight line: one
-// ray stops on the box, its twin carries on past it.
-//
-// **Every angle is normalized into [0, 2π) before the sort, and that is not a
-// tidy-up — it is the whole of whether a shadow is cast at all.** `Math.atan2`
-// answers in (-π, π] while the uniform fan is written out over [0, 2π), so a
-// raw sort interleaves two different numberings of the same circle: the corner
-// rays aimed above the source land at the *front* of the list, and the sweep
-// rays covering that same arc land at the *back*. The polygon is then walked in
-// an order that crosses the same arc twice — once with the corner detail and
-// once without — and the coarse second pass paints straight over the shadow the
-// first one cut. Measured on a single rectangle with the source stepped over
-// the whole map, 170 of 357 probes taken directly behind the wall came back
-// *lit*; normalized, none of them do.
+// The angles worth casting at: a uniform sweep, plus three rays at every corner
+// (one either side by a hair) — the straddling pair makes a shadow's edge a
+// straight line. Every angle is normalized into [0, 2π) before the sort — NOT a
+// tidy-up: `Math.atan2` answers in (-π, π] while the fan is written over
+// [0, 2π), so a raw sort interleaves two numberings and the coarse pass paints
+// over the shadow the corner rays cut.
 const TAU = Math.PI * 2;
 const VISION_SWEEP = 180;   // the uniform fan, in rays
 const VISION_NUDGE = 0.0006; // radians either side of a corner
@@ -421,8 +370,8 @@ function visionAngles(ox, oy, walls, bounds) {
 
   walls.forEach(w => {
     if (w.kind === 'circle') {
-      // The two tangents: past either of them the ray misses the disc entirely,
-      // which is exactly where the shadow's edge is.
+      // The two tangents — past either the ray misses the disc, which is where
+      // the shadow's edge is.
       const dx = w.x - ox, dy = w.y - oy;
       const d = Math.hypot(dx, dy);
       if (d <= (w.r ?? 0) || !d) return;
@@ -434,29 +383,21 @@ function visionAngles(ox, oy, walls, bounds) {
       aim(w.x, w.y); aim(w.x + w.w, w.y); aim(w.x, w.y + w.h); aim(w.x + w.w, w.y + w.h);
     }
   });
-  // The map's own corners, so the fan reaches them cleanly rather than by luck.
+  // The map's own corners, so the fan reaches them cleanly.
   aim(bounds.x, bounds.y); aim(bounds.x + bounds.w, bounds.y);
   aim(bounds.x, bounds.y + bounds.h); aim(bounds.x + bounds.w, bounds.y + bounds.h);
 
-  // A nudge either side of a corner that happens to sit at 0 wraps one of the
-  // pair to just under 2π, where the sort puts it last — and the polygon's own
-  // closing edge is then exactly the straddle. Nothing special to do about it,
-  // but it is why the wrap is safe.
   angles.sort((a, b) => a - b);
 
-  // Two rays a ten-thousandth of a radian apart are the same ray for our
-  // purposes, and a map with a dozen walls generates plenty of them. Dropping
-  // the duplicates keeps the polygon free of zero-length edges, which are what
-  // a fill rule has to guess about.
+  // Two rays a ten-thousandth of a radian apart are the same ray — drop the
+  // duplicates so the polygon carries no zero-length edges.
   const out = [];
   for (const a of angles) if (!out.length || a - out[out.length - 1] > 1e-7) out.push(a);
   return out;
 }
 
-// The polygon one creature can see, in image pixels. Walls containing the
-// source are skipped: a token nudged onto a wall the GM drew round a tree
-// should not go blind, and there is no reading of "inside the obstacle" that
-// makes a useful answer.
+// The polygon one creature can see, in image pixels. A wall containing the
+// source is skipped.
 function computeVisionPolygon(ox, oy, walls, bounds) {
   const live = walls.filter(w => !pointInWall(ox, oy, w));
   // Never further than the far corner of the map, so the fan always terminates.
@@ -473,10 +414,8 @@ function computeVisionPolygon(ox, oy, walls, bounds) {
   });
 }
 
-// Every creature the party can see out of. Green is the party, and a player
-// seeing what another player sees falls straight out of that being a *union*
-// rather than a per-viewer answer — which is what the request asked for, and
-// what a table sitting round one board actually does.
+// Every creature the party can see out of — a union, so one player sees what
+// another sees.
 function visionSources(map) {
   return mapTokens(map).filter(t => t.hostility === 'party');
 }
@@ -484,11 +423,9 @@ function visionSources(map) {
 // =============================================================================
 // GEOMETRY — snapping
 // =============================================================================
-// A creature stands *in* squares, so where it snaps depends on how many it
-// covers: an odd footprint centres on a square, an even one on the line between
-// two, which is where a Large creature actually sits. Halving the cell for a
-// tiny creature would put it in a corner the rules have nothing to say about,
-// so it centres like a medium one.
+// Where a creature snaps depends on how many cells it covers: an odd footprint
+// centres on a square, an even one on the line between two (where a Large
+// creature sits). Tiny centres like Medium.
 function snapToGrid(map, x, y, sizeCells) {
   const g = mapGrid(map);
   const cell = mapCellSize(map);

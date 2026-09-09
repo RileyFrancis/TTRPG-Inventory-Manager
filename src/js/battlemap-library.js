@@ -84,10 +84,8 @@ function buildMapRow(map) {
   open.addEventListener('click', () => { state.mapLibraryOpenId = map.id; renderMapPanel(); });
   row.appendChild(open);
 
-  // The two things a GM reaches for mid-session without opening anything: put
-  // the party on this map, and let them see it. They are separate on purpose —
-  // laying out the next room while the party is still in this one is the whole
-  // reason a map has a reveal at all.
+  // Put the party on this map, and let them see it — separate on purpose (lay
+  // out the next room while the party is still in this one).
   const play = document.createElement('button');
   play.className = 'map-row-btn' + (map.id === activeMapId() ? ' on' : '');
   play.title = map.id === activeMapId() ? 'The party is on this map' : 'Put the party on this map';
@@ -202,26 +200,12 @@ function mapSectionHdr(text) {
   return h;
 }
 
-// The grid has to be lined up on somebody else's picture, which is a fiddly job
-// done by eye. So the size and the two offsets are number boxes with steppers
-// either side, and the map behind them redraws as they move — the answer is on
-// the map, not in the numbers. The map is in the middle panel now, so it is
-// genuinely beside them while they are turned.
-//
-// **The numbers are fractional, and that is what makes a grid line up at all.**
-// A cell rounded to a whole pixel is out by up to half of one, which nobody can
-// see on one square and everybody can see thirty squares later — a 70.5px grid
-// forced to 70 has walked a full square off the picture by the far edge. That
-// drift is what "the grid cannot be made the right size" was. The steppers
-// still move by a whole pixel, because that is the unit a hand nudges in; only
-// what may be *stored* has changed.
-//
-// It is still a fiddly job done by eye, though, which is why the real answer to
-// sizing is the **Grid tool** on the map itself: the picture's own corners and
-// edges are the handles, so pulling one magnifies the grid about the point
-// opposite and dragging anywhere else slides it — see THE GRID'S HANDLES in
-// battlemap-view.js. These boxes are where that answer lands, and the place to
-// type an exact number somebody else has already worked out.
+// The size and two offsets as number boxes, redrawing the map as they move. The
+// figures are fractional — a cell rounded to a whole pixel drifts up to half a
+// pixel per square, unmissable by the far edge. The steppers still nudge by a
+// whole pixel; only what may be STORED changed. The real answer to sizing is
+// the Grid tool on the map itself (battlemap-view.js); these boxes are where an
+// exact number somebody else worked out gets typed.
 function buildGridControls(map) {
   const wrap = document.createElement('div');
   wrap.className = 'map-grid-controls';
@@ -243,9 +227,8 @@ function buildGridControls(map) {
     input.type = 'number';
     input.className = 'shop-price-input';
     input.min = min; input.max = max;
-    // `any` rather than a decimal step: the steppers below are the whole-pixel
-    // nudge, and the browser's own validation must not round off an exact size
-    // a corner drag worked out.
+    // `any`, or the browser's validation rounds off an exact size a corner drag
+    // worked out — the steppers below are the whole-pixel nudge.
     input.step = 'any';
     input.value = roundGridValue(g[key]);
     input.title = hint;
@@ -260,9 +243,8 @@ function buildGridControls(map) {
       updateMapGrid(map.id, { [key]: clamped });
     };
     const cur = () => { const v = parseFloat(input.value); return Number.isFinite(v) ? v : 0; };
-    // A stepper nudges by a whole pixel *from wherever the value is*, so a
-    // dragged 70.42 steps to 69.42 rather than snapping to 69 and throwing the
-    // alignment away.
+    // Nudge by a whole pixel FROM wherever the value is — a dragged 70.42 steps
+    // to 69.42, not 69.
     dec.addEventListener('click', () => set(cur() - 1));
     inc.addEventListener('click', () => set(cur() + 1));
     // On change rather than input: every keystroke would be its own write.
@@ -305,18 +287,10 @@ function buildGridControls(map) {
 // =============================================================================
 // IMPORTING A MAP
 // =============================================================================
-// A map arrives as a picture, from a file on the GM's disk or from a link. It
-// is then stored **with the map in the database**, as a data URL, rather than
-// as a pointer to wherever it came from: a link rots, a file on one person's
-// disk is not a map anybody else can open, and this project has no file storage
-// of its own to put one in. That is a real cost — the picture is the whole of a
-// map's weight — so an imported file is scaled down to something a table can
-// actually read off a screen before it is stored.
-//
-// A **link** the browser refuses to redraw (a host that will not share its
-// pixels across origins) is kept as the link itself. It still works as a
-// picture; it simply cannot be shrunk on the way in, and a member whose network
-// cannot reach that host sees an empty map rather than a slow one.
+// The picture is stored WITH the map as a data URL — a link rots and the app
+// has no file storage. An imported file is scaled down first. A link the
+// browser refuses to redraw cross-origin is kept as the link (works as a
+// picture, cannot be shrunk).
 const MAP_IMAGE_MAX_DIM = 2400;  // px on the long side after scaling
 const MAP_IMAGE_QUALITY = 0.82;  // JPEG, which is what a photographed map wants
 const MAP_IMAGE_MAX_BYTES = 6 * 1024 * 1024;
@@ -347,10 +321,8 @@ function updateMapModalPreview(status) {
     : 'No picture chosen yet.');
 }
 
-// Loads a picture, scales it down if it is bigger than a table needs, and hands
-// back a data URL with the dimensions that URL actually has. The dimensions
-// matter as much as the picture does: every coordinate in the model is in
-// *these* pixels.
+// Loads a picture, scales it down, hands back a data URL with the dimensions
+// that URL actually has — every model coordinate is in THESE pixels.
 function prepareMapImage(src) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -431,12 +403,9 @@ document.getElementById('map-confirm-btn').addEventListener('click', () => {
 // =============================================================================
 // A CREATURE
 // =============================================================================
-// One dialog for putting a creature on the board and for editing one already
-// there, in the shape every other editor in this app takes. The three things it
-// asks are the three the feature is built on: what it looks like, how big it
-// is, and whose side it is on — and the third is the one that colours it, so
-// the icons repaint as it changes rather than showing a colour the creature is
-// about to stop being.
+// One dialog for placing and editing a creature. Three things: what it looks
+// like, how big it is, whose side it is on — the third colours it, so the icons
+// repaint as it changes.
 let creatureModalTarget = null; // { mapId, tokenId } — a null tokenId is a new one
 let creatureModalIcon = CREATURE_ICONS[0];
 let creatureModalHostility = 'hostile';

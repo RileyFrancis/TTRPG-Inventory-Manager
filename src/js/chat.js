@@ -42,13 +42,11 @@ function subscribeToChat(code) {
   partyChatRef = firebaseDb.ref(`parties/${code}/chat`).limitToLast(CHAT_HISTORY);
   partyChatRef.on('value', snap => {
     const val = snap.val() ?? {};
-    // Object key order is not a guarantee worth resting a transcript on, so the
-    // push ids are sorted explicitly — they sort lexicographically into
-    // chronological order, which is what they are designed for.
+    // Push ids sort lexicographically into chronological order — sorted
+    // explicitly rather than trusting object key order.
     chatMessages = Object.keys(val).sort().map(id => ({ id, ...val[id] }));
-    // A roll arriving is news for the tab strip as well as for the log — see
-    // src/js/dice.js. It rides this subscription rather than one of its own,
-    // which is the whole reason a roll is a chat message in the first place.
+    // A roll arriving is news for the tab strip too (dice.js) — it rides this
+    // subscription rather than one of its own.
     noteRollFeed(chatMessages);
     renderChat();
   });
@@ -77,10 +75,8 @@ function chatAuthorName() {
   return accountDisplayName() || state.party.playerName || 'Someone';
 }
 
-// Saying something is always an intent to follow the conversation, however far
-// up the reader had scrolled. A named function rather than the bare flag so
-// dice.js can declare the same intent when it posts a roll, without reaching
-// into this file's state.
+// Saying something is always an intent to follow. A named function so dice.js
+// can declare the same intent when it posts a roll.
 function chatFollowNewest() { chatPinnedToBottom = true; }
 
 async function sendChatMessage(text) {
@@ -108,10 +104,8 @@ async function sendChatMessage(text) {
 // newest line rather than wherever the scroll happened to be left.
 function onChatTabShown() {
   chatPinnedToBottom = true;
-  // A render, not just a scroll: the first time this tab is shown the pane has
-  // never been drawn at all — the sidebar boots on Browse, and Chat only exists
-  // once the reader opens a character sheet. `renderChat()` scrolls for us,
-  // because we have just declared ourselves pinned.
+  // A render, not just a scroll — the first time this tab is shown the pane has
+  // never been drawn. renderChat() scrolls for us, now that we are pinned.
   renderChat();
 }
 
@@ -179,16 +173,9 @@ function renderChat() {
       row.appendChild(head);
     }
 
-    // A roll gets a card of its own — the number is the point of it, and a
-    // sentence in a bubble buries the number in the middle of a line. It is
-    // built from the payload, never from the sentence, so a client that draws
-    // it and one that only reads `text` can never disagree about the total.
-    //
-    // Everything else: textContent, never innerHTML. Chat is the one place in
-    // this app where another player's typing is drawn in your browser every few
-    // seconds, and markdown.js's sanitizer is for prose that asked to be
-    // formatted — a chat line did not, so it is not parsed at all and there is
-    // nothing to escape.
+    // A roll gets a card of its own, built from the payload never the sentence.
+    // Everything else: textContent, never innerHTML — a chat line did not ask to
+    // be formatted, so it is not parsed at all.
     row.appendChild(isRoll ? rollMessageBody(m) : plainMessageBody(m));
 
     chatLogEl.appendChild(row);
@@ -206,10 +193,8 @@ function plainMessageBody(m) {
   return body;
 }
 
-// The total large, the label beside it, and what was on the dice underneath —
-// the same three pieces, in the same order, as the number that flew across the
-// screen and the chip it landed in. A roll should be recognisable as the same
-// event in all three places.
+// The total, the label, and what was on the dice — the same three pieces, same
+// order, as the flying number and the corner chip.
 function rollMessageBody(m) {
   const r = rollFromMessage(m);
 
@@ -231,17 +216,12 @@ function rollMessageBody(m) {
   const label = document.createElement('span');
   label.className = 'chat-roll-label';
   label.textContent = r.label;
-  // Advantage is scannable in a log only if it is a mark rather than a word
-  // buried in the line below. The pill is dice.js's, shared with the corner
-  // chip and the tab bubble, so a mode cannot be shown three different ways.
-  const pill = rollModePill(r);
+  const pill = rollModePill(r); // dice.js's, shared across all four surfaces
   if (pill) label.appendChild(pill);
 
   const detail = document.createElement('span');
   detail.className = 'chat-roll-detail';
-  // Whatever was remarkable about it, how it was rolled, then the arithmetic —
-  // the same line the flying number carries, from the same function.
-  detail.textContent = rollDetailLine(r);
+  detail.textContent = rollDetailLine(r); // the same line the flying number carries
 
   text.append(label, detail);
   card.append(die, total, text);
@@ -273,9 +253,7 @@ chatFormEl.addEventListener('submit', e => {
   sendChatMessage(text);
 });
 
-// Enter sends; Shift+Enter is a newline. A textarea rather than an input so the
-// second of those is possible at all, and so a long message is visible while it
-// is being written.
+// Enter sends; Shift+Enter is a newline (hence a textarea, not an input).
 chatInputEl.addEventListener('keydown', e => {
   if (e.key !== 'Enter' || e.shiftKey) return;
   e.preventDefault();

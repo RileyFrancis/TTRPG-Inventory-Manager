@@ -13,10 +13,9 @@
 let charModalTargetId = null;
 let charModalIsNew = false;
 
-// The class rows while the dialog is open: an array of `{ name, level,
-// subclass }` edited in place and written to the character only on Save. A
-// working copy, because Cancel has to mean something, and because the target may
-// be a roster slot that is not the character on screen.
+// A working copy of the class rows, written to the character only on Save
+// (Cancel has to mean something, and the target may not be the character on
+// screen).
 let charModalClasses = [];
 
 const charClassRowsEl = document.getElementById('char-class-rows');
@@ -58,16 +57,11 @@ function openCharModal(targetId = null, { isNew = false } = {}) {
   setTimeout(() => document.getElementById('char-name-input').focus(), 0);
 }
 
-// **`abilities` is deliberately not in what comes back.** Every caller merges
-// this over the character it is editing, so leaving the key out is what carries
-// the existing six scores through untouched — and on New Character, where there
-// is nothing to carry through, `normalizeAbilities()` fills all six with 10.
-// Sending `abilities` from here is what would need justifying, not omitting it.
-//
-// `level` is the one field that has to be careful: with classes it is a mirror
-// of their sum and writing it does nothing, so it is only sent for a character
-// who has none — which is the only time the box is on screen. `current` is what
-// it falls back to when the box was never filled in.
+// `abilities` is deliberately NOT returned — every caller merges this over the
+// character, so omitting the key carries the existing scores through (and on New
+// Character, `normalizeAbilities()` fills all six with 10). `level` is a mirror
+// of the class sum when there are classes, so it only matters for a classless
+// character — the only time the box is on screen.
 function readCharModalFields(current) {
   const level = parseInt(document.getElementById('char-level-input').value, 10);
   return {
@@ -108,13 +102,9 @@ document.getElementById('sheet-setup-btn').addEventListener('click', () => openC
 // =============================================================================
 // THE CLASS ROWS
 // =============================================================================
-// One row per class: its name, the level taken in it, and — once that class's
-// own level has unlocked one — its subclass.
-//
-// **Rows are built once and then written into, never rebuilt on a keystroke.**
-// The same rule the character sheet follows for its ~80 inputs, and for the same
-// reason: a rebuild mid-word takes the focus out of the box being typed in. Only
-// a row's *removal* rebuilds the list, because the indices below it all shift.
+// One row per class: name, level, and (once that class's level has unlocked one)
+// subclass. Rows are built once and written into, never rebuilt on a keystroke —
+// only a removal rebuilds the list (every index below the gap shifts).
 function renderCharClassRows() {
   charClassRowsEl.textContent = '';
   charModalClasses.forEach((entry, i) => charClassRowsEl.appendChild(charClassRow(entry, i)));
@@ -133,10 +123,8 @@ function charClassRow(entry, index) {
     charRowField('Level', charLevelInput(entry.level), 'class-row-field-level'),
   );
 
-  // The subclass field is the row's own, and so is the question of whether to
-  // show it: a Warlock 5 has a patron to name and the Bard 2 beside them does
-  // not. `syncCharClassRow()` below is what decides, and it runs on every edit
-  // to this row.
+  // The subclass field is the row's own — `syncCharClassRow()` decides whether
+  // to show it (a Warlock 5 has a patron, the Bard 2 beside them does not).
   const sub = charRowField('Subclass', charTextInput(entry.subclass, 'class-row-subclass', {
     maxLength: 40, placeholder: 'Not yet chosen',
   }));
@@ -189,13 +177,9 @@ function charLevelInput(value) {
   return input;
 }
 
-// What a row shows once its class or level has changed: the subclasses this
-// class actually offers, and whether to ask for one at all.
-//
-// **An unknown class shows the field.** `classUnlockKeys()` returns null when it
-// has never heard of the class, and hiding a box we cannot reason about reads as
-// the app having eaten a field someone was using — the same rule the sheet's own
-// unlocks follow.
+// The subclasses this class offers, and whether to ask for one at all. An
+// unknown class SHOWS the field — `classUnlockKeys()` returns null, and hiding a
+// box we cannot reason about reads as the app having eaten a field.
 function syncCharClassRow(row, entry) {
   const def = findClassByName(entry.name);
   const keys = classUnlockKeys(def, entry.subclass, entry.level);
@@ -206,12 +190,8 @@ function syncCharClassRow(row, entry) {
     (def?.subclasses ?? []).map(sc => sc.name));
 }
 
-// The total under the rows is the character's level, and it is derived here for
-// the same reason it is derived on the character: it is the sum, and a second
-// place to type it would be a second place for it to be wrong.
-//
-// With no classes at all there is nothing to sum, so the plain Level box appears
-// instead — a character can be levelled without this app knowing what they are.
+// The total under the rows is derived (the sum). With no classes there is
+// nothing to sum, so the plain Level box appears instead.
 function syncCharClassSummary() {
   const none = charModalClasses.length === 0;
   charLevelFieldEl.classList.toggle('hidden', !none);
@@ -220,9 +200,7 @@ function syncCharClassSummary() {
     : `Level ${totalLevelOf(sanitizeClassLevels(charModalClasses), 1)}`;
 }
 
-// One listener for the whole list rather than one per box, and the rows outlive
-// none of them: the list is rebuilt on a removal, so per-row listeners would be
-// re-attached every time.
+// One listener for the whole list (the list is rebuilt on a removal).
 charClassRowsEl.addEventListener('input', e => {
   const row = e.target.closest('.class-row');
   if (!row) return;

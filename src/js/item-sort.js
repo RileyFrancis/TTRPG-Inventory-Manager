@@ -23,10 +23,8 @@ const ITEM_SORT_KEYS = {
   weight: (a, b) => itemSortWeight(a) - itemSortWeight(b),
 };
 
-// The first entry is the default, and the menu is built from this list — adding
-// a mode means adding a line here and nothing else. `dir` names the two
-// directions in that mode's own words: "reversed" is meaningless on a button,
-// where "Worst first" says what the reader will actually get.
+// First entry is the default; the menu is built from this list. `dir` names the
+// two directions in that mode's own words ("Worst first", not "reversed").
 const ITEM_SORTS = [
   { id: 'rarity', label: 'Rarity', keys: ['rarity', 'name', 'weight'], dir: ['Best first', 'Worst first'] },
   { id: 'name',   label: 'Name',   keys: ['name', 'rarity', 'weight'], dir: ['A to Z', 'Z to A'] },
@@ -87,10 +85,8 @@ function sortItems(items) {
 }
 
 // =============================================================================
-// SORT MENU
+// SORT MENU  (built from ITEM_SORTS, not written into index.html)
 // =============================================================================
-// The options are built from ITEM_SORTS rather than written into index.html:
-// three hand-written buttons would only give the constant somewhere to disagree.
 const sortMenuEl   = document.getElementById('sort-menu');
 const sortBtnEl    = document.getElementById('sort-btn');
 const sortDirBtnEl = document.getElementById('sort-dir-btn');

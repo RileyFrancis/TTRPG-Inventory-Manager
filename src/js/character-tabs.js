@@ -12,12 +12,12 @@
 const charTabsEl    = document.getElementById('character-tabs');
 const charTabMenuEl = document.getElementById('char-tab-menu');
 
-// 'own' is a key, not a player id: your own character is local state, not a row
-// in the party roster, and it has to work with no party at all.
+// A key, not a player id — your own character is local state and works with no
+// party at all.
 const OWN_TAB = 'own';
 
-// Key of the tab whose menu is open, or null. Held across re-renders so a party
-// sync landing between the click and the choice doesn't snap the menu shut.
+// Key of the tab whose menu is open, held across re-renders so a party sync
+// between the click and the choice doesn't snap it shut.
 let openTabMenuKey = null;
 
 // =============================================================================
@@ -30,11 +30,10 @@ function characterTabList() {
 
   const tabs = [];
 
-  // A GM has no character of their own, so they get no own-tab — only the
-  // players. Everyone else leads with themselves.
+  // A GM gets no own-tab. Everyone else leads with themselves.
   if (role === 'player') {
-    // While viewing someone else, `state.character` is *theirs*; our own name
-    // has to come from the roster copy we published.
+    // While viewing someone else, `state.character` is theirs; our own name
+    // comes from the roster copy we published.
     const ownName = viewingPlayerId === null
       ? state.character.name
       : (players[playerId]?.character?.name ?? playerName);
@@ -97,9 +96,8 @@ function renderCharacterTabs() {
     else closeCharacterTabMenu();
   }
 
-  // Another player's roll pops a speech bubble over their tab (src/js/dice.js).
-  // The buttons above were just thrown away and rebuilt, so the bubbles are
-  // re-aimed here rather than being left pointing at elements that are gone.
+  // The buttons above were just rebuilt, so the roll bubbles (dice.js) are
+  // re-aimed rather than left pointing at elements that are gone.
   renderTabBubbles();
 }
 
@@ -169,10 +167,8 @@ function selectCharacterView(key, view) {
   setInventoryView(view);
 }
 
-// Three views now, and the third is the odd one out: the battle map is not a
-// view *of a character*, it is where the party is standing. So it is never
-// reached from a tab's menu — only from the corner button and from the Maps
-// pane — and `selectCharacterView()` below never passes it.
+// The battle map is not a view OF a character, so it is never reached from a
+// tab's menu — only from the corner button and the Maps pane.
 const INVENTORY_VIEWS = ['inventory', 'sheet', 'map'];
 
 function setInventoryView(view) {
@@ -189,50 +185,31 @@ function hasViewedCharacter() {
 // The one entry point for "who or what we're looking at changed" — the party UI
 // calls it too, so deselecting a player can't leave their sheet on screen.
 function syncCharacterViewUI() {
-  // The map answers to the party rather than to a character, so it survives a
-  // GM having nobody selected — but not the map itself going away underneath
-  // it, which is what a player being un-revealed looks like from here.
   const showMap = mapViewIsShowing();
   const showSheet = !showMap && state.view === 'sheet' && hasViewedCharacter();
   const panel = document.getElementById('inventory-panel');
   panel.classList.toggle('map-view', showMap);
   panel.classList.toggle('sheet-view', showSheet);
-  // Arriving at the inventory is where a Strength typed on the sheet finally
-  // resizes the grid — see the deferred resize in grid.js. This is the single
-  // entry point for "what are we looking at changed", so it is the one place
-  // that can know, and it costs nothing when nothing was edited.
+  // Arriving back at the inventory is where a Strength typed on the sheet
+  // finally resizes the grid (the deferred resize in grid.js) — costs nothing
+  // when nothing was edited.
   if (!showSheet && !showMap) rebuildGridIfSizeDirty();
   if (showSheet) renderCharacterSheet();
-  // The canvas has no size until the panel is showing it, so the map is told
-  // it is on screen from here rather than from whatever asked for it. Both
-  // halves are called unconditionally — each is a no-op when nothing changed —
-  // so no caller has to remember which way the swap went.
+  // The canvas has no size until the panel is showing it; both halves are
+  // no-ops when nothing changed.
   if (showMap) onMapViewShown(); else onMapViewHidden();
-  // The corner button is the way *in*, so it stands down once you are there.
-  syncMapButton();
+  syncMapButton(); // the corner button is the way in, so it stands down once you are there
   renderCharacterTabs();
-  // The sidebar's tabs answer the same question these do — Browse and Details
-  // belong beside a grid of items, Chat and Dice beside a character sheet.
-  syncSidebarTabs();
-  // The left panel's tabs follow the same selection: a GM with nobody picked has
-  // no equipment to show, and deselecting must not leave a player's slots up.
-  syncLeftPanel();
+  syncSidebarTabs(); // the sidebar's tabs answer the same question
+  syncLeftPanel();   // and so does the left panel's
 }
-
-// renderCharacterSheet() lives in character-sheet.js — the sheet is a page of
-// its own now, not the two lines this file used to draw.
 
 // =============================================================================
 // KEYBOARD SHORTCUTS
 // =============================================================================
-// The two halves of the selection get a key each: Tab flips between the two
-// views of whoever is shown, Shift+Tab walks to the next character. The number
-// keys are that same walk by absolute position — 1 is the leftmost tab — so any
-// character in a small party is one keypress away.
-
-// Off while typing, while a modal is up, and mid-drag: switching character with
-// an item in the air would strand it, since a dragged item is out of the grid
-// until pointerup.
+// Tab flips the two views of whoever is shown; Shift+Tab walks to the next
+// character; 1–9 walk by absolute position. Off while typing, while a modal is
+// up, and mid-drag (a character swap would strand the dragged item).
 function characterShortcutsAllowed(e) {
   if (e.ctrlKey || e.altKey || e.metaKey) return false;
   const t = e.target;
@@ -245,16 +222,13 @@ function characterShortcutsAllowed(e) {
 
 function toggleInventoryView() {
   if (!hasViewedCharacter()) return; // a GM with nobody picked has no sheet to show
-  // From the map, this key means "back to the character" rather than "the other
-  // page of them": the map is not one of the two pages it flips between, and
-  // landing on the sheet from a board would be an arbitrary choice of which.
+  // From the map, this key means "back to the character", not "the other page".
   if (state.view === 'map') { setInventoryView('inventory'); return; }
   setInventoryView(state.view === 'sheet' ? 'inventory' : 'sheet');
 }
 
-// Keeps the current view: this half of the selection is about *who*, not about
-// which of their two pages you are reading. Asking for a character while the
-// board is up is asking to leave the board, though — the map is nobody's page.
+// Keeps the current view (this half is about WHO). From the board, though, it
+// means leave the board.
 function showCharacterAt(index) {
   const tab = characterTabList()[index];
   if (tab) selectCharacterView(tab.key, state.view === 'map' ? 'inventory' : state.view);
@@ -263,8 +237,8 @@ function showCharacterAt(index) {
 function cycleCharacter(step) {
   const tabs = characterTabList();
   if (!tabs.length) return;
-  // A GM who has picked nobody has no active tab, so findIndex gives -1 and the
-  // first step lands on the leftmost player — which is what they want anyway.
+  // A GM with nobody picked has no active tab (findIndex -1), so the first step
+  // lands on the leftmost player.
   const current = tabs.findIndex(t => t.key === activeTabKey());
   const next = (((current + step) % tabs.length) + tabs.length) % tabs.length;
   showCharacterAt(next);

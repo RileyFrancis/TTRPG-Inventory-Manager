@@ -93,15 +93,10 @@ function getEquipCardAtPoint(x, y) {
   return null;
 }
 
-// A whole folder in the browse list is a drop target for item cards, not just
-// its header: dropping an item anywhere among a folder's cards files it there.
-// The list is a flat run of headers and cards, so a folder is the *band* from
-// its header down to the next header — which is why this walks the children in
-// order rather than hit-testing each element on its own. The gaps between cards
-// belong to the band too, so a drop never falls through a 4px crack.
-//
-// Order inside a folder is the sort's business (item-sort.js), so where in the
-// band the item lands is deliberately not read: there is no reordering by hand.
+// The whole folder is a drop target, not just its header. The list is a flat run
+// of headers and cards, so a folder is the BAND from its header to the next —
+// hence walking the children in order rather than hit-testing each. Where in the
+// band the item lands is not read (order is the sort's business).
 function getFolderDropAtPoint(x, y) {
   const listEl = document.getElementById('item-list');
   if (!listEl.classList.contains('foldered')) return null;
@@ -113,26 +108,20 @@ function getFolderDropAtPoint(x, y) {
     if (el.classList.contains('folder-header')) folderId = el.dataset.folderId;
     if (y <= el.getBoundingClientRect().bottom) return folderId;
   }
-  // Past the last card: empty space at the foot of the list, which belongs to
-  // no folder — filing into whichever folder happens to be last would be a
-  // guess, and a wrong one every time the list is scrolled to the end.
+  // Past the last card: empty space belonging to no folder.
   return null;
 }
 
-// The folder a drag of `templateId` would file it into, or null for none. A
-// drop back into the item's own folder is *not* a target: there is nothing to
-// reorder there, so it reads as a cancelled drag rather than a no-op move.
+// The folder a drag would file into, or null. A drop back into the item's own
+// folder is NOT a target — it reads as a cancelled drag.
 function folderDropTargetFor(templateId, x, y) {
   const id = getFolderDropAtPoint(x, y);
   if (!id) return null;
   return id === (folderOf(templateId) ?? UNFILED_ID) ? null : id;
 }
 
-// The whole band lights up, header and cards together — the header alone would
-// leave the cursor sitting on unhighlighted cards with no sign of where the
-// item is about to go. `cls` picks which of the two bands this is:
-// `drop-target` for a folder the item would move into, `drop-current` for the
-// one it is already in.
+// The whole band lights, header and cards together. `cls` is `drop-target` (a
+// folder the item would move into) or `drop-current` (the one it is in).
 function setFolderBandClass(folderId, cls) {
   if (!folderId) return;
   document.querySelectorAll(
@@ -148,10 +137,8 @@ function clearFolderDropTargets() {
 }
 
 // ─── THE FOLDER DROP HINT ────────────────────────────────────────────────────
-// A chip at the cursor naming the folder the drop would file into. The band is
-// the *area* feedback; this is the *answer*, and it is needed because a folder
-// is often taller than the list is: hovering cards halfway down a long folder
-// lights a header that has scrolled out of sight, leaving the drag unnamed.
+// A chip at the cursor naming the folder — the band is the area, this is the
+// answer (a folder taller than the list hides its own header).
 const folderDropHintEl = document.getElementById('folder-drop-hint');
 const FOLDER_HINT_OFFSET = 16; // clear of the cursor, so it never sits under it
 
@@ -174,13 +161,10 @@ function hideFolderDropHint() {
   folderDropHintEl.className = 'hidden';
 }
 
-// The whole of a browse drag's folder feedback in one call, so the band, the
-// chip and the answer can never disagree: lights the band under the cursor,
-// names it at the cursor, and hands back what a drop there would actually do.
-// Returns { folderId, hovering } — `folderId` is the folder the item would move
-// into (null for none), `hovering` is true over *any* folder band, including
-// the item's own, where the drag does nothing but must not fall through to the
-// grid's placement preview either.
+// The whole of a browse drag's folder feedback in one call — band, chip and
+// answer cannot disagree. Returns { folderId, hovering }: `folderId` is where a
+// drop would move the item (null for none); `hovering` is true over ANY folder
+// band (including the item's own, where the grid preview must not get a look in).
 function showFolderDropFeedback(templateId, x, y) {
   clearFolderDropTargets();
   const hoverId = getFolderDropAtPoint(x, y);
@@ -191,9 +175,7 @@ function showFolderDropFeedback(templateId, x, y) {
     setFolderBandClass(folderId, 'drop-target');
     showFolderDropHint('Move to ' + folderNameOf(folderId), false, x, y);
   } else {
-    // The item's own folder. Nothing happens on a drop here — order inside a
-    // folder is the sort's business — so say so rather than leaving a dead
-    // patch of list that reads as a broken drag.
+    // The item's own folder — say so rather than leave a dead patch of list.
     setFolderBandClass(hoverId, 'drop-current');
     showFolderDropHint('Already in ' + folderNameOf(hoverId), true, x, y);
   }

@@ -3,12 +3,9 @@
 // =============================================================================
 'use strict';
 
-// The number itself lives in the `VERSION` file at the project root — one line,
-// nothing else, so bumping a release never means opening a source file.
-//
-// Fetched rather than baked in, and deliberately *not* with the synchronous XHR
-// items.csv and .env use: nothing on screen depends on it, so it has no business
-// holding up the boot. The footer fills itself in a moment later.
+// The number lives in the `VERSION` file at the project root. Fetched (not
+// baked in) and async — nothing on screen depends on it, so it must not hold up
+// the boot.
 let APP_VERSION = '';
 
 function loadAppVersion() {
@@ -16,8 +13,7 @@ function loadAppVersion() {
     .then(res => (res.ok ? res.text() : Promise.reject(new Error(res.status))))
     .then(text => {
       const version = text.trim().split('\n')[0].trim();
-      // A static host that answers a missing path with its index page (Cloudflare
-      // Pages does) returns 200 and a pageful of HTML — not a version.
+      // A host answering a missing path with its index page returns 200 and HTML.
       if (!version || version.startsWith('<')) return;
       APP_VERSION = version;
       document.getElementById('app-version').textContent = 'v' + version;
@@ -43,9 +39,7 @@ function init() {
   renderItemList();
   renderEquipPanel();
   syncCharacterViewUI(); // character tabs — solo, that is the one own-tab
-  // Before Firebase answers: a player who was signed in last visit starts on
-  // their roster, and waiting for the session restore would mean painting the
-  // inventory first only to replace it. auth.js corrects the guess either way.
+  // A guess before Firebase answers, corrected by auth.js — see maybeOpenHomeAtBoot().
   maybeOpenHomeAtBoot();
   initFirebase();
   initAuth();       // restores a previous session, which then starts cloud sync

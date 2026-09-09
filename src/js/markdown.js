@@ -14,9 +14,7 @@
 // =============================================================================
 // THE ENTRY POINT
 // =============================================================================
-// Renders `src` into `el`, replacing what was there. The two steps are kept
-// separate below — text to markup, then markup to a scrubbed fragment — but no
-// caller should ever run only the first.
+// Two steps, always both: text → markup, then markup → a scrubbed fragment.
 function renderMarkdownInto(el, src) {
   el.textContent = '';
   el.appendChild(markdownToFragment(src));
@@ -106,13 +104,9 @@ function markdownToHTML(src) {
       para.push(lines[i]); i++;
     }
 
-    // **The loop above must always consume something.** The tests that stop a
-    // paragraph are looser than the ones that open a block — "```js extra" is
-    // not a fence this parser recognises, but it does stop a paragraph — so a
-    // line can fall through every branch and leave `i` where it was. That is a
-    // hang, on text a player is allowed to type. Whatever reaches here with
-    // nothing collected is taken as one line of paragraph, which both advances
-    // and shows the writer what they wrote.
+    // The loop above must always consume something — the paragraph-stopping
+    // tests are looser than the block-opening ones, so a line like "```js extra"
+    // can fall through every branch and hang on `i`. Take it as one paragraph line.
     if (!para.length) { para.push(lines[i]); i++; }
 
     out.push(`<p>${inlineMarkdown(para.join('\n'))}</p>`);
@@ -172,15 +166,9 @@ function buildList(items, pos, indent) {
 // =============================================================================
 // INLINE
 // =============================================================================
-// Code spans and backslash escapes are lifted out first and put back last, so
-// nothing inside them is formatted and `\*` stays an asterisk.
-//
-// The parked text is stood in for by `@@MD<n>@@`. A sentinel has to be
-// something the writer will not type, and a printable one is chosen over a
-// control character deliberately: a NUL in a source file is invisible in a diff
-// and does not survive every editor. If someone does write `@@MD0@@` in a
-// backstory the worst case is that it comes out as one of their own code spans,
-// which is cosmetic.
+// Code spans and backslash escapes are lifted out first (stood in for by
+// `@@MD<n>@@` — a printable sentinel, so it survives every editor) and put back
+// last, so nothing inside them is formatted.
 function inlineMarkdown(text) {
   const held = [];
   const hold = s => `@@MD${held.push(s) - 1}@@`;
@@ -206,9 +194,8 @@ function inlineMarkdown(text) {
        .replace(/\*(?=\S)([\s\S]*?\S)\*/g, '<em>$1</em>')
        .replace(/(^|[^\w\\])_(?=\S)([\s\S]*?\S)_(?!\w)/g, '$1<em>$2</em>');
 
-  // **A single newline is a line break.** Standard Markdown folds one into a
-  // space and wants two trailing spaces for a break, which is a rule nobody
-  // writing a backstory in a box knows. What you typed is what you get.
+  // A single newline is a line break — standard Markdown wants two trailing
+  // spaces, which nobody writing a backstory in a box knows.
   s = s.replace(/\n/g, '<br>');
 
   return s.replace(/@@MD([0-9]+)@@/g, (m, n) => held[n]);
@@ -225,11 +212,8 @@ function escapeAttr(s) {
 // =============================================================================
 // THE SANITIZER
 // =============================================================================
-// See the file header for why this exists. The allowlists are the contract:
-// anything not named here does not survive.
-
-// Laid out, not run. Everything here is inert markup whose whole job is how the
-// text looks.
+// The allowlists are the contract: anything not named here does not survive.
+// Tags whose whole job is how the text looks — inert markup:
 const MD_ALLOWED_TAGS = new Set([
   'p', 'br', 'hr', 'div', 'span',
   'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
@@ -240,9 +224,8 @@ const MD_ALLOWED_TAGS = new Set([
   'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'caption', 'colgroup', 'col',
 ]);
 
-// Dropped **with their contents**. An unknown tag is merely unwrapped — its
-// text is the player's writing and is kept — but the text inside a `<script>`
-// *is* the payload, so these go whole.
+// Dropped WITH their contents — an unknown tag is merely unwrapped, but the text
+// inside a `<script>` IS the payload.
 const MD_DROP_WHOLE = new Set([
   'script', 'style', 'iframe', 'object', 'embed', 'applet', 'link', 'meta',
   'base', 'form', 'input', 'button', 'select', 'option', 'textarea', 'noscript',

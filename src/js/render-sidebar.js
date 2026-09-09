@@ -16,14 +16,12 @@ function renderItemList() {
     return true;
   });
 
-  // The chosen order (item-sort.js). Items keep it inside their folders:
-  // grouping only buckets an already-sorted list.
+  // The chosen order (item-sort.js) — grouping only buckets an already-sorted list.
   sortItems(items);
 
-  // The list is rebuilt from scratch, which puts it back at the top. Filing an
-  // item — the one render that happens *during* a gesture, after auto-scroll has
-  // carried the reader down to a folder — must not throw them back up there. The
-  // browser clamps the value on its own when the new list is shorter.
+  // The list is rebuilt from scratch, so restore scrollTop — filing an item is
+  // the one render that happens mid-gesture, after auto-scroll carried the
+  // reader down to a folder.
   const scrollTop = listEl.scrollTop;
 
   listEl.innerHTML = '';
@@ -42,8 +40,7 @@ function renderItemList() {
       // would read as "no results".
       const expanded = !!search || !isFolderCollapsed(group.id);
       listEl.appendChild(buildFolderHeader(group, expanded, !!search));
-      // Cards carry their folder so a drag can be dropped anywhere in the
-      // group, not only on its header (see getFolderDropAtPoint).
+      // Cards carry their folder so a drag can drop anywhere in the group.
       if (expanded) group.items.forEach(t => {
         const card = buildItemCard(t);
         card.dataset.folderId = group.id;
@@ -113,12 +110,9 @@ function buildFolderHeader(group, expanded, searchLocked) {
     el.appendChild(del);
   }
 
-  // Last, so every folder's count sits flush against the same right edge —
-  // the hidden buttons above still hold their space, Unfiled has none.
-  el.appendChild(count);
+  el.appendChild(count); // last, so every folder's count sits flush right
 
-  // While a search forces every folder open, collapsing would do nothing
-  // visible — so the header simply isn't a toggle until the search clears.
+  // A search forces every folder open, so the header stops being a toggle.
   if (searchLocked) el.classList.add('search-locked');
   else el.addEventListener('click', () => { toggleFolderCollapsed(group.id); renderItemList(); });
 
@@ -170,12 +164,8 @@ function buildItemCard(t) {
       if (!dragging) {
         dragging = true;
         document.body.style.userSelect = 'none';
-        // The card is now in flight: fade the one left behind, so a drag over
-        // the list reads as moving *this* item rather than hovering the folder.
-        card.classList.add('dragging');
-        cancelPlacing(); // exit any existing placing mode cleanly
-        // Hold the cursor near a panel's edge and the panel scrolls, so a folder
-        // or a grid row below the fold is still reachable without letting go.
+        card.classList.add('dragging'); // fade the one left behind
+        cancelPlacing();
         startDragAutoScroll(me.clientX, me.clientY, dragRefresh);
       }
       updateDragAutoScroll(me.clientX, me.clientY);
@@ -187,8 +177,7 @@ function buildItemCard(t) {
       // No equip-slot highlighting for new items (not yet placed)
       document.querySelectorAll('.eq-card.drag-hover').forEach(c => c.classList.remove('drag-hover'));
 
-      // A shop or another folder under the cursor wins over the grid: those
-      // drags stock or file the item rather than placing one.
+      // A shop or folder under the cursor wins over the grid.
       clearShopDropTargets();
       clearFolderDropTargets();
       const shopDrop = getShopDropTargetAtPoint(me.clientX, me.clientY);
@@ -198,9 +187,7 @@ function buildItemCard(t) {
         clearHighlights();
         return;
       }
-      // Lights the folder band, names it at the cursor, and tells us whether
-      // the grid gets a look in at all — over a folder it never does, not even
-      // the item's own, where the drop is a no-op that still isn't a placement.
+      // Over any folder band the grid gets no look in.
       if (showFolderDropFeedback(tid, me.clientX, me.clientY).hovering) {
         setGhostVisibility(false);
         clearHighlights();
@@ -247,8 +234,7 @@ function buildItemCard(t) {
         return;
       }
 
-      // Dropped in another folder → reclassify, nothing enters the grid.
-      // Dropping on Unfiled is a deliberate "no folder", not a reset to auto.
+      // Dropped in another folder → reclassify (Unfiled = a deliberate "no folder").
       if (folderId) {
         setItemFolder(tid, folderId);
         renderItemList();

@@ -21,22 +21,17 @@ function loadDefaultSpecies() {
     xhr.open('GET', 'data/species.json', false); // synchronous
     xhr.send();
     if (xhr.status !== 200) throw new Error(`HTTP ${xhr.status}`);
-    // A host that answers unknown paths with its index page would otherwise
-    // "find" a species list made of HTML — the same guard firebase-config.js
-    // and class-features.js use.
+    // A host answering unknown paths with its index page would "find" a list
+    // made of HTML — the guard firebase-config.js and class-features.js use.
     const body = xhr.responseText.trim();
     if (body.startsWith('<')) throw new Error('not JSON');
     DEFAULT_SPECIES = sanitizeSpeciesList(JSON.parse(body).species);
   } catch (e) {
-    // Not fatal. The sheet is perfectly usable with no species known — the
-    // section simply says it has never heard of whatever was typed.
-    DEFAULT_SPECIES = [];
+    DEFAULT_SPECIES = []; // not fatal — the sheet is usable with no species known
   }
 }
 
-// Whatever came out of the file, reduced to the shape the rest of this file
-// promises. A species with no usable traits is dropped rather than left to
-// render as an empty heading.
+// A species with no usable traits is dropped.
 function sanitizeSpeciesList(raw) {
   if (!Array.isArray(raw)) return [];
   return raw.map(s => {
@@ -50,9 +45,8 @@ function sanitizeSpeciesList(raw) {
   }).filter(Boolean);
 }
 
-// **`level` is optional here, where a class feature's is required.** Almost
-// every species trait arrives at level 1, so writing `"level": 1` on each of
-// them would be ceremony that only invites a typo; the few that scale say so.
+// `level` is optional here (defaults to 1), where a class feature's is required
+// — almost every species trait is level 1.
 function sanitizeTrait(t) {
   const id = String(t?.id ?? '').trim();
   const name = String(t?.name ?? '').trim();
@@ -71,31 +65,25 @@ loadDefaultSpecies();
 // =============================================================================
 // THE REGISTRY
 // =============================================================================
-// Every species the app knows. The single seam custom species will come
-// through: add the player's own definitions here and the section, the lookup
-// and the unlocks all follow.
+// The single seam custom species will come through.
 function allSpecies() {
   return DEFAULT_SPECIES.slice();
 }
 
-// Names are typed by hand, so match loosely — trimmed and case-insensitive.
-// Ids are matched too, so a stored id keeps working if the display name is ever
-// edited.
+// Trimmed, case-insensitive; ids matched too, so a stored id survives a rename.
 function findSpeciesByName(name) {
   const key = String(name ?? '').trim().toLowerCase();
   if (!key) return null;
   return allSpecies().find(s => s.name.toLowerCase() === key || s.id === key) ?? null;
 }
 
-// The level a character counts as, for a given species. One place, so a species
-// that ever counts levels differently has somewhere to land.
+// One place, so a species that ever counts levels differently has somewhere to land.
 function characterSpeciesLevel(character, _speciesDef) {
   return Math.max(1, Math.min(20, parseInt(character?.level, 10) || 1));
 }
 
-// Everything the character's species offers, in the order the section shows it:
-// by level, then as written. `owned` is what the level gate decides — the list
-// is always complete, and the *section* chooses what to draw.
+// Everything the species offers, by level then written order. `owned` is the
+// level gate; the section chooses what to draw.
 function speciesTraitsFor(character) {
   const def = findSpeciesByName(character?.race);
   if (!def) return [];
@@ -105,9 +93,7 @@ function speciesTraitsFor(character) {
     .sort((a, b) => a.level - b.level || a.order - b.order);
 }
 
-// The name typed that this app has never heard of, or '' when the field is
-// blank or known. Not an error — the section says so, and it is the honest
-// answer until custom species exist.
+// The name typed that this app has never heard of, or '' when blank or known.
 function unknownSpeciesName(character) {
   const typed = String(character?.race ?? '').trim();
   return typed && !findSpeciesByName(typed) ? typed : '';
@@ -128,11 +114,8 @@ function speciesUnlockKeys(character) {
   return keys;
 }
 
-// **A species the app does not know disables the mechanism**, for the reason
-// class-features.js spells out: hiding a box because of a species we cannot
-// reason about would be an invention. A *blank* species is authoritative — it
-// grants nothing and hides nothing, which is the honest reading of an empty
-// field.
+// A species the app does not know disables the mechanism. A BLANK species is
+// authoritative — it grants and hides nothing.
 function speciesUnlocksAreAuthoritative(character) {
   return !unknownSpeciesName(character);
 }
@@ -140,14 +123,11 @@ function speciesUnlocksAreAuthoritative(character) {
 // =============================================================================
 // THE SECTION
 // =============================================================================
-// Session-only, and deliberately not persisted — the same reasoning as the
-// class features toggle: which half of a list you are looking at is a glance,
-// not a setting.
+// Session-only, not persisted.
 let showLockedTraits = false;
 
-// Like the class-features section: `renderCharacterSheet()` calls this on every
-// keystroke and party sync, but it only changes with the character's species,
-// level, and the show-locked toggle. Skip the rebuild when none of those moved.
+// Only changes with the character's species, level, and the toggle — skip the
+// rebuild otherwise (`renderCharacterSheet()` calls this on every keystroke).
 let speciesTraitsSig = null;
 
 function speciesTraitsSignature() {
@@ -167,8 +147,7 @@ function renderSpeciesTraits() {
   const rows = speciesTraitsFor(state.character);
   const locked = rows.filter(r => !r.owned).length;
 
-  // Nothing to toggle when nothing is out of reach — a button that cannot
-  // change what you see is noise.
+  // A toggle that cannot change what you see is noise.
   if (btn) {
     btn.classList.toggle('hidden', locked === 0);
     setIconLabel(btn, showLockedTraits ? 'hide' : 'show',
@@ -185,15 +164,9 @@ function renderSpeciesTraits() {
     return;
   }
 
-  // **The level badge is drawn only when the levels differ.** For a class the
-  // badge is what the list is scanned by; for a species almost everything
-  // arrives at level 1, and a column of identical "1"s is noise standing where
-  // information should be. So it earns its place per list rather than always.
-  //
-  // Judged on the rows actually **drawn**, not on every row there is: a badge
-  // describes what you can see. So a level-1 Dragonborn — whose one later trait
-  // is hidden — gets no badges, and they appear when the reader asks to see the
-  // locked traits and the levels start to differ.
+  // The level badge is drawn only when the levels of the rows actually DRAWN
+  // differ — for a species almost everything is level 1, and a column of
+  // identical "1"s is noise.
   const drawn = rows.filter(r => r.owned || showLockedTraits);
   const graded = drawn.some(r => r.level > 1);
 

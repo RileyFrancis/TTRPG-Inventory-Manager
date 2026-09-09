@@ -3,29 +3,19 @@
 // =============================================================================
 'use strict';
 
-// Folders organise the item *catalogue*, not the character, so like the theme
-// preference they live in their own localStorage key rather than in the
-// dnd_inventory_v1 save file: a GM flipping between players' sheets keeps their
-// own folders, and nothing folder-related is ever synced to the party.
-//
-// A folder never owns its items. `folderAssign` maps templateId → folderId, so
-// deleting a folder only drops assignments — the items themselves fall back to
-// their default folder, or to Unfiled, which is a virtual folder rendered last
-// and never stored.
-//
-// An item with no entry in `folderAssign` is not loose: it files itself into the
-// default folder its type matches (see DEFAULT_FOLDERS), so every item lands
-// somewhere out of the box. `folderAssign` therefore only ever holds *overrides*
-// — including the UNFILED_ID sentinel, which is how "leave this one out of every
-// folder" is told apart from "not filed yet".
+// Folders organise the item CATALOGUE, not the character — their own
+// localStorage key, not in the save file, never synced. A folder never owns
+// items: `folderAssign` maps templateId → folderId and holds only OVERRIDES
+// (including the UNFILED_ID sentinel, "keep out of every folder"). An item with
+// no entry files itself into the default folder its type matches. See CLAUDE.md
+// § Browse-list folders.
 
 const FOLDERS_KEY = 'dnd_inventory_folders';
 const UNFILED_ID = '__unfiled';
 
 // The folders every browser starts with, and the rule that files an item into
-// each. Ordered: the first match wins, and the last one matches everything, so
-// `defaultFolderIdFor` always has an answer. They are ordinary folders once
-// created — rename or delete them freely; they are not re-created.
+// each. First match wins; the last matches everything, so `defaultFolderIdFor`
+// always has an answer. Ordinary folders once created — not re-created.
 const DEFAULT_FOLDERS = [
   { id: 'folder_weapons', name: 'Weapons',  match: t => hasTagWord(t, 'weapon') },
   { id: 'folder_armor',   name: 'Armor',    match: t => hasTagWord(t, 'armor') || hasTagWord(t, 'shield') },
@@ -65,10 +55,8 @@ function loadFolders() {
   seedDefaultFolders();
 }
 
-// First run — and once for browsers whose folders predate the defaults — adds
-// any default folder that isn't already there. A folder the user has renamed is
-// still recognised by id; one they made themselves under the same name is left
-// alone rather than duplicated.
+// First run (and once for browsers whose folders predate the defaults) — adds
+// any default folder not already there by id or by name.
 function seedDefaultFolders() {
   if (foldersSeeded) return;
   foldersSeeded = true;
@@ -76,9 +64,8 @@ function seedDefaultFolders() {
   saveFolders();
 }
 
-// Adds back any default folder that is neither there by id nor matched by name.
-// Split out of the seeding so Restore Defaults can reuse it: it does not touch
-// `foldersSeeded`, which records only that the first run has happened.
+// Split out of seeding so Restore Defaults can reuse it — it does not touch
+// `foldersSeeded`.
 function addMissingDefaultFolders() {
   const taken = new Set(state.folders.map(f => f.name.toLowerCase()));
   DEFAULT_FOLDERS.forEach(def => {
@@ -109,9 +96,7 @@ function getFolder(id) {
   return state.folders.find(f => f.id === id) ?? null;
 }
 
-// Unfiled is a virtual group — it is never stored, so it has no entry to read a
-// name off. One place knows what it is called, for the list header and the
-// drag hint alike.
+// Unfiled is virtual and never stored, so one place holds its name.
 const UNFILED_NAME = 'Unfiled';
 function folderNameOf(id) {
   if (id === UNFILED_ID) return UNFILED_NAME;
@@ -214,15 +199,10 @@ function setAllFoldersCollapsed(collapsed) {
   saveFolders();
 }
 
-// Hands every item back to the folder its type files it into. That means
-// dropping the whole of `folderAssign` — it holds nothing *but* hand-filed
-// overrides, so clearing it is exactly "nobody filed anything by hand".
-//
-// Missing default folders are re-created first, because without them
-// `defaultFolderIdFor` has no answer and the items the button just freed would
-// land in Unfiled — a restore that files everything nowhere is not a restore.
-// Folders the user made are left standing: the button restores where items
-// *are*, and deleting someone's folders is a different, unasked-for operation.
+// Hands every item back to its type's folder by clearing `folderAssign` whole
+// (it holds nothing but hand-filed overrides). Missing default folders are
+// re-created first, or `defaultFolderIdFor` has no answer and everything lands
+// in Unfiled. Folders the user made are left standing.
 function restoreDefaultFolders() {
   addMissingDefaultFolders();
   state.folderAssign = {};
@@ -243,10 +223,8 @@ function updateFolderToolbar(searchLocked) {
   const collapsed = allFoldersCollapsed();
   btn.classList.toggle('hidden', state.folders.length === 0);
   btn.disabled = searchLocked;
-  // The caret shows the *action*, not the state — the same arrow the label used
-  // to sit beside, now carrying the meaning on its own. The folder headers'
-  // carets read the other way round (▾ = this folder is open), which is why the
-  // title matters here.
+  // The caret shows the ACTION, not the state (the folder headers' carets read
+  // the other way round), so the title carries the meaning.
   btn.textContent = collapsed ? '▾' : '▸';
   btn.title = searchLocked
     ? 'A search keeps every folder open'

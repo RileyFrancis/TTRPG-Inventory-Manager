@@ -35,19 +35,16 @@ function sidebarTabAvailable(name) {
   return view === null || view === sidebarView();
 }
 
-// The plain DOM half: light one button, show one pane. Everything that decides
-// *which* is above it, so this can be called from the sync below without the
-// two recursing into each other.
+// The plain DOM half: light one button, show one pane. Called from the sync
+// below rather than `switchTab()`, so the two cannot recurse.
 function activateSidebarTab(name) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === `tab-${name}`));
   if (name === 'chat') onChatTabShown();
 }
 
-// Show the buttons belonging to the current view, and never leave the active
-// one hidden — switching to the sheet with Details up has to land somewhere.
-// Called from `syncCharacterViewUI()`, the single entry point for "what are we
-// looking at changed".
+// Show the buttons belonging to the current view; never leave the active one
+// hidden. Called from `syncCharacterViewUI()`.
 function syncSidebarTabs() {
   let activeStillThere = false;
   const visible = [];
@@ -70,19 +67,13 @@ function syncSidebarTabs() {
   }
 }
 
-// **Asking for a tab is asking for the view it lives in.** A shop entry clicked
-// while reading your character sheet calls `switchTab('details')`, and the
-// honest answer is to show the item — which means going where items are shown,
-// rather than lighting a button the reader cannot see. Every existing caller
-// keeps working untouched because of this line.
+// Asking for a tab is asking for the view it lives in — a shop entry clicked
+// from the character sheet calls `switchTab('details')`, and the honest answer
+// is to show the item.
 function switchTab(name) {
   const view = sidebarTabView(name);
-  // **The sheet is the only view that can be refused**, and that is what the
-  // `hasViewedCharacter()` test was always for: a GM with nobody picked has no
-  // character to show one of. Asked of an *inventory* pane it refuses a move
-  // that is always possible — which is how a GM standing on the battle map with
-  // no player selected found Browse unreachable, and Browse is the pane they
-  // stock shops by dragging out of.
+  // Only the sheet can be refused (`hasViewedCharacter()`): a GM with nobody
+  // picked has no character. An inventory pane is always reachable.
   const reachable = view === 'inventory' || hasViewedCharacter();
   if (view && view !== sidebarView() && reachable) setInventoryView(view);
   activateSidebarTab(name);
@@ -100,11 +91,8 @@ document.getElementById('rarity-filter').addEventListener('change', renderItemLi
 document.getElementById('tag-filter').addEventListener('change', renderItemList);
 
 // =============================================================================
-// CHARACTER MODAL
+// GRID REBUILD  (the character modal itself is in character-setup.js)
 // =============================================================================
-// It lives in src/js/character-setup.js — the dialog grew a list of class rows,
-// which is a concern of its own rather than one more form in here.
-
 function rebuildGrid() {
   state.activeContainer = null;
   initGrid();

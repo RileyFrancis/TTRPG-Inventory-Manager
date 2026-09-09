@@ -3,26 +3,18 @@
 // =============================================================================
 'use strict';
 
-// A drag holds the pointer button down, so the wheel is the only way to reach a
-// folder or a grid row that is scrolled out of view — and letting go to scroll
-// ends the drag. Holding the cursor near a scrollable container's edge therefore
-// pulls the content along, the way file managers and calendars do.
-//
-// Only *held* drags scroll. Placing mode follows a free cursor with no button
-// down, and a cursor left resting near an edge would scroll the list forever.
-//
-// The loop runs for the whole drag rather than being started and stopped as the
-// cursor crosses in and out of an edge band: the velocity is simply zero away
-// from an edge, which keeps the start/stop calls to one each per drag and leaves
-// nothing to leak if a drag ends in an unusual way.
+// Holding a held drag's cursor near a scrollable container's edge pulls the
+// content along (the wheel is unreachable with the button down). Only HELD
+// drags — placing mode follows a free cursor that would scroll forever. The rAF
+// loop runs for the whole drag; velocity is simply zero away from an edge. See
+// CLAUDE.md § Edge auto-scroll.
 
 const DRAG_SCROLL_EDGE = 56; // px of a container's edge that pulls
 const DRAG_SCROLL_MAX  = 22; // px per frame with the cursor right on the edge
 
-// Every container a drag can drop into, and so must be able to reach the end of.
-// Explicit rather than "any scrollable ancestor": the same bounding-rect
-// approach the equip cards and folder headers use, for the same reason — the
-// ghost sits under the cursor and elementFromPoint would keep finding it.
+// Explicit rather than "any scrollable ancestor" — same bounding-rect approach
+// the equip cards and folder headers use (the ghost sits under the cursor and
+// elementFromPoint would keep finding it).
 const DRAG_SCROLLERS = ['#item-list', '#grid-scroll', '#equip-slots-scroll', '.shop-body', '#character-sheet'];
 
 let dragScrollRaf = null;
@@ -30,16 +22,13 @@ let dragScrollRefresh = null;
 let dragScrollX = 0;
 let dragScrollY = 0;
 
-// `refresh(x, y)` is the drag's own pointermove logic. It has to run again on
-// every frame that actually scrolls: the cursor has not moved, but the content
-// under it has, so the highlighted folder or grid cell is otherwise a frame's
-// worth of scrolling out of date — and stale by the whole scroll by the drop.
+// `refresh(x, y)` is the drag's own pointermove logic — re-run on every frame
+// that scrolls, because the cursor has not moved but the content under it has.
 function startDragAutoScroll(x, y, refresh) {
   dragScrollX = x;
   dragScrollY = y;
   dragScrollRefresh = refresh ?? null;
-  // Cancel before queueing rather than bailing out when one is already pending:
-  // there is then exactly one loop however a previous drag ended.
+  // Cancel before queueing, so there is exactly one loop however a previous drag ended.
   stopDragAutoScrollLoop();
   dragScrollRaf = requestAnimationFrame(dragScrollFrame);
 }
@@ -79,13 +68,9 @@ function dragScrollFrame() {
   }
 }
 
-// The container under the cursor, or null.
-//
-// Horizontally the cursor must be *inside*: the panels sit side by side, so a
-// band reaching past the left or right edge would let a drag in one panel scroll
-// its neighbour. Vertically the band reaches past both edges, because what lies
-// above and below a scroller is its own panel's header and footer — overshooting
-// the bottom edge by an inch should keep pulling, not stall.
+// The container under the cursor, or null. Horizontally the cursor must be
+// INSIDE (the panels sit side by side); vertically the band reaches past both
+// edges (above/below a scroller is its own panel's header/footer).
 function dragScrollerAtPoint(x, y) {
   for (const sel of DRAG_SCROLLERS) {
     for (const el of document.querySelectorAll(sel)) {

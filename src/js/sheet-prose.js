@@ -9,14 +9,11 @@
 // session-only, a guess overridden by the toggle: a section with writing opens
 // formatted, an empty one opens in the editor. See markdown.js for the sanitizer.
 
-// One entry per written section. The `data-prose` key is also the `data-sheet`
-// path, so a section needs no wiring of its own beyond a row here and the
-// markup in index.html.
 const PROSE_MODES = {};        // sectionKey -> 'edit' | 'preview', once chosen
 let proseCharacterId = null;   // whose sheet the modes above belong to
 
-// A section's mode: the reader's choice if they have made one, otherwise the
-// guess described in the header.
+// A section's mode: the reader's choice if made, else the guess (writing →
+// preview, empty → edit).
 function proseModeOf(key) {
   if (PROSE_MODES[key]) return PROSE_MODES[key];
   return String(readSheetPath(key) ?? '').trim() ? 'preview' : 'edit';
@@ -25,8 +22,8 @@ function proseModeOf(key) {
 // Called from `renderCharacterSheet()`, so it follows a keystroke, a party
 // roster update and a character switch without a trigger of its own.
 function renderSheetProse() {
-  // A different character is a different set of writing, and carrying the last
-  // one's modes over would open someone else's blank sheet in preview.
+  // A different character is different writing — carrying the modes over would
+  // open someone else's blank sheet in preview.
   const id = state.character?.id ?? null;
   if (id !== proseCharacterId) {
     proseCharacterId = id;
@@ -47,9 +44,7 @@ function renderSheetProse() {
         : 'See this formatted, with the Markdown and HTML applied';
     }
 
-    // **Only rendered when it is on screen.** Every keystroke re-renders the
-    // sheet, and parsing the whole backstory each time to update something
-    // nobody is looking at would be work for nothing.
+    // Only rendered when on screen — every keystroke re-renders the sheet.
     if (!previewing) return;
 
     const preview = section.querySelector('.prose-preview');
@@ -70,13 +65,9 @@ function proseEmptyNote(section) {
   return p;
 }
 
-// One listener for every written section, on the sheet itself — the same
-// pattern the rest of the sheet uses rather than a handler per button.
-//
-// **Read-only does not gate this.** Someone looking at another player's sheet
-// can still swap to the editor to see how a passage was written; the textarea
-// itself is disabled by `renderCharacterSheet()` along with every other input,
-// so nothing can be changed from there.
+// One listener for every written section. Read-only does not gate it — someone
+// reading another player's sheet can still swap to the editor to see how a
+// passage was written (the textarea is disabled by `renderCharacterSheet()`).
 document.getElementById('character-sheet').addEventListener('click', e => {
   const btn = e.target.closest('.prose-toggle');
   if (!btn) return;

@@ -16,27 +16,14 @@
 
 const ACCENT_KEY = 'dnd_inventory_colors';
 
-// The three roles, the tokens each drives, and the saturation and lightness
-// each theme wants for each of them. Every figure is a default from tokens.css
-// measured back into HSL, so an untouched app and a custom colour are built the
-// same way — nothing here is invented.
+// The three roles, the tokens each drives, and the saturation/lightness each
+// theme wants for each. Every figure is a tokens.css default measured back into
+// HSL, so an untouched app and a custom colour are built the same way.
 //
-// **A role can drive a whole family, not just one token.** `surface` is the
-// interesting one: panels, the page behind them, the desk under the paper and
-// both border shades are one colour seen at six depths, so they move together
-// and keep their ladder. The *first* token is the role's reference — it is what
-// the swatch shows, what the wheel is painted at, and what the other tokens'
-// saturations are measured against.
-//
-//   --panel    L 91   the panels themselves, the lightest step
-//   --surface  L 86
-//   --bg       L 78   the page behind them: the same colour, darker
-//   --border   L 63
-//   --border2  L 50
-//   --desk     L 48   under the torn paper, darkest of all
-//
-// So "the background is a darker version of the panel colour" is not a rule
-// applied afterwards — it is what having one hue and six lightnesses *means*.
+// A role can drive a whole FAMILY: `surface` is panels, the page behind them,
+// the desk under the paper and both borders — one hue at six lightnesses, so
+// "the background is a darker version of the panel colour" is what having one
+// hue and six lightnesses means. The first token is the role's reference.
 const ACCENT_ROLES = {
   primary: {
     label: 'Primary',
@@ -56,30 +43,21 @@ const ACCENT_ROLES = {
       { name: '--border2', light: { s: 29, l: 50 }, dark: { s: 30, l: 28 } },
       { name: '--desk',    light: { s: 27, l: 48 }, dark: { s: 24, l:  4 } },
 
-      // The inventory grid is deliberately **not** here. Its cells, its carry
-      // zones and everything drawn on them keep the palette's own colours
-      // whatever the panels are tinted to: the grid is the parchment the
-      // character's kit is laid out on, not part of the app's chrome, and it
-      // reads as itself rather than as another panel.
+      // The inventory grid is deliberately NOT here — it keeps the palette's own
+      // colours whatever the panels are tinted to.
 
-      // The page behind everything is the odd one out and does not join the
-      // HSL ladder at all: it takes the panel's *hue* and nothing else, at a
-      // fixed OKLCH lightness and chroma. `oklch` rather than `hsl` because
-      // that is the whole point — perceptual lightness is what "this dark" has
-      // to mean when the hue is anything the user likes, and an HSL lightness
-      // of 25% is a very different darkness for yellow than for blue.
-      //
-      // The lightness is per palette, and mirrors tokens.css: the ground has to
-      // clear its own panels, and the dark palette's sit at OKLCH 0.247 where
-      // the light palette's are at 0.95.
+      // `--bg` does not join the HSL ladder — it takes the panel's hue only, at
+      // a fixed OKLCH lightness and chroma (`oklch` not `hsl` because perceptual
+      // lightness is what "this dark" has to mean for any hue). The lightness is
+      // per palette and mirrors tokens.css — the ground has to clear its own
+      // panels (dark palette's sit at OKLCH 0.247, light's at 0.95).
       { name: '--bg', oklch: { light: { l: 0.32, c: 0.04 }, dark: { l: 0.25, c: 0.04 } } },
     ],
   },
 };
 
-// Every property this module may write on <html>. Listed so a reset can *remove*
-// what it no longer sets and hand the palette back to tokens.css, rather than
-// leaving a stale override behind.
+// Every property this module may write on <html> — so a reset can REMOVE what it
+// no longer sets and hand the palette back to tokens.css.
 const ACCENT_MANAGED = ['--on-accent'].concat(
   Object.values(ACCENT_ROLES).flatMap(r => r.tokens.map(t => t.name))
 );
@@ -93,8 +71,8 @@ function defaultAccentPrefs() {
   return out;
 }
 
-// The token a role is *named* by: the one its swatch shows, its wheel is
-// painted at, and its family's saturations are measured against.
+// The token a role is named by — its swatch, its wheel face, and what its
+// family's saturations are measured against.
 function roleReferenceToken(role) { return ACCENT_ROLES[role].tokens[0]; }
 
 // =============================================================================
@@ -117,10 +95,9 @@ function hslToHex(h, s, l) {
   return '#' + rgb.map(v => Math.round((v + m) * 255).toString(16).padStart(2, '0')).join('');
 }
 
-// WCAG relative luminance, which is what "is this light or dark" has to mean
-// here: a saturated yellow and a saturated blue at the same HSL lightness are
-// nowhere near as bright as each other, and picking the ink off `l` alone would
-// put black text on the blue.
+// WCAG relative luminance — "is this light or dark" has to mean this here, since
+// a saturated yellow and a saturated blue at the same HSL lightness are nowhere
+// near as bright as each other.
 function relativeLuminance(hex) {
   const n = parseInt(hex.slice(1), 16);
   const ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(v => {
@@ -130,14 +107,9 @@ function relativeLuminance(hex) {
   return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
 }
 
-// The OKLCH hue of an sRGB colour: sRGB → linear → LMS → OKLab → the angle of
-// (a, b). Only the hue is wanted — the page's lightness and chroma are locked —
-// but the whole conversion is here because there is no shortcut to the angle.
-//
-// Note this hue is **not** the HSL hue the wheel hands out: the two spaces
-// disagree, sometimes by tens of degrees. Deriving it from the *resolved panel
-// colour* rather than from the pick is what keeps the ground matched to the
-// panels rather than to a number that happens to share their name.
+// The OKLCH hue of an sRGB colour (sRGB → linear → LMS → OKLab → angle). NOT the
+// HSL hue the wheel hands out — the two disagree by tens of degrees. Deriving it
+// from the resolved panel colour keeps the ground matched to the panels.
 function oklchHueOf(hex) {
   const n = parseInt(hex.slice(1), 16);
   const lin = v => { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
@@ -159,8 +131,7 @@ function contrastRatio(a, b) {
   return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
 }
 
-// Whichever of the palette's two inks reads better on this fill. Read from the
-// tokens rather than written out again, so there is one copy of each value.
+// Whichever of the palette's two inks reads better on this fill.
 function readableInkOn(hex) {
   const css = getComputedStyle(document.documentElement);
   const ink = (css.getPropertyValue('--ink') || '#1a1206').trim();
@@ -173,14 +144,9 @@ function readableInkOn(hex) {
 // =============================================================================
 // Every token a role owns, at one theme. The pick supplies the hue; each token
 // keeps its own lightness, and its saturation is scaled by how saturated it is
-// *relative to the role's reference token* — so a family keeps the shape it had
-// (the desk was always the flattest step, the panel the richest) whatever hue is
-// poured into it.
-//
-// The pinned lightness is also what stops a strong pick going garish. `s: 100`
-// sounds alarming until you notice the light theme's panel is fixed at L 91%:
-// `hsl(210, 100%, 91%)` is a pale blue tint, not a blue. The theme constrains
-// the chroma for free, exactly as it does for the accent.
+// relative to the role's reference token, so a family keeps its shape. The
+// pinned lightness also stops a strong pick going garish: `hsl(210, 100%, 91%)`
+// is a pale blue tint, not a blue.
 function resolveRoleTokens(role, pick, theme) {
   const tokens = ACCENT_ROLES[role].tokens;
   const refToken = tokens[0];
@@ -193,8 +159,7 @@ function resolveRoleTokens(role, pick, theme) {
     out[t.name] = hslToHex(pick.h, Math.max(0, Math.min(100, s)), t[theme].l);
   });
 
-  // Second pass, because an `oklch` token reads the hue of the *resolved*
-  // reference rather than of the pick — see `oklchHueOf`.
+  // Second pass: an `oklch` token reads the hue of the RESOLVED reference.
   const refHex = out[refToken.name];
   tokens.forEach(t => {
     if (!t.oklch || !refHex) return;
@@ -205,7 +170,7 @@ function resolveRoleTokens(role, pick, theme) {
   return out;
 }
 
-// Both themes, up front. See the header: the paint path never does maths.
+// Both themes, up front — the paint path never does maths.
 function computeAccentVars(prefs) {
   const out = { light: {}, dark: {} };
 
@@ -220,24 +185,20 @@ function computeAccentVars(prefs) {
     if (s) {
       Object.assign(out[theme], resolveRoleTokens('secondary', s, theme));
     } else if (p) {
-      // Untouched, the secondary follows the primary — a slightly calmer
-      // version of it, which is exactly the relationship the default gold pair
-      // has. Setting it explicitly is what breaks the link.
+      // Untouched, the secondary follows the primary eight points calmer.
       Object.assign(out[theme], resolveRoleTokens(
         'secondary', { h: p.h, s: Math.max(0, p.s - 8) }, theme));
     }
 
-    // The panels stand on their own: nothing follows them and they follow
-    // nothing. A page tinted to match its own accent is a much louder app than
-    // anyone asked for.
+    // The panels stand on their own — nothing follows them, they follow nothing.
     if (prefs.surface) Object.assign(out[theme], resolveRoleTokens('surface', prefs.surface, theme));
   });
 
   return out;
 }
 
-// Paint whichever half of `vars` matches the palette now showing. Called by
-// `applyTheme()` as well, since a theme switch changes which half applies.
+// Paint whichever half of `vars` matches the palette now showing. Also called by
+// `applyTheme()`, since a theme switch changes which half applies.
 function applyAccentVars() {
   const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
   const vars = (accentPrefs.vars && accentPrefs.vars[theme]) || {};
@@ -266,9 +227,8 @@ function sanitizeAccentPrefs(raw) {
     if (!Number.isFinite(h) || !Number.isFinite(s)) return;
     out[role] = { h: ((h % 360) + 360) % 360, s: Math.max(0, Math.min(100, s)) };
   });
-  // Recomputed rather than trusted: `vars` is a cache of the two fields above,
-  // and a stored map that disagreed with them would paint a colour the wheel
-  // does not show.
+  // Recomputed, not trusted — a stored map that disagreed with the two fields
+  // above would paint a colour the wheel does not show.
   out.vars = computeAccentVars(out);
   return out;
 }
@@ -280,7 +240,7 @@ function saveAccentPrefs() {
 // =============================================================================
 // SETTING A COLOUR
 // =============================================================================
-// `commit` is false while a wheel drag is in flight: the app recolours live on
+// `commit` is false while a wheel drag is in flight — the app recolours live on
 // every pointermove, but only the release writes to storage.
 function setAccentColor(role, h, s, { commit = true } = {}) {
   if (!ACCENT_ROLES[role]) return;
@@ -300,8 +260,8 @@ function clearAccentColor(role) {
   saveAccentPrefs();
 }
 
-// What the swatch for a role is showing right now — the custom colour if there
-// is one, otherwise whatever tokens.css is currently painting.
+// What the swatch is showing — the custom colour if there is one, else whatever
+// tokens.css is currently painting.
 function currentAccentHex(role) {
   const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
   const token = roleReferenceToken(role).name;
@@ -313,23 +273,17 @@ function currentAccentHex(role) {
 // =============================================================================
 // THE WHEEL
 // =============================================================================
-// A hue ring with saturation falling off toward a grey centre. Hand-drawn from
-// two gradients rather than a canvas, so it stays crisp at any size.
-//
-// **This is the one place a literal colour belongs in this app.** Everything
-// else must be a token or it will be wrong in one of the two palettes — but a
-// spectrum is not themed, it *is* the colours, and it means the same thing in
-// both. The gradient is built at the lightness the role will actually be given,
-// so the wheel is a preview of the result rather than of some nominal L 50%.
+// A hue ring with saturation falling off toward a grey centre, from two
+// gradients rather than a canvas so it stays crisp at any size. The one place a
+// literal colour belongs in this app — a spectrum is not themed, it IS the
+// colours. Built at the lightness the role will actually be given, so it previews
+// the result.
 let wheelRole = null;
 let wheelDragging = false;
 
-// The wheel is drawn at the lightness the role will actually be given, so it
-// previews the result — but only as far as that stays *legible*. A panel is
-// L 91% on parchment and L 12% by candlelight, and a wheel at either is a flat
-// white or a flat black disc with no hues to tell apart. So the face is clamped
-// into a band where colour still reads, and the swatch beside the row (plus the
-// app itself, which recolours live) shows the true result.
+// Clamped into a band where colour still reads — a panel is L 91% on parchment
+// and L 12% by candlelight, and a wheel at either is a flat disc. The swatch and
+// the app itself carry the true result.
 const WHEEL_FACE_MIN = 38;
 const WHEEL_FACE_MAX = 62;
 
@@ -349,10 +303,9 @@ function paintWheelFace(role) {
     `conic-gradient(from 0deg, ${stops.join(', ')})`;
 }
 
-// Screen point → hue and saturation. Hue is the angle clockwise from the top,
-// which is where `conic-gradient(from 0deg, …)` starts, so the knob always sits
-// on the colour it names. Saturation is the distance out, clamped at the rim so
-// a drag that leaves the wheel keeps tracking the hue instead of stopping dead.
+// Screen point → hue (angle clockwise from the top, where the conic-gradient
+// starts) and saturation (distance out, clamped at the rim so a drag off the
+// wheel keeps tracking the hue).
 function wheelValueAt(clientX, clientY) {
   const wheel = document.getElementById('color-wheel');
   const r = wheel.getBoundingClientRect();
@@ -381,14 +334,12 @@ function placeWheelKnob(role) {
 function openColorWheel(role) {
   wheelRole = role;
   const pop = document.getElementById('color-wheel-pop');
-  // Reopening on the row that is already open closes it, the way a disclosure
-  // should — the swatch is a toggle, not a one-way door.
+  // Reopening on the row that is already open closes it — the swatch is a toggle.
   document.querySelectorAll('.color-row').forEach(row => {
     row.classList.toggle('open', row.dataset.role === role);
   });
   document.getElementById('wheel-title').textContent = ACCENT_ROLES[role].label;
-  // Moved under the row it belongs to, so the panel reads as that row opening
-  // rather than as a floating dialog that has to be positioned and clipped.
+  // Moved under the row it belongs to, so the panel reads as that row opening.
   document.querySelector(`.color-row[data-role="${role}"]`).after(pop);
   pop.classList.remove('hidden');
   paintWheelFace(role);
@@ -446,8 +397,7 @@ function updateAppearanceUI() {
       value.textContent = custom ? hex : `${hex} · default`;
       value.classList.toggle('is-default', !custom);
     }
-    // Nothing to reset when the role is already the palette's own.
-    if (clear) clear.disabled = !accentPrefs[role];
+    if (clear) clear.disabled = !accentPrefs[role]; // nothing to reset when it is the default
   });
 
   if (wheelRole) {
@@ -456,8 +406,8 @@ function updateAppearanceUI() {
   }
 }
 
-// The page is opened fresh each time, so this is where the wheel is put away
-// and the swatches are brought up to date.
+// The page is opened fresh each time — put the wheel away and bring the swatches
+// up to date.
 function openAppearanceModal() {
   closeColorWheel();
   updateThemePickerUI(getThemePreference());
@@ -466,10 +416,9 @@ function openAppearanceModal() {
   showModal('appearance-modal');
 }
 
-// Called from `initTheme()`, which is where the two halves of Appearance meet.
-// Everything is wired here rather than at load time: theme.js is parsed first
-// and would bind `undefined` if it tried to reach these handlers from its own
-// top level.
+// Called from `initTheme()`. Everything is wired here rather than at load time:
+// theme.js is parsed first and would bind `undefined` reaching these handlers
+// from its own top level.
 function initAppearance() {
   loadAccentPrefs();
   applyAccentVars();

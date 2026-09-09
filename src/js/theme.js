@@ -3,14 +3,10 @@
 // =============================================================================
 'use strict';
 
-// The `data-theme` attribute on <html> is always one of 'light' | 'dark'; the
-// inline script in index.html <head> sets it before first paint. What we store
-// is the *preference*, which may also be 'system' — resolved against the OS
-// setting here and re-resolved whenever the OS setting changes.
-//
-// Kept out of the main save file (dnd_inventory_v1) deliberately: the theme
-// belongs to this browser, not to the character, and it has to be readable
-// before any app state loads.
+// `<html data-theme>` is always 'light' | 'dark' (the inline script in <head>
+// sets it before first paint). The stored PREFERENCE may also be 'system',
+// re-resolved whenever the OS setting changes. Not in the save file — the theme
+// belongs to the browser and must be readable before app state loads.
 
 const THEME_KEY = 'dnd_inventory_theme';
 const THEME_CHOICES = ['light', 'dark', 'system'];
@@ -41,9 +37,8 @@ function resolveTheme(pref) {
 // Paint the resolved palette and bring rarity-coloured DOM back in sync.
 function applyTheme(pref, { rerender = true } = {}) {
   document.documentElement.setAttribute('data-theme', resolveTheme(pref));
-  // A custom accent is resolved per palette, so which half of it applies has
-  // just changed. Straight after `data-theme` and before anything reads a
-  // colour back out of CSS. See src/js/appearance.js.
+  // A custom accent is per-palette, so which half applies just changed — after
+  // `data-theme`, before anything reads a colour out of CSS (appearance.js).
   applyAccentVars();
   clearRarityColorCache();
   updateThemePickerUI(pref);
@@ -65,15 +60,13 @@ function rerenderThemedContent() {
   renderStash();
   renderEquipPanel();
   renderShopPanel(); // rarity swatches and coin colours are inlined there too
-  // The map bakes hostility colours into a canvas and into the creature
-  // editor's swatches, so the cache is cleared before either is drawn again.
-  clearHostilityColorCache();
+  clearHostilityColorCache(); // the map bakes hostility colours into a canvas
   renderMapPanel();
   drawBattlemap();
   renderInitiativePanel();   // its rows are edged in the hostility colours too
 
-  // Repaint the details panel in place — deliberately not via
-  // show*Details(), which would also yank the user to the Details tab.
+  // Repaint the details panel in place — NOT via show*Details(), which would
+  // yank the user to the Details tab.
   const sel = state.selected;
   if (sel && sel.type === 'instance') {
     const inst = state.instances[sel.id];
@@ -117,22 +110,16 @@ function initTheme() {
   }
 }
 
-// The theme picker moved to the Appearance page, so Settings itself no longer
-// has one to bring up to date.
 function openSettingsModal() {
   showModal('settings-modal');
 }
 
 document.getElementById('settings-btn').addEventListener('click', openSettingsModal);
-// The home screen covers the header, so its banner carries its own copy of the button.
 document.getElementById('home-settings-btn').addEventListener('click', openSettingsModal);
 
-// The info pages replace the settings modal rather than stacking on top of it —
-// a click on the backdrop closes every open modal, so two at once would both go.
-// Appearance is one of these pages too, but its button is wired in
-// appearance.js: this file's listeners run at *load* time, and appearance.js
-// has not been parsed yet at that point, so binding its handler from here would
-// silently attach `undefined`.
+// The info pages REPLACE the settings modal (a backdrop click closes every open
+// modal). Appearance's button is wired in appearance.js instead — this file's
+// listeners run at load time, before appearance.js is parsed.
 document.getElementById('how-to-btn').addEventListener('click', () => {
   hideModal('settings-modal');
   showModal('how-to-modal');

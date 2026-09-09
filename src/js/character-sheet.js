@@ -3,8 +3,8 @@
 // =============================================================================
 'use strict';
 
-// Page one of the 2024 sheet — the other view of a character, opposite the
-// inventory. Reads and writes the same `state.character`; owns no data.
+// The other view of a character, opposite the inventory. Reads and writes the
+// same `state.character`; owns no data.
 //
 // Anything the rules derive unambiguously is shown as text, never a box
 // (modifiers, proficiency bonus, skills, saves, passive Perception, initiative);
@@ -26,10 +26,9 @@ const ABILITIES = [
   { id: 'cha', label: 'Charisma' },
 ];
 
-// The eighteen skills, alphabetical as they are printed, each tied to the
-// ability its modifier comes from. That tie is now what *lays the sheet out* as
-// well as what derives the number: `skillsOfAbility` groups on it, so the
-// grouping cannot drift from the arithmetic.
+// The eighteen skills, alphabetical as printed, each tied to its ability. That
+// tie lays the sheet out (`skillsOfAbility` groups on it) as well as deriving
+// the number, so the two cannot drift.
 const SKILLS = [
   { id: 'acrobatics',     label: 'Acrobatics',      ability: 'dex' },
   { id: 'animalHandling', label: 'Animal Handling', ability: 'wis' },
@@ -51,17 +50,14 @@ const SKILLS = [
   { id: 'survival',       label: 'Survival',        ability: 'wis' },
 ];
 
-// Proficiency is three-state rather than a checkbox: 2024 keeps expertise, and
-// a rogue with a plain tick in the box is simply wrong.
+// Three-state, not a checkbox — 2024 keeps expertise.
 const PROF_NONE = 0, PROF_PROFICIENT = 1, PROF_EXPERTISE = 2;
 const PROF_TITLES = ['Not proficient', 'Proficient', 'Expertise'];
 
 const SIZES = ['Tiny', 'Small', 'Medium', 'Large', 'Huge', 'Gargantuan'];
 
-// The nine, in the order the rules print them — law to chaos across, good to
-// evil down. A *hint* for the setup modal's datalist, never a constraint: the
-// field is free text like class and species, so "Unaligned", "Lawful Hungry" or
-// a table's own scheme all still fit.
+// The nine, in the order the rules print them. A datalist hint, never a
+// constraint — the field is free text.
 const ALIGNMENTS = [
   'Lawful Good',    'Neutral Good',    'Chaotic Good',
   'Lawful Neutral', 'True Neutral',    'Chaotic Neutral',
@@ -69,9 +65,8 @@ const ALIGNMENTS = [
 ];
 const HIT_DICE = ['d6', 'd8', 'd10', 'd12'];
 
-// Everything the sheet adds to a character, with its defaults. Read by
-// `normalizeCharacterMeta()` so an older save gains the fields on load rather
-// than the sheet having to cope with half of them missing.
+// Everything the sheet adds to a character, with defaults. Read by
+// `normalizeCharacterMeta()` so an older save gains the fields on load.
 function defaultSheetFields() {
   return {
     background: '', alignment: '', subclass: '', xp: 0, size: 'Medium',
@@ -84,8 +79,7 @@ function defaultSheetFields() {
     skillProf: {},  // { [skillId]: 0 | 1 | 2 }
     armorTraining: { light: false, medium: false, heavy: false, shields: false },
     weaponProf: '', toolProf: '', languages: '',
-    // The written sections. Markdown, rendered by src/js/sheet-prose.js — plain
-    // strings here, because that is all they are to everything else.
+    // The written sections — Markdown, rendered by sheet-prose.js; plain strings here.
     backstory: '', appearance: '',
   };
 }
@@ -103,12 +97,10 @@ function normalizeAbilities(raw, strengthFallback) {
   return out;
 }
 
-// 0 to 30. Zero is a real score — a creature drained to 0 Strength is
-// incapacitated, and the rules say so — and an inventory of no rows is the
-// honest reading of it, so it is allowed rather than floored to 1.
+// 0 to 30. Zero is a real score (a creature drained to 0 Strength is
+// incapacitated), so it is allowed rather than floored to 1.
 function clampScore(n) { return Math.max(0, Math.min(30, n)); }
 
-// In printed order, so a group lists its skills the way the sheet always has.
 function skillsOfAbility(abilityId) {
   return SKILLS.filter(s => s.ability === abilityId);
 }
@@ -119,7 +111,7 @@ function skillsOfAbility(abilityId) {
 function abilityScoreOf(id) { return state.character.abilities?.[id] ?? 10; }
 function abilityModOf(id)   { return Math.floor((abilityScoreOf(id) - 10) / 2); }
 
-// 2024 keeps the 5e progression: +2 at level 1, stepping every four levels.
+// +2 at level 1, stepping every four levels.
 function proficiencyBonus() {
   const level = Math.max(1, Math.min(20, parseInt(state.character.level, 10) || 1));
   return 2 + Math.floor((level - 1) / 4);
@@ -142,26 +134,16 @@ function passivePerception() {
 
 function initiativeBonus() { return abilityModOf('dex'); }
 
-// Signed, the way a modifier is always written.
 function formatMod(n) { return (n >= 0 ? '+' : '-') + Math.abs(n); }
 
 // =============================================================================
 // BUILDING THE REPEATED PARTS
 // =============================================================================
-// The unique boxes are static markup in index.html, as everything referenced by
-// JS is. The six ability groups are not unique — they are the ABILITIES and
-// SKILLS tables above, rendered once. Hand-writing eighteen skill rows would
-// only give them a second place to disagree with the constant that defines them.
-//
-// **One group per ability, not three lists.** Everything on this half of the
-// sheet is one number read three ways — the modifier, the save that adds
-// proficiency to it, and the skills that do the same — so they are shown
-// together and a change to the score visibly moves the rows underneath it. It
-// also retires the "DEX" tag each skill row used to carry: the group it sits in
-// is the tag, and says it once instead of eighteen times.
-//
-// Built once at boot, never rebuilt: `renderCharacterSheet()` only writes values
-// into what is already here, so an input never loses focus mid-keystroke.
+// The unique boxes are static markup in index.html. The six ability groups are
+// the ABILITIES and SKILLS tables above, rendered once — one group per ability,
+// each showing the modifier, the save, and the skills that read off it. Built
+// once at boot, never rebuilt: `renderCharacterSheet()` only writes values into
+// what is already here, so an input never loses focus mid-keystroke.
 let sheetBuilt = false;
 
 function buildCharacterSheet() {
@@ -171,10 +153,8 @@ function buildCharacterSheet() {
   const abilBox = document.getElementById('sheet-abilities');
   ABILITIES.forEach(a => abilBox.appendChild(abilityGroup(a)));
 
-  // Where the sections *sit* is the reader's own arrangement, and it is put
-  // together here for the same reason the ability groups are: once, when the
-  // sheet is first opened. See src/js/sheet-layout.js — nothing below this line
-  // knows or cares which slot a section ended up in.
+  // Where the sections sit is put together here too — once, when the sheet is
+  // first opened. See sheet-layout.js.
   ensureSheetLayout();
 }
 
@@ -187,13 +167,8 @@ function abilityGroup(a) {
   name.className = 'ability-name';
   name.textContent = a.label;
 
-  // The modifier is the figure actually rolled with, so it is the big one; the
-  // score sits beside it as the smaller number it is worked out from.
-  //
-  // And now it is literally what is rolled: a button carrying `data-roll`,
-  // which src/js/dice.js reads. The modifier is *not* stored on the element —
-  // dice.js asks the sheet for it at the moment of the click, so a roll can
-  // never be made with a number the sheet has since moved on from.
+  // A button carrying `data-roll`, read by dice.js. The modifier is NOT stored
+  // on the element — dice.js asks the sheet for it at the moment of the click.
   const mod = document.createElement('button');
   mod.type = 'button';
   mod.className = 'ability-mod';
@@ -222,8 +197,7 @@ function abilityGroup(a) {
   const rows = document.createElement('div');
   rows.className = 'prof-list';
 
-  // The save leads the group and is bolded: it belongs to the ability itself,
-  // where the skills below are each their own thing.
+  // The save leads the group and is bolded — it belongs to the ability itself.
   const save = profRow({
     dot: { path: `saveProf.${a.id}`, kind: 'bool' },
     label: 'Saving Throw',
@@ -244,14 +218,10 @@ function abilityGroup(a) {
   return group;
 }
 
-// One row of "proficiency dot · name · derived modifier". The dot is a button
-// rather than a checkbox because the skill version cycles through three states.
-//
-// The name and the value are a **second** button, and the row is the two of
-// them side by side: one changes what the character *is* proficient in, the
-// other rolls it. They had to be separate controls — a single button doing both
-// could only ever guess which was meant — and the name belongs with the value
-// rather than with the dot, because "Arcana +5" is the thing being rolled.
+// One row: "proficiency dot · name · derived modifier". The dot is a button (the
+// skill version cycles three states). The name+value is a SECOND button — one
+// changes what the character is proficient in, the other rolls it; a single
+// button doing both could only guess which was meant.
 function profRow({ dot, label, valueId, roll }) {
   const row = document.createElement('div');
   row.className = 'prof-row';
@@ -284,10 +254,9 @@ function profRow({ dot, label, valueId, roll }) {
 // =============================================================================
 // RENDERING
 // =============================================================================
-// Writes current values into the sheet that `buildCharacterSheet()` already put
-// on the page. Called from `syncCharacterViewUI()`, which also fires on every
-// party roster update — hence the focus guard: a sync landing mid-word must not
-// reset the box being typed into, nor jump the caret to the end.
+// Writes current values into the sheet `buildCharacterSheet()` already put on
+// the page. Called from `syncCharacterViewUI()`, which also fires on every
+// roster update — hence the focus guard: a sync mid-word must not reset the box.
 function renderCharacterSheet() {
   buildCharacterSheet();
 
@@ -295,9 +264,8 @@ function renderCharacterSheet() {
   const readOnly = isReadOnly();
   document.getElementById('character-sheet').classList.toggle('sheet-readonly', readOnly);
 
-  // Every plain input, by the path it edits.
-  // Note what is *not* here: `[data-roll]`. Rolling writes nothing to the
-  // character, so a read-only sheet still rolls — see the listener in dice.js.
+  // Every plain input, by the path it edits. NOT `[data-roll]` — rolling writes
+  // nothing, so a read-only sheet still rolls (see dice.js).
   document.querySelectorAll('#character-sheet [data-sheet]').forEach(el => {
     const kind = el.dataset.kind;
     if (kind === 'bool' || kind === 'prof') {
@@ -325,53 +293,33 @@ function renderCharacterSheet() {
   document.getElementById('sheet-initiative').textContent = formatMod(initiativeBonus());
   document.getElementById('sheet-passive').textContent    = passivePerception();
 
-  // The identity block under the name — the whole readout of what the gear
-  // edits, since those boxes have left the sheet.
+  // The identity block under the name — the readout of what the gear edits.
   renderSheetIdentity(c);
 
-  // Nothing on someone else's sheet is editable, and a gear that opens a dialog
-  // whose Save would write to a character that is not yours is worse than no
-  // gear at all.
+  // Nothing on someone else's sheet is editable, and a gear whose Save would
+  // write to a character that is not yours is worse than no gear.
   document.getElementById('sheet-setup-btn').classList.toggle('hidden', readOnly);
 
   renderDeathSaves(readOnly);
 
-  // All three are driven by fields edited above — `classes`, `race`, `level`,
-  // and the two prose fields — so they re-run with everything else rather than
-  // needing a trigger of their own.
-  //
-  // Species first: `applyFeatureUnlocks()` runs inside `renderClassFeatures()`
-  // and unions both registries' keys, so it wants the species list settled. It
-  // reads the registry rather than the section, so the order is not load-
-  // bearing — but the two reading the same character in the same pass is.
+  // All three are driven by fields edited above, so they re-run with everything
+  // else. Species first: `applyFeatureUnlocks()` (inside renderClassFeatures())
+  // unions both registries' keys and wants the species list settled — the two
+  // reading the same character in the same pass is what matters.
   renderSpeciesTraits();
   renderClassFeatures();
   renderSheetProse();
 }
 
-// The identity block: a row of facts, each **named above and answered below**,
-// running left to right in the order the 2024 sheet prints them — class,
-// species, background, alignment, and the level last.
-//
-// It was one run-on line ("Level 7 · Tiefling · Warlock 5 / Bard 2 · Soldier"),
-// which is fine as a party-panel subtitle and wrong as the sheet's own heading:
-// nothing there says which word is the species and which the background, so a
-// reader has to already know the answer to read it. A label over each value
-// says it once and costs a line.
-//
-// **No box and no rule.** These are not fields any more — they are what the
-// character *is*, printed. Chrome around them would make them look editable,
-// which is exactly the thing the gear took away.
-//
-// Every fact is drawn whether it is set or not, with an em dash for a blank.
-// A missing column would shuffle the rest along and leave the reader working out
-// which one went; a dash says "nothing here yet" and holds its place.
+// A row of facts, each named above and answered below, in the order the 2024
+// sheet prints them. No box, no rule — these are not fields any more, they are
+// what the character is. Every fact is drawn whether set or not (em dash for a
+// blank), so a missing one does not shuffle the rest along.
 function renderSheetIdentity(c) {
   const box = document.getElementById('sheet-identity');
   const entries = classEntriesOf(c);
 
-  // A class's own level is said only when there is more than one — a single
-  // class is already at the level in the Level column.
+  // A class's own level is said only when multiclassed.
   const classes = entries.map(e => {
     const level = entries.length > 1 ? ` ${e.level}` : '';
     return e.subclass ? `${e.name}${level} (${e.subclass})` : `${e.name}${level}`;
@@ -413,8 +361,7 @@ function renderProfDot(el, kind) {
     : PROF_TITLES[level];
 }
 
-// Three pips a side, filled left to right — the paper sheet's own shape, and
-// easier to read at a glance than a number when it matters most.
+// Three pips a side, filled left to right.
 function renderDeathSaves(readOnly) {
   [['successes', 'sheet-death-succ'], ['failures', 'sheet-death-fail']].forEach(([key, boxId]) => {
     const box = document.getElementById(boxId);
@@ -426,8 +373,7 @@ function renderDeathSaves(readOnly) {
       pip.className = 'death-pip' + (i <= filled ? ' filled' : '');
       pip.title = `${i} ${key}`;
       pip.disabled = readOnly;
-      // Clicking the pip you are on clears back to it minus one, so a
-      // miscount is undone with the same click that made it.
+      // Clicking the pip you are on clears back to it minus one.
       pip.addEventListener('click', () => {
         setSheetPath(`deathSaves.${key}`, i === filled ? i - 1 : i);
         commitSheetEdit(`deathSaves.${key}`);
@@ -454,8 +400,7 @@ function setSheetPath(path, value) {
   obj[parts[parts.length - 1]] = value;
 }
 
-// One listener for the whole sheet rather than one per box — there are roughly
-// eighty of them, and they all do the same thing.
+// One listener for the whole sheet (~80 boxes, all doing the same thing).
 function onSheetInput(e) {
   const el = e.target.closest('[data-sheet]');
   if (!el || isReadOnly()) return;
@@ -476,10 +421,8 @@ function onSheetInput(e) {
   commitSheetEdit(el.dataset.sheet);
 }
 
-// One listener for the whole sheet rather than one per box — there are roughly
-// eighty of them and they all do the same thing. Both events, because a
-// checkbox or a select does not reliably report through 'input' everywhere;
-// writing the same value twice costs nothing.
+// Both events, because a checkbox or select does not reliably report through
+// 'input' everywhere; writing the same value twice costs nothing.
 const sheetEl = document.getElementById('character-sheet');
 sheetEl.addEventListener('input', onSheetInput);
 sheetEl.addEventListener('change', onSheetInput);
@@ -489,27 +432,21 @@ sheetEl.addEventListener('click', e => {
   if (!el || isReadOnly()) return;
   const kind = el.dataset.kind;
   const current = readSheetPath(el.dataset.sheet);
-  // Saves are proficient or not; skills cycle on through expertise.
+  // Saves are proficient or not; skills cycle through expertise.
   const next = kind === 'bool' ? !current : ((parseInt(current, 10) || 0) + 1) % 3;
   setSheetPath(el.dataset.sheet, next);
   commitSheetEdit(el.dataset.sheet);
 });
 
-// What has to happen after any edit. Strength is the one field with a
-// consequence outside the sheet: the inventory grid is sized from it.
-//
-// It is marked rather than rebuilt. A score is typed a digit at a time, and
-// rebuilding on each one would empty the pack onto the Needs Placement list
-// while the reader is still mid-number — see the deferred resize in grid.js.
-// `syncCharacterViewUI()` settles it when they go back to the inventory.
+// What has to happen after any edit. Strength is marked, not rebuilt — a score
+// is typed a digit at a time, and rebuilding on each would empty the pack (see
+// the deferred resize in grid.js). `updateWeightDisplay()` is unconditional
+// because it also writes the header's name and Strength.
 function commitSheetEdit(path) {
   if (path === 'abilities.str') {
     state.character.strength = state.character.abilities.str;
     markGridSizeDirty();
   }
-  // Unconditional: this is what writes the name and Strength in the header, so
-  // renaming a character on the sheet has to run it too — not only a change
-  // that happens to touch the grid.
   updateWeightDisplay();
   if (path === 'level' || path === 'name') syncCharacterViewUI();
   renderCharacterSheet(); // the derived numbers move with almost everything

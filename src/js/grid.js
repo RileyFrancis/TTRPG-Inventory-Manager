@@ -26,17 +26,15 @@ function rebuildGridIfSizeDirty() {
 function initGrid() {
   const rows = gridRows();
   state.grid = Array.from({ length: rows }, () => Array(GRID_COLS).fill(null));
-  // This *is* the pending resize, whatever asked for it — a view switch, a boot,
-  // a character swap, a party sync. Clearing the flag here rather than in
-  // `rebuildGridIfSizeDirty()` alone is what stops any of those other paths
-  // leaving a stale flag behind to fire a second, identical rebuild later.
+  // Any rebuild IS the pending resize (a view switch, boot, character swap,
+  // party sync) — clearing the flag here, not only in rebuildGridIfSizeDirty(),
+  // stops a stale flag firing a second identical rebuild.
   gridSizeDirty = false;
 }
 
-// Does `shape` fit at (gridRow, gridCol) in one particular grid? `canPlace`
-// asks this of whichever grid is on screen, which is what every interaction
-// wants. The rebuild has to ask it of each container's grid in turn — none of
-// which is the active one — so the grid is a parameter here.
+// Does `shape` fit at (gridRow, gridCol) in one particular grid? `canPlace` asks
+// it of the active grid; the rebuild asks it of each container's grid, so the
+// grid is a parameter here.
 function fitsInGrid(grid, cols, shape, gridRow, gridCol, excludeInstanceId = null) {
   const cells = getShapeCells(shape, gridRow, gridCol);
   for (const { row, col } of cells) {
@@ -69,16 +67,10 @@ function removeFromGrid(instanceId) {
   }));
 }
 
-// An item that cannot go back where it was is put in the stash, never left
-// holding a position off the edge of the grid. Shrinking the inventory —
-// Strength down, or a container's size reduced in the item editor — otherwise
-// strands it outside the rendered rows: `#inventory-grid` is `overflow:
-// hidden`, so it is drawn where no one can see or click it, while
-// `totalCarriedWeight` still counts every instance and charges for it.
-//
-// `row: null` is the app's own word for "owned, but not on the grid", so the
-// item lands in the Needs Placement list of whichever grid it belonged to and
-// the owner can put it back. Equipped stays equipped, as it does for Stash All.
+// An item that cannot go back where it was is put in the stash (`row: null` =
+// "owned, but not on the grid"), never left holding a position off the edge —
+// `#inventory-grid` is `overflow: hidden`, so it would be drawn where no one can
+// see or click it while `totalCarriedWeight` still charges for it.
 function unplaceInstance(inst) {
   inst.row = null;
   inst.col = null;

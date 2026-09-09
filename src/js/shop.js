@@ -32,10 +32,7 @@ function shopVisibleToMe(shop) {
   if (shop.audience === 'all') return true;
   const chosen = shop.players ?? {};
   if (chosen[state.party.playerId]) return true;
-  // Roster keys are account uids now, so a rejoin lands on the same key and this
-  // fallback no longer carries the live case — see the identity note in
-  // party.js. It is kept for reveals written against the old session ids, where
-  // the name the GM ticked is the only half of the choice that survived.
+  // A name-match fallback for reveals written against the old per-session ids.
   const names = shop.playerNames ?? {};
   return Object.keys(chosen).some(pid => chosen[pid] && names[pid] && names[pid] === state.party.playerName);
 }
@@ -53,21 +50,16 @@ function shopStockEntries(shop) {
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 }
 
-// The item is snapshotted into the shop rather than referenced, so a shop can
-// stock something the buyer has never owned, and so a later edit to the GM's own
-// catalogue cannot change a listing out from under the players. Stored as JSON
-// for the reason cloud-save.js stores the save file that way: RTDB drops nulls
-// and empty objects, and templates are full of both.
+// Snapshotted into the shop as JSON, so a shop can stock something the buyer has
+// never owned and a later edit to the GM's catalogue cannot change a listing.
+// JSON for cloud-save.js's reason: RTDB drops nulls and empty objects.
 function shopEntryTemplate(entry) {
   try { return JSON.parse(entry.template); } catch { return null; }
 }
 
-// Two prices per line, and the difference matters. The *base* is what the GM
-// typed (or the item's own cost, untouched); the shop's markup then scales every
-// base together, so a hard season or a gouging trader is one number rather than
-// a pass over the whole stock list. The editor edits the base; everything else —
-// the listing, the buy dialog, what actually leaves the purse — uses the scaled
-// price, so the two can never disagree.
+// Two prices per line: the *base* (what the GM typed) and the scaled price
+// (base × shop markup). The editor edits the base; the listing, buy dialog and
+// purse all use the scaled price, so the two cannot disagree.
 function shopEntryBasePrice(entry) {
   return parseCostObj(entry.price ?? shopEntryTemplate(entry)?.cost);
 }
@@ -145,15 +137,10 @@ function unsubscribeFromShops() {
 // =============================================================================
 const LEFT_TAB_LABELS = { equip: 'Equipment', shop: 'Shop', map: 'Maps' };
 
-// Which panes the left panel has right now. A GM has no character of their own,
-// so equipment is only theirs to look at while a player is picked — and with
-// nobody picked the Shop is the whole panel rather than an empty rack of slots.
-//
-// **Maps is the GM's alone.** A player never has a library to keep: the one map
-// that concerns them is the one the party is standing on, and they reach it by
-// the button in the corner of the middle panel rather than by a pane listing
-// maps they cannot edit. So there is no `!gm` branch for it, deliberately —
-// unlike the Shop, which a player does get once one is revealed to them.
+// Which panes the left panel has right now. A GM has no character, so equipment
+// is only theirs while a player is picked, and with nobody picked the Shop is
+// the whole panel. Maps is the GM's alone (a player reaches the one map that
+// concerns them by the corner button) — hence no `!gm` branch for it.
 function leftTabsAvailable() {
   const gm = isShopGM();
   const hasShop = state.party.active && (gm || visibleShops().length > 0);
@@ -383,10 +370,8 @@ function buildShopRevealControls(body, shop) {
   });
 }
 
-// One number over the whole stock list. A hard winter, a gouging trader or a
-// friendly discount is a markup rather than a pass over every line — and because
-// it scales the base prices instead of rewriting them, winding it back to 100
-// restores exactly what the GM originally typed.
+// One number over the whole stock list — it scales the base prices instead of
+// rewriting them, so winding it back to 100 restores what the GM typed.
 function buildShopPriceControls(body, shop) {
   const hdr = document.createElement('div');
   hdr.className = 'shop-section-hdr';
@@ -528,14 +513,9 @@ function showShopItemDetails(shop, entry) {
 // =============================================================================
 // SHOP — DROP TARGET
 // =============================================================================
-// A card dragged out of Browse can be dropped straight onto a shop. Same
-// bounding-rect hit test the folder headers and equip cards use, and checked by
-// buildItemCard's drag *before* the grid, so a drop over the shop stocks the
-// item instead of trying to place one in an inventory the GM may not even have.
-//
-// On a shop's own page the whole pane is that shop's target — there is only one
-// shop it could mean. In the list, each row is its own target, so a GM can fill
-// several shops without opening any of them.
+// A card dragged out of Browse can be dropped onto a shop — same bounding-rect
+// test the folder headers use, checked by buildItemCard's drag BEFORE the grid.
+// On a shop's own page the whole pane is the target; in the list, each row is.
 function getShopDropTargetAtPoint(x, y) {
   if (!isShopGM()) return null;
   const pane = document.getElementById('left-pane-shop');
@@ -678,10 +658,8 @@ function updateShopAddButton() {
 
 document.getElementById('shop-add-search').addEventListener('input', renderShopAddList);
 
-// The one way stock arrives, from the picker modal and from a card dragged out
-// of Browse alike. An item already on the shelf gains one to its count rather
-// than a second line — dragging the same sword twice means two swords, not two
-// entries reading "1 left".
+// The one way stock arrives (picker modal and drag-from-Browse alike). An item
+// already on the shelf gains one to its count rather than a second line.
 function addItemsToShop(shopId, templateIds) {
   const shop = state.shops[shopId];
   if (!shop || !templateIds.length || !firebaseDb) return 0;
@@ -831,10 +809,9 @@ function purseTotalCp(counts) {
   return COIN_ASC.reduce((sum, d) => sum + counts[d] * COIN_VALUE[d], 0);
 }
 
-// What a purchase does to the purse: which coins go out, which come back. Small
-// coins are spent first — that sheds the loose change and leaves the big coins
-// whole — and when what is left to pay is smaller than any coin still in the
-// purse, one of those is broken and the difference comes back as change.
+// What a purchase does to the purse. Small coins are spent first (sheds loose
+// change, leaves the big coins whole); when what is left to pay is smaller than
+// any coin still in the purse, one is broken and the difference comes back.
 function planPayment(priceCp) {
   const have = getCoinCounts();
   const total = purseTotalCp(have);
@@ -881,10 +858,9 @@ function applyPayment(plan) {
   });
 }
 
-// The shop carries its own copy of the item, so a buyer can end up holding
-// something that was never in their catalogue. Match an existing entry where
-// there is one — a second longsword must not fork the catalogue — and register
-// the snapshot as a custom item otherwise.
+// The shop carries its own copy, so a buyer can end up holding something never
+// in their catalogue. Match an existing entry (a second longsword must not fork
+// the catalogue), else register the snapshot as a custom item.
 function resolveShopTemplate(entry) {
   const snap = shopEntryTemplate(entry);
   if (!snap) return null;
@@ -1034,9 +1010,8 @@ async function confirmPurchase() {
   btn.disabled = true;
   btn.textContent = 'Buying…';
 
-  // The stock is one shared pile, so the claim is staked in the database first
-  // and atomically: when two players hit Buy on the last sword together, the one
-  // who loses the transaction is told, and nothing has left their purse.
+  // The stock is one shared pile — the claim is staked atomically first, so the
+  // player who loses a race for the last sword is told and is not charged.
   let committed = false;
   try {
     const res = await firebaseDb
@@ -1060,10 +1035,9 @@ async function confirmPurchase() {
   btn.textContent = 'Buy';
   if (!committed) { showBuyError({ error: 'gone' }); updateBuySummary(); return; }
 
-  // The purse could have moved under us while the claim was in flight — a cloud
-  // save landing from another device. Re-plan against what is actually there,
-  // and fall back to the original only if the fresh one cannot be paid: the
-  // stock is already claimed, so the buyer must not be left holding nothing.
+  // The purse could have moved under us while the claim was in flight (a cloud
+  // save from another device). Re-plan against what is there now; fall back to
+  // the original only if the fresh plan cannot be paid — the stock is claimed.
   const fresh = planPayment(priceCp);
   applyPayment(fresh.error ? plan : fresh);
   grantPurchase(entry, count);

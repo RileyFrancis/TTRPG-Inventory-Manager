@@ -3,14 +3,9 @@
 // =============================================================================
 'use strict';
 
-// Both side panels — equipment on the left, the item browser on the right — are
-// dragged by the handle sitting on their inner border. Drag one narrow enough
-// and it folds away entirely, leaving a round button in that corner to bring it
-// back.
-//
-// Like the theme and the browse folders, these are *this browser's* window
-// furniture rather than anything about the character, so they live in their own
-// localStorage key and never go in the save file or the party data.
+// Both side panels resize by the handle on their inner border, and fold away
+// when dragged narrower than PANEL_COLLAPSE_AT. This browser's window furniture
+// — own localStorage key, not in the save file or party data.
 
 const PANELS_KEY = 'dnd_inventory_panels';
 
@@ -92,9 +87,9 @@ function startPanelResize(e, side) {
   document.body.style.cursor = 'col-resize';
 
   const onMove = me => {
-    // Width the panel *would* have if it followed the cursor exactly. The panel
-    // collapses and un-collapses live from that raw number, so dragging back
-    // out brings it straight back rather than needing the reopen button.
+    // Width the panel WOULD have following the cursor exactly — collapse and
+    // un-collapse happen live from this raw number, so dragging back out brings
+    // the panel straight back.
     const raw = side === 'equip' ? me.clientX - layout.left : layout.right - me.clientX;
     if (raw < PANEL_COLLAPSE_AT) {
       panels[side + 'Collapsed'] = true;
