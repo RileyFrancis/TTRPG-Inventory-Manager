@@ -144,6 +144,7 @@ function onMapViewShown() {
     renderMapToolbar();
     drawBattlemap();
     renderInitiativePanel();
+    renderMapSpeedIndicator();
   }
   syncGridHint();
 }
@@ -157,6 +158,7 @@ function onMapViewHidden() {
   setInitiativeHover(null);
   syncGridHint();
   renderInitiativePanel();   // which, with the board gone, is what hides it
+  renderMapSpeedIndicator();
 }
 
 // Everything arriving from Firebase lands here.
@@ -171,6 +173,9 @@ function onBattlemapDataChanged() {
   renderMapToolbar();
   drawBattlemap();
   renderInitiativePanel();
+  // Catches both a movement spend echoing back and a turn's reset arriving —
+  // see the MOVEMENT section of battlemap-initiative.js.
+  renderMapSpeedIndicator();
 }
 
 // =============================================================================
@@ -533,7 +538,40 @@ function drawMapTokens(ctx, map) {
       ctx.fillText(token.name, at.x, y);
     }
     ctx.restore();
+
+    // The cost of the drag in progress, said where the reader is looking —
+    // beside the token, not the bottom-right tally (see drawMoveCostLabel).
+    if (mapTokenDrag && mapTokenDrag.id === token.id) drawMoveCostLabel(ctx, map, token, at, r);
   });
+}
+
+// What this drag would spend, next to the token being dragged. Silent (no
+// entry, no tracked speed) when the token is not on a movement budget at all —
+// see the MOVEMENT section of battlemap-initiative.js.
+function drawMoveCostLabel(ctx, map, token, at, r) {
+  const entry = tokenMoveEntry(map, token);
+  if (!entry) return;
+  const speed = tokenSpeed(token);
+  const usedBefore = entry.moveUsed || 0;
+  const distFeet = pixelsToFeet(map, Math.hypot(at.x - mapTokenDrag.ox, at.y - mapTokenDrag.oy));
+  const remaining = Math.max(0, speed - usedBefore - distFeet);
+  const maxedOut = distFeet >= speed - usedBefore;
+  const text = Math.round(distFeet) + ' ft' + (distFeet > 0 ? ' · ' + Math.round(remaining) + ' ft left' : '');
+
+  const fs = 13 / mapCam.scale;
+  const pad = 8 / mapCam.scale;
+  ctx.save();
+  ctx.font = '600 ' + fs + 'px system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  const w = ctx.measureText(text).width;
+  const x = at.x + r + pad;
+  const y = at.y;
+  ctx.fillStyle = maxedOut ? 'rgba(122, 26, 26, 0.88)' : 'rgba(12, 9, 5, 0.82)';
+  ctx.fillRect(x - pad * 0.4, y - fs * 0.85, w + pad * 1.6, fs * 1.7);
+  ctx.fillStyle = '#ffd479';
+  ctx.fillText(text, x, y);
+  ctx.restore();
 }
 
 // The shape under the cursor while it is dragged out, from the same numbers the
@@ -747,7 +785,9 @@ function onMapPointerDown(e) {
     const token = tokenAtPoint(map, w.x, w.y);
     if (token) {
       mapSelectedTokenId = token.id;
-      mapTokenDrag = { id: token.id, x: token.x, y: token.y, dx: token.x - w.x, dy: token.y - w.y, moved: false };
+      // ox/oy stay put for the whole gesture — x/y follow the cursor and are
+      // not a stable place to measure this drag's own distance from.
+      mapTokenDrag = { id: token.id, x: token.x, y: token.y, ox: token.x, oy: token.y, dx: token.x - w.x, dy: token.y - w.y, moved: false };
       renderMapToolbar();
       drawBattlemap();
       return;
@@ -783,8 +823,23 @@ function onMapPointerMove(e) {
   }
 
   if (mapTokenDrag) {
-    mapTokenDrag.x = w.x + mapTokenDrag.dx;
-    mapTokenDrag.y = w.y + mapTokenDrag.dy;
+    let nx = w.x + mapTokenDrag.dx;
+    let ny = w.y + mapTokenDrag.dy;
+    // A token with a tracked budget cannot be dragged past what it has left —
+    // the leash is the straight-line distance from where this drag started,
+    // pulled back onto that line rather than just refused outright.
+    const token = (map.tokens || {})[mapTokenDrag.id];
+    const remaining = token ? tokenMoveRemaining(map, token) : null;
+    if (remaining !== null) {
+      const distFeet = pixelsToFeet(map, Math.hypot(nx - mapTokenDrag.ox, ny - mapTokenDrag.oy));
+      if (distFeet > remaining) {
+        const k = remaining / distFeet;
+        nx = mapTokenDrag.ox + (nx - mapTokenDrag.ox) * k;
+        ny = mapTokenDrag.oy + (ny - mapTokenDrag.oy) * k;
+      }
+    }
+    mapTokenDrag.x = nx;
+    mapTokenDrag.y = ny;
     mapTokenDrag.moved = true;
     // The fog does not follow the drag — it settles on pointerup (see below).
     drawBattlemap();
@@ -834,6 +889,9 @@ function onMapPointerUp(e) {
       const token = (map.tokens || {})[drag.id];
       const snapped = snapToGrid(map, drag.x, drag.y, token ? token.size : 1);
       updateToken(map.id, drag.id, snapped);
+      // Measured against the pre-snap, already-clamped point — snapping can
+      // nudge a fraction past it, not worth re-checking the budget over.
+      if (token) spendTokenMovement(map, token, pixelsToFeet(map, Math.hypot(drag.x - drag.ox, drag.y - drag.oy)));
     }
     // The fog settles here, and only here: a fog that followed the drag would
     // let anyone sweep their token across the board and read the whole map back
@@ -925,6 +983,21 @@ function syncGridHint() {
     + 'Drag anywhere else to slide the grid. '
     + 'Now: ' + roundGridValue(g.size) + ' px, offset ' + roundGridValue(g.offsetX)
     + ' / ' + roundGridValue(g.offsetY) + '.';
+}
+
+// Bottom right of the board: the reader's own remaining movement, when they
+// have a marker on it and it is on a tracked budget — see the MOVEMENT section
+// of battlemap-initiative.js. Hidden for a GM (their creatures have no speed
+// stat) and before there is anything to track it against.
+function renderMapSpeedIndicator() {
+  const el = document.getElementById('map-speed');
+  if (!el) return;
+  const map = mapOpen ? viewedMap() : null;
+  const token = map ? mapTokens(map).find(t => t.hostility === 'party' && t.ownerUid === ownPlayerId()) : null;
+  const remaining = token ? tokenMoveRemaining(map, token) : null;
+  el.classList.toggle('hidden', remaining === null);
+  if (remaining === null) return;
+  el.textContent = Math.round(remaining) + ' / ' + tokenSpeed(token) + ' ft';
 }
 
 function renderMapToolbar() {

@@ -60,6 +60,15 @@ function mapCellSize(map) {
   return Number.isFinite(s) && s >= 4 ? s : MAP_GRID_DEFAULT.size;
 }
 
+// This app assumes the standard 5-foot square — nothing about a map says
+// otherwise, and it is the unit a character's Speed stat is already written
+// in. Used to turn a drag's pixel distance into feet for movement tracking.
+const MAP_FEET_PER_CELL = 5;
+
+function pixelsToFeet(map, px) {
+  return px / mapCellSize(map) * MAP_FEET_PER_CELL;
+}
+
 // A grid figure is fractional, stored to two places — somebody else's picture is
 // rarely a whole number of pixels per square, and rounding to one drifts up to
 // half a pixel per square (unmissable by the thirtieth).

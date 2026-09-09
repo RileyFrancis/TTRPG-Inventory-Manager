@@ -119,7 +119,12 @@ function advanceInitiativeTurn(map, dir) {
   let round = init.round ?? 1;
   if (next >= order.length) round += 1;
   if (next < 0) round = Math.max(1, round - 1);
-  initiativeRef(map.id).update({ turn: order[wrapped].id, round });
+  // A fresh turn is a full tank of movement — see the MOVEMENT section below.
+  initiativeRef(map.id).update({
+    turn: order[wrapped].id,
+    round,
+    ['entries/' + order[wrapped].id + '/moveUsed']: 0,
+  });
 }
 
 // Stepping either way, to any entry, is the GM's — running the fight.
@@ -507,6 +512,45 @@ function initiativeMarks(map) {
   const hovered = initiativeHoverId ? mapInitiative(map).entries[initiativeHoverId] : null;
   if (hovered) initiativeTokensOf(map, hovered).forEach(t => marks.set(t.id, 'hover'));
   return marks;
+}
+
+// =============================================================================
+// MOVEMENT — a party token's remaining speed for the turn it is tracked against
+// =============================================================================
+// Only a player's own marker has a speed to spend: this app keeps no monster
+// stat blocks (see CLAUDE.md § Initiative), so a GM's creatures sit outside
+// this entirely. The budget lives on the token's own initiative entry
+// (`moveUsed`, in feet) — the same entry that already speaks for the token in
+// the turn order (initiativeEntryOfToken), so "whose turn resets this" and
+// "whose budget this is" can never disagree. Reset happens in
+// advanceInitiativeTurn(), above. With no entry yet (not rolled into the order)
+// there is nothing to spend against, so movement runs free until there is.
+
+function tokenSpeed(token) {
+  if (!token || token.hostility !== 'party' || !token.ownerUid) return null;
+  const c = characterForUid(token.ownerUid);
+  if (!c) return null;
+  return Number.isFinite(c.speed) ? c.speed : 30;
+}
+
+function tokenMoveEntry(map, token) {
+  return tokenSpeed(token) === null ? null : initiativeEntryOfToken(map, token.id);
+}
+
+// null means "not tracked" (no speed, or not in the order) — battlemap-view.js
+// reads that as leave it alone, rather than a budget of zero.
+function tokenMoveRemaining(map, token) {
+  const entry = tokenMoveEntry(map, token);
+  if (!entry) return null;
+  return Math.max(0, tokenSpeed(token) - (entry.moveUsed || 0));
+}
+
+// Called once a drag settles (onMapPointerUp in battlemap-view.js) — added to
+// whatever the entry had already spent this turn.
+function spendTokenMovement(map, token, feet) {
+  const entry = tokenMoveEntry(map, token);
+  if (!entry || !(feet > 0) || !firebaseDb) return;
+  initiativeRef(map.id, 'entries/' + entry.id + '/moveUsed').set((entry.moveUsed || 0) + feet);
 }
 
 // =============================================================================

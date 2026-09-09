@@ -91,6 +91,14 @@ function ownPlayerId() {
   return state.auth.user?.uid ?? null;
 }
 
+// The character behind a party member's account — the same synced copy the
+// roster panel already reads as `p.character`, named for reuse by anything
+// asking after one *specific* player (battlemap-initiative.js's movement
+// tracking) rather than walking the whole roster.
+function characterForUid(uid) {
+  return uid ? (state.party.players?.[uid]?.character ?? null) : null;
+}
+
 // Entries written before roster keys were accounts — `p_`-prefixed, identified
 // only by the typed name (which is why the scheme had to change). Best-effort;
 // a leftover the sweep misses is one Kick away.

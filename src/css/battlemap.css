@@ -223,6 +223,25 @@
   background: rgba(16, 12, 8, 0.82);
 }
 
+/* The reader's own remaining movement, opposite the legend — a matched pair of
+   readouts on the two bottom corners. See renderMapSpeedIndicator() in
+   battlemap-view.js. */
+#map-speed {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  padding: 6px 10px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  border: 1px solid var(--border);
+  pointer-events: none;
+}
+
 /* ─── THE GM'S LIBRARY PANE ──────────────────────────────── */
 /* It borrows shop.css's pane furniture — .shop-head, .shop-body, .shop-footer,
    .shop-section-hdr — on purpose: they are the left panel's own chrome rather
