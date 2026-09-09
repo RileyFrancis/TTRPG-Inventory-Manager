@@ -68,16 +68,6 @@
      move. -->
 <div id="turn-border" aria-hidden="true"></div>
 
-<!-- The reader's own remaining movement this turn — pinned to the top right of
-     the screen itself, not the board, and peeking off its edge on purpose: the
-     bottom-right corner inside the map view already belongs to the dice
-     rolls. Not part of #app for the same reason #turn-border is not. Built by
-     renderMapSpeedIndicator() in src/js/battlemap-view.js. -->
-<div id="map-speed" class="hidden">
-  <span id="map-speed-remaining">0</span>
-  <span id="map-speed-total">/0 ft</span>
-</div>
-
 <!-- ===== SVG FILTER DEFS =====
      The torn edge of the paper. feTurbulence makes noise, feDisplacementMap
      pushes the pixels of whatever it is applied to around by that noise — so
@@ -485,6 +475,16 @@
             <!-- A second, orthogonal ring — who may drag it, not whose side
                  it's on. Purple to stay clear of every hostility colour. -->
             <span class="map-legend-item" style="--lc:#a860ff"><span class="map-legend-dot"></span>Player-owned</span>
+          </div>
+          <!-- The reader's own remaining movement this turn — centred on the
+               map panel's own top-right corner, clipped by #map-stage's own
+               overflow so the sliver that crosses the corner reads as tucked
+               behind the toolbar and the sidebar rather than floating over
+               them. Built by renderMapSpeedIndicator() in
+               src/js/battlemap-view.js. -->
+          <div id="map-speed" class="hidden">
+            <span id="map-speed-remaining">0</span>
+            <span id="map-speed-total">/0 ft</span>
           </div>
         </div>
       </div>

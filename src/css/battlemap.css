@@ -223,36 +223,35 @@
   background: rgba(16, 12, 8, 0.82);
 }
 
-/* The reader's own remaining movement this turn — a badge pinned to the
-   screen's own top-right corner (see index.html, near #turn-border), not the
-   board's: the bottom-right corner inside the map view already belongs to the
-   dice rolls (#dice-history, in inventory.css). Peeking off the edge on
-   purpose — a full circle sitting flush on-screen would read as a button, this
-   reads as a badge. Kept clear of #header (min-height 58px) rather than
-   layered over its Party/Settings buttons; pointer-events stay off since the
-   sidebar panel runs underneath this same corner. Content is pulled down and
-   left, clear of the clipped corner. */
+/* The reader's own remaining movement this turn — a badge centred on the map
+   panel's own top-right corner, not the screen's: `#map-stage`'s own
+   `overflow: hidden` (above) is what clips the sliver that crosses the corner,
+   so it reads as tucked behind the toolbar above and the sidebar to the right
+   rather than floating over either of them (the earlier viewport-pinned
+   version did exactly that to the sidebar). A small overhang on purpose — just
+   enough to cross the corner, not so much a full quadrant of the circle goes
+   missing. Content is pulled toward the visible lower-left arc. */
 #map-speed {
-  position: fixed;
-  top: 62px;
-  right: -20px;
-  z-index: 40;
-  width: 58px;
-  height: 58px;
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  z-index: 4;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 4px 20px 4px 4px;
-  background: radial-gradient(circle at 38% 35%, var(--accent-soft), var(--accent) 78%);
+  padding: 2px 10px 4px 0;
+  background: radial-gradient(circle at 32% 62%, var(--accent-soft), var(--accent) 78%);
   border: 2px solid var(--border2);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.25);
   color: var(--on-accent);
   pointer-events: none;
 }
 #map-speed-remaining {
-  font-size: 19px;
+  font-size: 18px;
   font-weight: 800;
   line-height: 1;
   font-variant-numeric: tabular-nums;
