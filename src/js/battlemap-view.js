@@ -1044,8 +1044,11 @@ function onMapWheel(e) {
 // A shape too small to have been meant is a click that slipped, not a wall.
 const MAP_MIN_SHAPE = 6;
 // A freehand trace running out of road — past this it stops taking new
-// points, not the gesture (see onMapPointerMove).
-const MAP_LASSO_MAX_POINTS = 400;
+// points, not the gesture (see onMapPointerMove). At the 3-screen-px spacing
+// between points, this is ~9000 screen px of total path before it stops —
+// generous enough that reaching it means something runaway is happening, not
+// an ordinary trace around a room.
+const MAP_LASSO_MAX_POINTS = 3000;
 
 // The shape a drag actually committed to, in the { kind, ... } form every
 // wall/mask/elevation entry is stored as — or null if it was too small (or,
