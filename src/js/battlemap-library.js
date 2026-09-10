@@ -176,9 +176,10 @@ function renderMapDetail(pane, map) {
   const clears = document.createElement('div');
   clears.className = 'map-clear-row';
   [
-    ['tokens', 'Creatures', 'creature', mapTokens(map).length],
-    ['walls',  'Walls',     'wall',     mapWalls(map).length],
-    ['masks',  'Fog Edits', 'fog edit', mapMasks(map).length],
+    ['tokens',    'Creatures',  'creature',  mapTokens(map).length],
+    ['walls',     'Walls',      'wall',      mapWalls(map).length],
+    ['masks',     'Fog Edits',  'fog edit',  mapMasks(map).length],
+    ['elevation', 'Elevation',  'elevation region', mapElevationZones(map).length],
   ].forEach(spec => {
     const b = document.createElement('button');
     b.className = 'btn-sm';

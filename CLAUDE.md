@@ -690,6 +690,55 @@ Worked out as a **polygon per party member**, not a grid of lit cells.
   free look down every corridor. Rebuild is ~10ms on a deliberately extreme map.
 - One player seeing what another sees falls out of the fog being a **union**.
 
+#### Elevation
+
+Three ground levels — `low` / `normal` / `high` — the GM paints as regions
+(`map.elevation`, shaped exactly like a wall: `kind:'rect'|'circle'`, plus
+`level`). Unpainted ground is `normal`; there is no explicit shape for it. A
+token's own level is whatever zone it is standing in. Model and geometry live
+in `battlemap.js`'s **GEOMETRY — elevation** section; the paint tools (Low
+Ground / High Ground) and rendering are in `battlemap-view.js`, alongside Wall
+and Fog.
+
+- **Looking down is free, looking up is tapered, never blocked outright.**
+  High sees every level below it, at any distance. The taper only touches a
+  ray once it would cross into ground *higher* than the source's own —
+  `elevationRayLimit()` shortens that ray exactly the way a wall would
+  shorten `computeVisionPolygon()`'s, except by how far rather than whether at
+  all, and the two combine with a plain `Math.min`.
+- **The formula, in degrees.** `f(x) = ceil(12 / atan(y/x)) - 1` tiles past
+  the rise are visible, where `x` is the viewer's own distance back from it
+  and `y` is how many levels it climbs (1 for low→normal or normal→high, 2
+  for low→high) — both in tiles. **Degrees, not radians**: in radians this
+  comes out to nearly unlimited sight even standing at the very edge (`atan`
+  is close to 90° for any small `x`), the opposite of what a cliff should do;
+  in degrees it is the reverse, which is the intended shape — nothing past
+  the edge up close, opening up gradually with distance, i.e. you cannot see
+  over a cliff you are standing under, but you can from across the valley.
+- **Two things can shorten a ray, independently, and it takes whichever is
+  shortest:**
+  - Leaving the **source's own low ground** is itself a rise (the low→normal
+    pair) — `x` is measured to wherever that ground ends, via
+    `rayRectSpan()`/`rayCircleSpan()` (both roots of the intersection, not
+    just the near one `rayRect()`/`rayCircle()` give a wall, because this
+    needs to know how far the ray travels *inside* the source's own zone).
+  - **Entering a zone ranked above the source**, at whatever distance the ray
+    first reaches it, using *that pair's own* `y` (1 for normal→high, 2 for
+    low→high) — regardless of what the ground in between is, because `y`
+    describes how many levels the *viewer* is trying to see up, not the
+    height of the terrain step at that specific edge. This is why a low
+    viewer looking at high ground across a normal shelf uses `y=2` (the
+    low→high pair) for the high zone's own cutoff, not two stacked `y=1`
+    steps — and why seeing a rise beyond a rise needs *both* cutoffs to
+    allow it, not just the nearer one.
+- **Elevation zones are aimed at like walls** (`visionAngles()`'s
+  `extraShapes` parameter) so their edges cut a crisp line in the fog too —
+  the taper still needs a sharp boundary to taper *from*.
+- **Elevation zones never block a ray outright** the way a wall does — they
+  only ever shorten it, so a low viewer standing far enough back always sees
+  *some* distance onto high ground, never zero, past the zero-tiles-visible
+  case the formula returns up close.
+
 #### The board
 
 - **The third view of the middle panel** (`state.view === 'map'`, `.map-view` on

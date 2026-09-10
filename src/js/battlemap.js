@@ -12,7 +12,8 @@
 //       grid:   { type, size, offsetX, offsetY, visible },
 //       tokens: { <id>: { id, name, icon, x, y, size, hostility, ownerUid } },
 //       walls:  { <id>: { id, kind:'rect'|'circle', x, y, w, h, r } },
-//       masks:  { <id>: { id, mode:'hide'|'show', x, y, w, h } } }
+//       masks:  { <id>: { id, mode:'hide'|'show', x, y, w, h } },
+//       elevation: { <id>: { id, kind:'rect'|'circle', x, y, w, h, r, level:'low'|'high' } } }
 //
 // Every coordinate in the model is in the image's own pixels — never screen
 // pixels, never cells — because that is the one frame every client agrees on.
@@ -330,6 +331,12 @@ function addMask(mapId, mask) {
   mapRef(mapId, 'masks/' + id).set({ ...mask, id });
 }
 
+function addElevationZone(mapId, zone) {
+  if (!canEditMap() || !firebaseDb) return;
+  const id = newPieceId('elev');
+  mapRef(mapId, 'elevation/' + id).set({ ...zone, id });
+}
+
 function removePiece(mapId, kind, id) {
   if (!canEditMap() || !firebaseDb) return;
   mapRef(mapId, kind + '/' + id).remove();
@@ -403,7 +410,11 @@ function normAngle(a) {
   return m < 0 ? m + TAU : m;
 }
 
-function visionAngles(ox, oy, walls, bounds) {
+// `extraShapes` is aimed at too but never blocks a ray outright — elevation
+// zones ride along here so their edges cut a crisp line in the fog exactly
+// like a wall's, even though what happens at that edge (see the ELEVATION
+// section) is a distance-dependent taper rather than a hard stop.
+function visionAngles(ox, oy, walls, bounds, extraShapes) {
   const angles = [];
   const push = a => angles.push(normAngle(a));
 
@@ -414,7 +425,7 @@ function visionAngles(ox, oy, walls, bounds) {
     push(a - VISION_NUDGE); push(a); push(a + VISION_NUDGE);
   };
 
-  walls.forEach(w => {
+  const aimShape = w => {
     if (w.kind === 'circle') {
       // The two tangents — past either the ray misses the disc, which is where
       // the shadow's edge is.
@@ -428,7 +439,10 @@ function visionAngles(ox, oy, walls, bounds) {
     } else {
       aim(w.x, w.y); aim(w.x + w.w, w.y); aim(w.x, w.y + w.h); aim(w.x + w.w, w.y + w.h);
     }
-  });
+  };
+
+  walls.forEach(aimShape);
+  (extraShapes ?? []).forEach(aimShape);
   // The map's own corners, so the fan reaches them cleanly.
   aim(bounds.x, bounds.y); aim(bounds.x + bounds.w, bounds.y);
   aim(bounds.x, bounds.y + bounds.h); aim(bounds.x + bounds.w, bounds.y + bounds.h);
@@ -443,19 +457,24 @@ function visionAngles(ox, oy, walls, bounds) {
 }
 
 // The polygon one creature can see, in image pixels. A wall containing the
-// source is skipped.
-function computeVisionPolygon(ox, oy, walls, bounds) {
+// source is skipped. `elev` is optional — { zones, sourceLevel, ownZone,
+// cellPx } from elevationViewFor() — and shortens rays exactly as a wall
+// would, except by how far rather than whether at all. See the ELEVATION
+// section below and CLAUDE.md § The fog / Elevation.
+function computeVisionPolygon(ox, oy, walls, bounds, elev) {
   const live = walls.filter(w => !pointInWall(ox, oy, w));
   // Never further than the far corner of the map, so the fan always terminates.
   const reach = Math.hypot(bounds.w, bounds.h) + Math.hypot(ox - bounds.x, oy - bounds.y);
+  const higherZones = elev ? elev.zones.filter(z => elevationRank(z.level) > elevationRank(elev.sourceLevel)) : [];
 
-  return visionAngles(ox, oy, live, bounds).map(a => {
+  return visionAngles(ox, oy, live, bounds, elev ? elev.zones : null).map(a => {
     const dx = Math.cos(a), dy = Math.sin(a);
     let t = reach;
     for (const w of live) {
       const hit = w.kind === 'circle' ? rayCircle(ox, oy, dx, dy, w) : rayRect(ox, oy, dx, dy, w);
       if (hit !== null && hit < t) t = hit;
     }
+    if (elev) t = Math.min(t, elevationRayLimit(ox, oy, dx, dy, elev, higherZones));
     return [ox + dx * t, oy + dy * t];
   });
 }
@@ -464,6 +483,127 @@ function computeVisionPolygon(ox, oy, walls, bounds) {
 // another sees.
 function visionSources(map) {
   return mapTokens(map).filter(t => t.hostility === 'party');
+}
+
+// =============================================================================
+// GEOMETRY — elevation
+// =============================================================================
+// Three ground levels; anywhere the GM has not painted low or high ground is
+// 'normal' — there is no explicit shape for it. Looking down is always free
+// (a viewer sees every level below their own, no matter the distance); looking
+// up is not blocked outright, only *tapered*: the farther back a viewer stands
+// from a rise, the higher up it they can see past it, on the reasoning that a
+// shallow enough sightline clears the edge. Below the rise itself there is
+// nothing to see past — right at the foot of a cliff you see none of what is
+// above it.
+//
+// f(x) = ceil(12 / atan(y/x)) - 1   — degrees, not radians. In radians this
+// comes out to nearly unlimited sight even standing at the very edge (atan is
+// close to 90° for any small x), which is the opposite of what a cliff should
+// do; in degrees it does the reverse — nothing past the edge up close, opening
+// up gradually with distance — which is what "you can't see over a cliff you
+// are standing under, but you can from across the valley" means. x and y are
+// both in tiles: x is the viewer's own distance back from the rise, y is how
+// many levels it climbs (1 for low→normal or normal→high, 2 for low→high).
+const ELEVATION_LEVELS = ['low', 'normal', 'high'];
+function elevationRank(level) { return Math.max(0, ELEVATION_LEVELS.indexOf(level)); }
+
+function mapElevationZones(map) {
+  return Object.values(map?.elevation ?? {}).filter(z => z && z.id);
+}
+
+// Last drawn wins where two zones overlap — the same rule a fog mask follows.
+function elevationZoneAt(map, x, y) {
+  const zones = mapElevationZones(map);
+  for (let i = zones.length - 1; i >= 0; i--) if (pointInWall(x, y, zones[i])) return zones[i];
+  return null;
+}
+function elevationAt(map, x, y) { return elevationZoneAt(map, x, y)?.level ?? 'normal'; }
+function tokenElevation(map, token) { return elevationAt(map, token.x, token.y); }
+
+// What a vision source needs to know about elevation, worked out once per
+// source rather than once per ray (computeVisionPolygon casts ~180 of them).
+// Null when the map has no elevation painted at all — the cheap, common case.
+function elevationViewFor(map, ox, oy) {
+  const zones = mapElevationZones(map);
+  if (!zones.length) return null;
+  const ownZone = elevationZoneAt(map, ox, oy);
+  return { zones, sourceLevel: ownZone?.level ?? 'normal', ownZone, cellPx: mapCellSize(map) };
+}
+
+// How many extra tiles past a rise a viewer standing `xTiles` back from it can
+// still see, `yLevels` up. See the section header for the formula and why it
+// is degrees rather than radians.
+function elevationVisibleTiles(xTiles, yLevels) {
+  if (xTiles <= 0) return 0;
+  const deg = Math.atan(yLevels / xTiles) * 180 / Math.PI;
+  return deg <= 0 ? Infinity : Math.max(0, Math.ceil(12 / deg) - 1);
+}
+
+// Both roots of the ray/shape intersection, not just the near one — where
+// rayRect()/rayCircle() answer "does this block the ray, and from how far",
+// this answers "how far does the ray travel while inside this shape", which is
+// what is needed to find where a low source's own ground ends.
+function rayRectSpan(ox, oy, dx, dy, r) {
+  let tmin = -Infinity, tmax = Infinity;
+  const slab = (o, d, lo, hi) => {
+    if (Math.abs(d) < 1e-9) return o >= lo && o <= hi;
+    const t1 = (lo - o) / d, t2 = (hi - o) / d;
+    tmin = Math.max(tmin, Math.min(t1, t2));
+    tmax = Math.min(tmax, Math.max(t1, t2));
+    return true;
+  };
+  if (!slab(ox, dx, r.x, r.x + r.w)) return null;
+  if (!slab(oy, dy, r.y, r.y + r.h)) return null;
+  if (tmax < tmin) return null;
+  return { enter: tmin, exit: tmax };
+}
+function rayCircleSpan(ox, oy, dx, dy, c) {
+  const fx = ox - c.x, fy = oy - c.y;
+  const b = 2 * (fx * dx + fy * dy);
+  const cc = fx * fx + fy * fy - c.r * c.r;
+  const disc = b * b - 4 * cc;
+  if (disc < 0) return null;
+  const s = Math.sqrt(disc);
+  return { enter: (-b - s) / 2, exit: (-b + s) / 2 };
+}
+
+// How far along one ray elevation lets it travel, independent of walls —
+// computeVisionPolygon() takes the smaller of this and whatever a wall gives.
+// Two things can shorten it, and both can apply on the same ray at once (a low
+// viewer looking across normal ground at a rise beyond it):
+//   - leaving the source's own low ground is itself a rise (the low→normal
+//     pair) — `x` is measured to wherever that ground ends, not to whatever is
+//     beyond it, because that is genuinely how far back the *viewer* is from
+//     that particular edge;
+//   - entering a zone ranked above the source, at whatever distance the ray
+//     first reaches it, using that pair's own y (1 for normal→high, 2 for
+//     low→high) — regardless of what the ground between here and there is,
+//     because y describes how many levels the *viewer* is trying to see up,
+//     not the height of the terrain step at that specific edge.
+// Both are independent, and the ray takes whichever cuts it shortest — seeing
+// a rise beyond a rise needs both to allow it.
+function elevationRayLimit(ox, oy, dx, dy, elev, higherZones) {
+  let limit = Infinity;
+
+  if (elev.ownZone && elev.ownZone.level === 'low') {
+    const z = elev.ownZone;
+    const span = z.kind === 'circle' ? rayCircleSpan(ox, oy, dx, dy, z) : rayRectSpan(ox, oy, dx, dy, z);
+    if (span && span.exit > 0) {
+      const extra = elevationVisibleTiles(span.exit / elev.cellPx, 1);
+      limit = Math.min(limit, span.exit + extra * elev.cellPx);
+    }
+  }
+
+  higherZones.forEach(z => {
+    const hit = z.kind === 'circle' ? rayCircle(ox, oy, dx, dy, z) : rayRect(ox, oy, dx, dy, z);
+    if (hit === null) return;
+    const yLevels = elevationRank(z.level) - elevationRank(elev.sourceLevel);
+    const extra = elevationVisibleTiles(hit / elev.cellPx, yLevels);
+    limit = Math.min(limit, hit + extra * elev.cellPx);
+  });
+
+  return limit;
 }
 
 // =============================================================================

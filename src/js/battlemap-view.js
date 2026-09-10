@@ -285,7 +285,8 @@ function buildFog(map) {
   if (blur) fx.filter = blur;
   sources.forEach(t => {
     const at = tokenDrawPos(t);
-    const poly = computeVisionPolygon(at.x, at.y, walls, b);
+    const elev = elevationViewFor(map, at.x, at.y);
+    const poly = computeVisionPolygon(at.x, at.y, walls, b, elev);
     if (poly.length < 3) return;
     fx.beginPath();
     fx.moveTo(poly[0][0], poly[0][1]);
@@ -387,6 +388,7 @@ function drawBattlemap() {
   if (mapImageReady) ctx.drawImage(mapImage, b.x, b.y, b.w, b.h);
 
   drawMapGrid(ctx, map, b);
+  if (canEditMap()) drawMapElevation(ctx, map);
   if (canEditMap()) drawMapWalls(ctx, map);
   drawMapFog(ctx, b);
   if (canEditMap()) drawMapMasks(ctx, map);
@@ -429,6 +431,39 @@ function drawMapGrid(ctx, map, b) {
   for (let x = startX; x <= b.x + b.w; x += cell) { ctx.moveTo(x, b.y); ctx.lineTo(x, b.y + b.h); }
   for (let y = startY; y <= b.y + b.h; y += cell) { ctx.moveTo(b.x, y); ctx.lineTo(b.x + b.w, y); }
   ctx.stroke();
+  ctx.restore();
+}
+
+// The GM's own read of the terrain — a player never sees these, only their
+// effect on the fog. Low ground reads cool, high ground reads warm, so the two
+// are never confused at a glance the way two reds or two purples would be.
+const ELEVATION_TONE = {
+  low:  { fill: 'rgba(90, 150, 230, 0.14)', stroke: 'rgba(120, 175, 240, 0.9)' },
+  high: { fill: 'rgba(235, 150, 60, 0.16)', stroke: 'rgba(245, 175, 90, 0.95)' },
+};
+function drawMapElevation(ctx, map) {
+  ctx.save();
+  ctx.lineWidth = Math.max(1, 2 / mapCam.scale);
+  const fs = Math.max(10, 13 / mapCam.scale);
+  mapElevationZones(map).forEach(z => {
+    const tone = ELEVATION_TONE[z.level];
+    if (!tone) return;
+    ctx.beginPath();
+    if (z.kind === 'circle') ctx.arc(z.x, z.y, z.r || 1, 0, Math.PI * 2);
+    else ctx.rect(z.x, z.y, z.w, z.h);
+    ctx.fillStyle = tone.fill;
+    ctx.strokeStyle = tone.stroke;
+    ctx.fill();
+    ctx.stroke();
+
+    const cx = z.kind === 'circle' ? z.x : z.x + z.w / 2;
+    const cy = z.kind === 'circle' ? z.y : z.y + z.h / 2;
+    ctx.font = '700 ' + fs + 'px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = tone.stroke;
+    ctx.fillText(z.level === 'low' ? 'Low' : 'High', cx, cy);
+  });
   ctx.restore();
 }
 
@@ -600,6 +635,8 @@ function drawMapDrawing(ctx) {
     'wall-circle': 'rgba(255, 92, 92, 0.95)',
     'fog-hide':    'rgba(150, 110, 220, 0.95)',
     'fog-show':    'rgba(90, 210, 130, 0.95)',
+    'elev-low':    'rgba(120, 175, 240, 0.95)',
+    'elev-high':   'rgba(245, 175, 90, 0.95)',
   }[mapDrawing.tool] || 'rgba(255, 255, 255, 0.95)';
   ctx.strokeStyle = tone;
   ctx.fillStyle = tone.replace(/[\d.]+\)$/, '0.18)');
@@ -960,15 +997,23 @@ function commitMapDrawing(map, d) {
   } else if (d.tool === 'fog-hide' || d.tool === 'fog-show') {
     if (r.w < MAP_MIN_SHAPE || r.h < MAP_MIN_SHAPE) return;
     addMask(map.id, { mode: d.tool === 'fog-hide' ? 'hide' : 'show', x: r.x, y: r.y, w: r.w, h: r.h });
+  } else if (d.tool === 'elev-low' || d.tool === 'elev-high') {
+    if (r.w < MAP_MIN_SHAPE || r.h < MAP_MIN_SHAPE) return;
+    addElevationZone(map.id, { kind: 'rect', x: r.x, y: r.y, w: r.w, h: r.h, level: d.tool === 'elev-low' ? 'low' : 'high' });
   }
   fogDirty = true;
 }
 
 // Topmost first — a fog edit sits over a wall on screen, so it comes off first.
+// Elevation sits between the two: it is usually the biggest region on the
+// board, background to a wall drawn over it, but still worth reaching before
+// scrolling all the way down to a wall underneath.
 function eraseMapPieceAt(map, w) {
   const mask = mapMasks(map).slice().reverse()
     .find(m => w.x >= m.x && w.x <= m.x + m.w && w.y >= m.y && w.y <= m.y + m.h);
   if (mask) { removePiece(map.id, 'masks', mask.id); fogDirty = true; return; }
+  const zone = mapElevationZones(map).slice().reverse().find(z => pointInWall(w.x, w.y, z));
+  if (zone) { removePiece(map.id, 'elevation', zone.id); fogDirty = true; return; }
   const wall = mapWalls(map).slice().reverse().find(o => pointInWall(w.x, w.y, o));
   if (wall) { removePiece(map.id, 'walls', wall.id); fogDirty = true; }
 }
@@ -985,7 +1030,9 @@ const MAP_TOOLS = [
   { id: 'wall-circle', label: 'Pillar',  hint: 'Drag out a circle over a tree or a pillar', gm: true },
   { id: 'fog-hide',    label: 'Obscure', hint: 'Drag a region the players cannot see into', gm: true },
   { id: 'fog-show',    label: 'Reveal',  hint: 'Drag a region the players can always see',  gm: true },
-  { id: 'erase',       label: 'Erase',   hint: 'Click a wall or a fog edit to remove it',   gm: true },
+  { id: 'elev-low',    label: 'Low Ground',  hint: 'Drag a region of low ground — unpainted terrain is normal ground', gm: true },
+  { id: 'elev-high',   label: 'High Ground', hint: 'Drag a region of high ground', gm: true },
+  { id: 'erase',       label: 'Erase',   hint: 'Click a wall, a fog edit, or an elevation region to remove it', gm: true },
 ];
 
 // The Grid tool's own bar, under the map: what the two gestures are, and what
