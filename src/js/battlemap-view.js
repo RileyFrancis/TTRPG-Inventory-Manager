@@ -20,7 +20,13 @@
 let mapOpen = false;
 let mapViewId = null;          // which map a GM has open; players follow the party's
 let mapCam = { x: 0, y: 0, scale: 1 };   // the world point at the centre, and the zoom
+// 'select' | 'grid' | 'erase' | 'draw' — a shape and a mode are chosen
+// independently (see THE TOOLBAR) and only take effect once `mapTool` is
+// 'draw'; picking either one puts it there. They stay set switching away and
+// back, so leaving 'draw' to pan or select does not lose your place.
 let mapTool = 'select';
+let mapShape = 'rect';   // 'rect' | 'circle' | 'lasso' — the selection outline
+let mapMode = 'wall';    // 'wall' | 'fog-hide' | 'fog-show' | 'elev-low' | 'elev-high' — what it does
 let mapSelectedTokenId = null;
 
 let mapCanvas = null, mapCtx = null;
@@ -296,11 +302,13 @@ function buildFog(map) {
   });
 
   // The GM's hand, over the arithmetic: Reveal beats the walls, Obscure beats
-  // everything so it goes last. Softened alike.
-  masks.filter(m => m.mode === 'show').forEach(m => fx.fillRect(m.x, m.y, m.w, m.h));
+  // everything so it goes last. Softened alike. A mask can be any shape now
+  // (rect/circle/lasso), same as a wall — traceMapShape() is what lets Reveal
+  // and Obscure not care which.
+  masks.filter(m => m.mode === 'show').forEach(m => { traceMapShape(fx, m); fx.fill(); });
   fx.globalCompositeOperation = 'source-over';
   fx.fillStyle = '#000';
-  masks.filter(m => m.mode === 'hide').forEach(m => fx.fillRect(m.x, m.y, m.w, m.h));
+  masks.filter(m => m.mode === 'hide').forEach(m => { traceMapShape(fx, m); fx.fill(); });
   fx.filter = 'none';
 
   // Which creatures that leaves off the board — sampled from the fog, so what is
@@ -434,6 +442,38 @@ function drawMapGrid(ctx, map, b) {
   ctx.restore();
 }
 
+// A wall, a fog mask and an elevation zone are all the same three shapes now
+// (rect/circle/lasso — see THE TOOLBAR), so this is the one place any of them
+// is turned into a canvas path. Traces only — the caller fills/strokes.
+function traceMapShape(ctx, s) {
+  ctx.beginPath();
+  if (s.kind === 'circle') {
+    ctx.arc(s.x, s.y, s.r || 1, 0, Math.PI * 2);
+  } else if (s.kind === 'poly') {
+    const p = s.points || [];
+    if (p.length < 2) return;
+    ctx.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length; i++) ctx.lineTo(p[i][0], p[i][1]);
+    ctx.closePath();
+  } else {
+    ctx.rect(s.x, s.y, s.w, s.h);
+  }
+}
+
+// Where a label belongs on one of these shapes — the centroid for a lasso,
+// since its bounding-box centre can land outside a crescent-shaped trace.
+function mapShapeCenter(s) {
+  if (s.kind === 'circle') return { x: s.x, y: s.y };
+  if (s.kind === 'poly') {
+    const p = s.points || [];
+    if (!p.length) return { x: 0, y: 0 };
+    let sx = 0, sy = 0;
+    p.forEach(([x, y]) => { sx += x; sy += y; });
+    return { x: sx / p.length, y: sy / p.length };
+  }
+  return { x: s.x + s.w / 2, y: s.y + s.h / 2 };
+}
+
 // The GM's own read of the terrain — a player never sees these, only their
 // effect on the fog. Low ground reads cool, high ground reads warm, so the two
 // are never confused at a glance the way two reds or two purples would be.
@@ -448,21 +488,18 @@ function drawMapElevation(ctx, map) {
   mapElevationZones(map).forEach(z => {
     const tone = ELEVATION_TONE[z.level];
     if (!tone) return;
-    ctx.beginPath();
-    if (z.kind === 'circle') ctx.arc(z.x, z.y, z.r || 1, 0, Math.PI * 2);
-    else ctx.rect(z.x, z.y, z.w, z.h);
+    traceMapShape(ctx, z);
     ctx.fillStyle = tone.fill;
     ctx.strokeStyle = tone.stroke;
     ctx.fill();
     ctx.stroke();
 
-    const cx = z.kind === 'circle' ? z.x : z.x + z.w / 2;
-    const cy = z.kind === 'circle' ? z.y : z.y + z.h / 2;
+    const c = mapShapeCenter(z);
     ctx.font = '700 ' + fs + 'px system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = tone.stroke;
-    ctx.fillText(z.level === 'low' ? 'Low' : 'High', cx, cy);
+    ctx.fillText(z.level === 'low' ? 'Low' : 'High', c.x, c.y);
   });
   ctx.restore();
 }
@@ -475,9 +512,7 @@ function drawMapWalls(ctx, map) {
   ctx.fillStyle = 'rgba(255, 92, 92, 0.16)';
   ctx.lineWidth = Math.max(1, 2 / mapCam.scale);
   mapWalls(map).forEach(w => {
-    ctx.beginPath();
-    if (w.kind === 'circle') ctx.arc(w.x, w.y, w.r || 1, 0, Math.PI * 2);
-    else ctx.rect(w.x, w.y, w.w, w.h);
+    traceMapShape(ctx, w);
     ctx.fill();
     ctx.stroke();
   });
@@ -490,7 +525,8 @@ function drawMapMasks(ctx, map) {
   ctx.setLineDash([8 / mapCam.scale, 6 / mapCam.scale]);
   mapMasks(map).forEach(m => {
     ctx.strokeStyle = m.mode === 'hide' ? 'rgba(150, 110, 220, 0.95)' : 'rgba(90, 210, 130, 0.95)';
-    ctx.strokeRect(m.x, m.y, m.w, m.h);
+    traceMapShape(ctx, m);
+    ctx.stroke();
   });
   ctx.restore();
 }
@@ -624,26 +660,35 @@ function drawMoveCostLabel(ctx, map, token, at, r) {
 
 // The shape under the cursor while it is dragged out, from the same numbers the
 // write will use.
+// Coloured by mode, shaped by shape — the two are independent (see THE
+// TOOLBAR), so this is the one place they come back together.
+const MAP_MODE_TONE = {
+  'wall':      'rgba(255, 92, 92, 0.95)',
+  'fog-hide':  'rgba(150, 110, 220, 0.95)',
+  'fog-show':  'rgba(90, 210, 130, 0.95)',
+  'elev-low':  'rgba(120, 175, 240, 0.95)',
+  'elev-high': 'rgba(245, 175, 90, 0.95)',
+};
 function drawMapDrawing(ctx) {
   if (!mapDrawing) return;
-  const r = drawingRect(mapDrawing);
   ctx.save();
   ctx.lineWidth = Math.max(1, 2 / mapCam.scale);
   ctx.setLineDash([8 / mapCam.scale, 6 / mapCam.scale]);
-  const tone = {
-    'wall-rect':   'rgba(255, 92, 92, 0.95)',
-    'wall-circle': 'rgba(255, 92, 92, 0.95)',
-    'fog-hide':    'rgba(150, 110, 220, 0.95)',
-    'fog-show':    'rgba(90, 210, 130, 0.95)',
-    'elev-low':    'rgba(120, 175, 240, 0.95)',
-    'elev-high':   'rgba(245, 175, 90, 0.95)',
-  }[mapDrawing.tool] || 'rgba(255, 255, 255, 0.95)';
+  const tone = MAP_MODE_TONE[mapDrawing.mode] || 'rgba(255, 255, 255, 0.95)';
   ctx.strokeStyle = tone;
   ctx.fillStyle = tone.replace(/[\d.]+\)$/, '0.18)');
   ctx.beginPath();
-  if (mapDrawing.tool === 'wall-circle') {
+  if (mapDrawing.shape === 'circle') {
     ctx.arc(mapDrawing.x0, mapDrawing.y0, drawingRadius(mapDrawing), 0, Math.PI * 2);
+  } else if (mapDrawing.shape === 'lasso') {
+    const pts = mapDrawing.points;
+    if (pts.length) {
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+      if (pts.length > 2) ctx.closePath();
+    }
   } else {
+    const r = drawingRect(mapDrawing);
     ctx.rect(r.x, r.y, r.w, r.h);
   }
   ctx.fill();
@@ -853,7 +898,11 @@ function onMapPointerDown(e) {
     return;
   }
 
-  mapDrawing = { tool: mapTool, x0: w.x, y0: w.y, x1: w.x, y1: w.y };
+  // mapTool === 'draw' from here — the shape and mode chosen independently in
+  // the toolbar (see THE TOOLBAR).
+  mapDrawing = mapShape === 'lasso'
+    ? { shape: 'lasso', mode: mapMode, points: [[w.x, w.y]] }
+    : { shape: mapShape, mode: mapMode, x0: w.x, y0: w.y, x1: w.x, y1: w.y };
 }
 
 function onMapPointerMove(e) {
@@ -903,8 +952,19 @@ function onMapPointerMove(e) {
   }
 
   if (mapDrawing) {
-    mapDrawing.x1 = w.x;
-    mapDrawing.y1 = w.y;
+    if (mapDrawing.shape === 'lasso') {
+      const pts = mapDrawing.points;
+      const last = pts[pts.length - 1];
+      // Only a point every few *screen* pixels — a freehand trace at native
+      // pointer resolution is thousands of points for a modest loop, and the
+      // screen (not world) distance is what keeps that true at any zoom.
+      if (pts.length < MAP_LASSO_MAX_POINTS && Math.hypot(w.x - last[0], w.y - last[1]) * mapCam.scale > 3) {
+        pts.push([w.x, w.y]);
+      }
+    } else {
+      mapDrawing.x1 = w.x;
+      mapDrawing.y1 = w.y;
+    }
     drawBattlemap();
     return;
   }
@@ -983,24 +1043,37 @@ function onMapWheel(e) {
 
 // A shape too small to have been meant is a click that slipped, not a wall.
 const MAP_MIN_SHAPE = 6;
+// A freehand trace running out of road — past this it stops taking new
+// points, not the gesture (see onMapPointerMove).
+const MAP_LASSO_MAX_POINTS = 400;
+
+// The shape a drag actually committed to, in the { kind, ... } form every
+// wall/mask/elevation entry is stored as — or null if it was too small (or,
+// for a lasso, too short) to have been meant. One function for every mode,
+// since what varies is only *what* gets built from the same three shapes.
+function mapDrawingShape(d) {
+  if (d.shape === 'circle') {
+    const r = drawingRadius(d);
+    return r < MAP_MIN_SHAPE ? null : { kind: 'circle', x: d.x0, y: d.y0, r };
+  }
+  if (d.shape === 'lasso') {
+    const pts = d.points;
+    if (pts.length < 3) return null;
+    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+    const w = Math.max(...xs) - Math.min(...xs), h = Math.max(...ys) - Math.min(...ys);
+    return (w < MAP_MIN_SHAPE || h < MAP_MIN_SHAPE) ? null : { kind: 'poly', points: pts };
+  }
+  const r = drawingRect(d);
+  return (r.w < MAP_MIN_SHAPE || r.h < MAP_MIN_SHAPE) ? null : { kind: 'rect', x: r.x, y: r.y, w: r.w, h: r.h };
+}
 
 function commitMapDrawing(map, d) {
   if (!canEditMap()) return;
-  const r = drawingRect(d);
-  if (d.tool === 'wall-circle') {
-    const radius = drawingRadius(d);
-    if (radius < MAP_MIN_SHAPE) return;
-    addWall(map.id, { kind: 'circle', x: d.x0, y: d.y0, r: radius });
-  } else if (d.tool === 'wall-rect') {
-    if (r.w < MAP_MIN_SHAPE || r.h < MAP_MIN_SHAPE) return;
-    addWall(map.id, { kind: 'rect', x: r.x, y: r.y, w: r.w, h: r.h });
-  } else if (d.tool === 'fog-hide' || d.tool === 'fog-show') {
-    if (r.w < MAP_MIN_SHAPE || r.h < MAP_MIN_SHAPE) return;
-    addMask(map.id, { mode: d.tool === 'fog-hide' ? 'hide' : 'show', x: r.x, y: r.y, w: r.w, h: r.h });
-  } else if (d.tool === 'elev-low' || d.tool === 'elev-high') {
-    if (r.w < MAP_MIN_SHAPE || r.h < MAP_MIN_SHAPE) return;
-    addElevationZone(map.id, { kind: 'rect', x: r.x, y: r.y, w: r.w, h: r.h, level: d.tool === 'elev-low' ? 'low' : 'high' });
-  }
+  const shape = mapDrawingShape(d);
+  if (!shape) return;
+  if (d.mode === 'wall') addWall(map.id, shape);
+  else if (d.mode === 'fog-hide' || d.mode === 'fog-show') addMask(map.id, { ...shape, mode: d.mode === 'fog-hide' ? 'hide' : 'show' });
+  else if (d.mode === 'elev-low' || d.mode === 'elev-high') addElevationZone(map.id, { ...shape, level: d.mode === 'elev-low' ? 'low' : 'high' });
   fogDirty = true;
 }
 
@@ -1009,8 +1082,7 @@ function commitMapDrawing(map, d) {
 // board, background to a wall drawn over it, but still worth reaching before
 // scrolling all the way down to a wall underneath.
 function eraseMapPieceAt(map, w) {
-  const mask = mapMasks(map).slice().reverse()
-    .find(m => w.x >= m.x && w.x <= m.x + m.w && w.y >= m.y && w.y <= m.y + m.h);
+  const mask = mapMasks(map).slice().reverse().find(m => pointInWall(w.x, w.y, m));
   if (mask) { removePiece(map.id, 'masks', mask.id); fogDirty = true; return; }
   const zone = mapElevationZones(map).slice().reverse().find(z => pointInWall(w.x, w.y, z));
   if (zone) { removePiece(map.id, 'elevation', zone.id); fogDirty = true; return; }
@@ -1023,17 +1095,30 @@ function eraseMapPieceAt(map, w) {
 // =============================================================================
 // Rebuilt whenever what it can offer changes: the drawing tools are the GM's,
 // the creature buttons need a selection.
-const MAP_TOOLS = [
-  { id: 'select',      label: 'Select',  hint: 'Move creatures · drag the board to pan',   gm: false },
-  { id: 'grid',        label: 'Grid',    hint: 'Line the grid up: drag a corner or edge of the map to size the squares, anywhere else to slide them', gm: true },
-  { id: 'wall-rect',   label: 'Wall',    hint: 'Drag a rectangle over a wall — it blocks sight', gm: true },
-  { id: 'wall-circle', label: 'Pillar',  hint: 'Drag out a circle over a tree or a pillar', gm: true },
-  { id: 'fog-hide',    label: 'Obscure', hint: 'Drag a region the players cannot see into', gm: true },
-  { id: 'fog-show',    label: 'Reveal',  hint: 'Drag a region the players can always see',  gm: true },
-  { id: 'elev-low',    label: 'Low Ground',  hint: 'Drag a region of low ground — unpainted terrain is normal ground', gm: true },
-  { id: 'elev-high',   label: 'High Ground', hint: 'Drag a region of high ground', gm: true },
-  { id: 'erase',       label: 'Erase',   hint: 'Click a wall, a fog edit, or an elevation region to remove it', gm: true },
+//
+// Drawing is two independent choices, not one flat list of tools — a shape
+// (what outline a drag makes) and a mode (what it's for), so a Wall, an
+// Obscure region and a patch of High Ground can each be a rectangle, a
+// circle or a freehand lasso. Picking either one switches `mapTool` to
+// 'draw'; Select/Grid/Erase are their own standalone tools alongside it.
+// See mapShape/mapMode at the top of this file.
+const MAP_STANDALONE_TOOLS = [
+  { id: 'select', label: 'Select', hint: 'Move creatures · drag the board to pan', gm: false },
+  { id: 'grid',   label: 'Grid',   hint: 'Line the grid up: drag a corner or edge of the map to size the squares, anywhere else to slide them', gm: true },
 ];
+const MAP_SHAPES = [
+  { id: 'rect',   label: 'Rectangle', hint: 'Drag a rectangle' },
+  { id: 'circle', label: 'Circle',    hint: 'Drag out a circle' },
+  { id: 'lasso',  label: 'Lasso',     hint: 'Trace a freehand outline' },
+];
+const MAP_MODES = [
+  { id: 'wall',      label: 'Wall',        hint: 'The region blocks sight' },
+  { id: 'fog-hide',  label: 'Obscure',     hint: 'The players cannot see into the region' },
+  { id: 'fog-show',  label: 'Reveal',      hint: 'The players can always see the region' },
+  { id: 'elev-low',  label: 'Low Ground',  hint: 'The region is low ground — unpainted terrain is normal ground' },
+  { id: 'elev-high', label: 'High Ground', hint: 'The region is high ground' },
+];
+const MAP_ERASE_TOOL = { id: 'erase', label: 'Erase', hint: 'Click a wall, a fog edit, or an elevation region to remove it' };
 
 // The Grid tool's own bar, under the map: what the two gestures are, and what
 // the grid is at this moment (the same three numbers the Maps pane has in
@@ -1074,23 +1159,40 @@ function renderMapToolbar() {
   document.getElementById('map-title').textContent = map ? map.name : 'Battle Map';
 
   const gm = canEditMap();
+  if (!gm && mapTool !== 'select') mapTool = 'select'; // a player has nothing else
 
   const tools = document.getElementById('map-tools');
   tools.innerHTML = '';
-  if (!MAP_TOOLS.some(t => t.id === mapTool && (!t.gm || gm))) mapTool = 'select';
-  MAP_TOOLS.filter(t => !t.gm || gm).forEach(t => {
-    const b = document.createElement('button');
-    b.className = 'map-tool' + (t.id === mapTool ? ' active' : '');
-    b.textContent = t.label;
-    b.title = t.hint;
-    b.addEventListener('click', () => {
-      mapTool = t.id;
-      if (mapTool !== 'grid' && mapCanvas) mapCanvas.style.cursor = ''; // the resize cursor is the Grid tool's
-      renderMapToolbar();
-      drawBattlemap();
+
+  // One group of buttons, one active id among them, one thing a click does to
+  // reach it — Select/Grid, Shape and Mode are all built through this.
+  const buildToolGroup = (items, activeId, onPick) => {
+    const group = document.createElement('div');
+    group.className = 'map-tool-group';
+    items.forEach(t => {
+      const b = document.createElement('button');
+      b.className = 'map-tool' + (t.id === activeId ? ' active' : '');
+      b.textContent = t.label;
+      b.title = t.hint;
+      b.addEventListener('click', () => {
+        onPick(t.id);
+        if (mapTool !== 'grid' && mapCanvas) mapCanvas.style.cursor = ''; // the resize cursor is the Grid tool's
+        renderMapToolbar();
+        drawBattlemap();
+      });
+      group.appendChild(b);
     });
-    tools.appendChild(b);
-  });
+    tools.appendChild(group);
+  };
+
+  buildToolGroup(MAP_STANDALONE_TOOLS.filter(t => !t.gm || gm), mapTool, id => { mapTool = id; });
+  if (gm) {
+    // Picking a shape or a mode is also picking "I want to draw" — see
+    // mapShape/mapMode at the top of this file.
+    buildToolGroup(MAP_SHAPES, mapShape, id => { mapShape = id; mapTool = 'draw'; });
+    buildToolGroup(MAP_MODES, mapMode, id => { mapMode = id; mapTool = 'draw'; });
+    buildToolGroup([MAP_ERASE_TOOL], mapTool, id => { mapTool = id; });
+  }
   syncGridHint();
 
   const acts = document.getElementById('map-actions');

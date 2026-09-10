@@ -98,9 +98,16 @@
   max-width: 26ch;
 }
 
-/* The tools, and the things that are not tools, separated by the gap that
-   pushes them apart rather than by a rule between them. */
+/* Several small groups, not one flat row — Select/Grid, Shape and Mode are
+   independent choices (see THE TOOLBAR in battlemap-view.js), so each is its
+   own pill, separated by a gap wide enough to read as "these are different
+   questions" without a rule between them. */
 #map-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.map-tool-group {
   display: flex;
   gap: 2px;
   padding: 2px;

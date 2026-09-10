@@ -11,9 +11,20 @@
 //     { id, name, image, w, h, order, revealed, createdAt,
 //       grid:   { type, size, offsetX, offsetY, visible },
 //       tokens: { <id>: { id, name, icon, x, y, size, hostility, ownerUid } },
-//       walls:  { <id>: { id, kind:'rect'|'circle', x, y, w, h, r } },
-//       masks:  { <id>: { id, mode:'hide'|'show', x, y, w, h } },
-//       elevation: { <id>: { id, kind:'rect'|'circle', x, y, w, h, r, level:'low'|'high' } } }
+//       walls:  { <id>: <shape> },
+//       masks:  { <id>: { mode:'hide'|'show', ...<shape> } },
+//       elevation: { <id>: { level:'low'|'high', ...<shape> } } }
+//
+//   <shape> = { id, kind:'rect',   x, y, w, h }
+//           | { id, kind:'circle', x, y, r }
+//           | { id, kind:'poly',   points: [[x,y], [x,y], ...] }
+//
+// A wall, a fog mask and an elevation zone are three uses of the same shape —
+// the GM's Shape and Mode toolbar picks one of each independently (see THE
+// TOOLBAR in battlemap-view.js). `rayShapeHit()`/`rayShapeSpan()`/
+// `pointInWall()`/`traceMapShape()` are the one place each `kind` is handled,
+// so nothing that draws or casts a ray against a wall has to know a lasso
+// from a rectangle.
 //
 // Every coordinate in the model is in the image's own pixels — never screen
 // pixels, never cells — because that is the one frame every client agrees on.
@@ -387,11 +398,23 @@ function rayCircle(ox, oy, dx, dy, c) {
   return null;
 }
 
+// Even-odd ray casting, the standard test — a ray to +∞ along x crosses the
+// polygon's edges an odd number of times iff the point is inside.
+function pointInPolygon(x, y, points) {
+  let inside = false;
+  for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+    const [xi, yi] = points[i], [xj, yj] = points[j];
+    if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) inside = !inside;
+  }
+  return inside;
+}
+
 function pointInWall(x, y, w) {
   if (w.kind === 'circle') {
     const dx = x - w.x, dy = y - w.y;
     return dx * dx + dy * dy <= (w.r ?? 0) * (w.r ?? 0);
   }
+  if (w.kind === 'poly') return pointInPolygon(x, y, w.points || []);
   return x >= w.x && x <= w.x + w.w && y >= w.y && y <= w.y + w.h;
 }
 
@@ -436,6 +459,8 @@ function visionAngles(ox, oy, walls, bounds, extraShapes) {
       const spread = Math.asin(Math.min(1, (w.r ?? 0) / d));
       push(base - spread - VISION_NUDGE); push(base - spread + VISION_NUDGE);
       push(base + spread - VISION_NUDGE); push(base + spread + VISION_NUDGE);
+    } else if (w.kind === 'poly') {
+      (w.points || []).forEach(([px, py]) => aim(px, py));
     } else {
       aim(w.x, w.y); aim(w.x + w.w, w.y); aim(w.x, w.y + w.h); aim(w.x + w.w, w.y + w.h);
     }
@@ -471,7 +496,7 @@ function computeVisionPolygon(ox, oy, walls, bounds, elev) {
     const dx = Math.cos(a), dy = Math.sin(a);
     let t = reach;
     for (const w of live) {
-      const hit = w.kind === 'circle' ? rayCircle(ox, oy, dx, dy, w) : rayRect(ox, oy, dx, dy, w);
+      const hit = rayShapeHit(ox, oy, dx, dy, w);
       if (hit !== null && hit < t) t = hit;
     }
     if (elev) t = Math.min(t, elevationRayLimit(ox, oy, dx, dy, elev, higherZones));
@@ -568,6 +593,63 @@ function rayCircleSpan(ox, oy, dx, dy, c) {
   return { enter: (-b - s) / 2, exit: (-b + s) / 2 };
 }
 
+// One ray (from ox,oy, unit direction dx,dy — t unrestricted in sign) against
+// one segment (x1,y1)-(x2,y2). Returns t, or null if they never cross or run
+// parallel.
+function raySegment(ox, oy, dx, dy, x1, y1, x2, y2) {
+  const ex = x2 - x1, ey = y2 - y1;
+  const denom = dx * ey - dy * ex;
+  if (Math.abs(denom) < 1e-9) return null;
+  const t = ((x1 - ox) * ey - (y1 - oy) * ex) / denom;
+  const u = ((x1 - ox) * dy - (y1 - oy) * dx) / denom;
+  if (u < 0 || u > 1) return null;
+  return t;
+}
+
+// The nearest positive crossing with a lasso's edges (the loop implied
+// between consecutive points, last back to first) — a polygon's answer to
+// rayRect()/rayCircle().
+function rayPolygon(ox, oy, dx, dy, points) {
+  let best = null;
+  for (let i = 0; i < points.length; i++) {
+    const [x1, y1] = points[i], [x2, y2] = points[(i + 1) % points.length];
+    const t = raySegment(ox, oy, dx, dy, x1, y1, x2, y2);
+    if (t !== null && t > 1e-6 && (best === null || t < best)) best = t;
+  }
+  return best;
+}
+
+// The polygon's answer to rayRectSpan()/rayCircleSpan() — enter is the
+// smallest crossing, exit the largest, across every edge. Exact for a convex
+// trace (at most two crossings, matching the rect/circle case exactly); for a
+// concave one it is an approximation that can miss an inner lobe, accepted
+// for the same reason the whole shape is freehand rather than exact.
+function rayPolygonSpan(ox, oy, dx, dy, points) {
+  let enter = null, exit = null;
+  for (let i = 0; i < points.length; i++) {
+    const [x1, y1] = points[i], [x2, y2] = points[(i + 1) % points.length];
+    const t = raySegment(ox, oy, dx, dy, x1, y1, x2, y2);
+    if (t === null) continue;
+    if (enter === null || t < enter) enter = t;
+    if (exit === null || t > exit) exit = t;
+  }
+  return enter === null ? null : { enter, exit };
+}
+
+// The one place a wall/mask/elevation shape's `kind` decides which ray test
+// to run — computeVisionPolygon() and elevationRayLimit() both go through
+// these rather than repeating the three-way branch.
+function rayShapeHit(ox, oy, dx, dy, s) {
+  if (s.kind === 'circle') return rayCircle(ox, oy, dx, dy, s);
+  if (s.kind === 'poly') return rayPolygon(ox, oy, dx, dy, s.points || []);
+  return rayRect(ox, oy, dx, dy, s);
+}
+function rayShapeSpan(ox, oy, dx, dy, s) {
+  if (s.kind === 'circle') return rayCircleSpan(ox, oy, dx, dy, s);
+  if (s.kind === 'poly') return rayPolygonSpan(ox, oy, dx, dy, s.points || []);
+  return rayRectSpan(ox, oy, dx, dy, s);
+}
+
 // How far along one ray elevation lets it travel, independent of walls —
 // computeVisionPolygon() takes the smaller of this and whatever a wall gives.
 // Two things can shorten it, and both can apply on the same ray at once (a low
@@ -588,7 +670,7 @@ function elevationRayLimit(ox, oy, dx, dy, elev, higherZones) {
 
   if (elev.ownZone && elev.ownZone.level === 'low') {
     const z = elev.ownZone;
-    const span = z.kind === 'circle' ? rayCircleSpan(ox, oy, dx, dy, z) : rayRectSpan(ox, oy, dx, dy, z);
+    const span = rayShapeSpan(ox, oy, dx, dy, z);
     if (span && span.exit > 0) {
       const extra = elevationVisibleTiles(span.exit / elev.cellPx, 1);
       limit = Math.min(limit, span.exit + extra * elev.cellPx);
@@ -596,7 +678,7 @@ function elevationRayLimit(ox, oy, dx, dy, elev, higherZones) {
   }
 
   higherZones.forEach(z => {
-    const hit = z.kind === 'circle' ? rayCircle(ox, oy, dx, dy, z) : rayRect(ox, oy, dx, dy, z);
+    const hit = rayShapeHit(ox, oy, dx, dy, z);
     if (hit === null) return;
     const yLevels = elevationRank(z.level) - elevationRank(elev.sourceLevel);
     const extra = elevationVisibleTiles(hit / elev.cellPx, yLevels);
