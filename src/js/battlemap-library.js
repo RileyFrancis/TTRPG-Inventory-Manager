@@ -58,7 +58,7 @@ function buildMapRow(map) {
 
   const open = document.createElement('button');
   open.className = 'map-row-open';
-  open.title = 'Open this map’s settings';
+  open.title = map.id === activeMapId() ? 'The party is on this map — open its settings' : 'Put the party on this map, and open its settings';
 
   const thumb = document.createElement('span');
   thumb.className = 'map-thumb';
@@ -81,24 +81,26 @@ function buildMapRow(map) {
   info.appendChild(nm);
   info.appendChild(sub);
   open.appendChild(info);
-  open.addEventListener('click', () => { state.mapLibraryOpenId = map.id; renderMapPanel(); });
+  // Clicking a map puts the party on it (what the ▶ button used to do) and
+  // opens its settings in one motion — there is no separate "activate" control
+  // any more, so the row's own accent outline (.in-play) is the one place "is
+  // this the map in play" is answered.
+  open.addEventListener('click', () => {
+    setActiveMap(map.id);
+    state.mapLibraryOpenId = map.id;
+    renderMapPanel();
+  });
   row.appendChild(open);
 
-  // Put the party on this map, and let them see it — separate on purpose (lay
-  // out the next room while the party is still in this one).
-  const play = document.createElement('button');
-  play.className = 'map-row-btn' + (map.id === activeMapId() ? ' on' : '');
-  play.title = map.id === activeMapId() ? 'The party is on this map' : 'Put the party on this map';
-  play.textContent = '▶';
-  play.addEventListener('click', () => setActiveMap(map.id === activeMapId() ? null : map.id));
-
+  // Reveal stays its own button, deliberately separate from activation — a GM
+  // can put the party on a map (lay it out, add creatures) before the players
+  // are allowed to see it, then flip this on when it's time.
   const eye = document.createElement('button');
   eye.className = 'map-row-btn' + (map.revealed ? ' on' : '');
   eye.title = map.revealed ? 'Hide this map from the players' : 'Show this map to the players';
   eye.appendChild(iconEl(map.revealed ? 'show' : 'hide'));
   eye.addEventListener('click', () => setMapRevealed(map.id, !map.revealed));
 
-  row.appendChild(play);
   row.appendChild(eye);
   return row;
 }

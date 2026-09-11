@@ -318,9 +318,13 @@
 }
 .map-row:hover { border-color: var(--accent); }
 /* Revealed to the players; in play under the party. Two different facts, so
-   two different marks — the left edge for the first, the tint for the second. */
+   two different marks — the left edge for the first, the whole outline (plus a
+   tint) for the second, since a row has no other "is this the one" control. */
 .map-row.revealed { border-left-color: var(--accent); }
-.map-row.in-play  { background: color-mix(in srgb, var(--accent) 10%, var(--panel)); }
+.map-row.in-play  {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--panel));
+}
 
 .map-row-open {
   flex: 1;
