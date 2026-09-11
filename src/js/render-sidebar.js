@@ -425,6 +425,28 @@ function populateDetailsPanel(t, inst) {
   });
 
   document.getElementById('details-desc').textContent = t.description || '';
+
+  // Only the "Label: text" properties (Ability/Utilize/Craft, on artisan's
+  // tools and the like) are abilities — a bare flag like "Finesse" or
+  // "Heavy" has no colon and isn't one.
+  const abilitiesEl = document.getElementById('details-abilities');
+  abilitiesEl.innerHTML = '';
+  const abilities = (t.properties || []).filter(p => p.includes(':'));
+  abilitiesEl.classList.toggle('hidden', abilities.length === 0);
+  abilities.forEach(p => {
+    const idx = p.indexOf(':');
+    const row = document.createElement('div');
+    row.className = 'ability-row';
+    const label = document.createElement('span');
+    label.className = 'ability-label';
+    label.textContent = p.slice(0, idx).trim() + ': ';
+    const text = document.createElement('span');
+    text.className = 'ability-text';
+    text.textContent = p.slice(idx + 1).trim();
+    row.appendChild(label);
+    row.appendChild(text);
+    abilitiesEl.appendChild(row);
+  });
 }
 
 function renderDetailsShapePreview(shape, color) {

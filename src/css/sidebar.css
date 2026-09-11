@@ -345,6 +345,28 @@
   font-size: 12px;
 }
 
+#details-abilities {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  background: var(--field);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.ability-row {
+  font-size: 12px;
+  line-height: 1.45;
+}
+.ability-row .ability-label {
+  font-weight: 600;
+  color: var(--text);
+}
+.ability-row .ability-text {
+  color: var(--text-dim);
+}
+
 #details-actions {
   display: flex;
   gap: 6px;
