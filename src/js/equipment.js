@@ -165,8 +165,8 @@ function renderEquipPanel() {
       remBtn.title = `Remove ${label}`;
       remBtn.disabled = count === 0;
       remBtn.addEventListener('click', e => { e.stopPropagation(); openRemoveCoinsModal(templateId); });
-      actions.appendChild(addBtn);
       actions.appendChild(remBtn);
+      actions.appendChild(addBtn);
       item.appendChild(actions);
     }
     cpGrid.appendChild(item);
