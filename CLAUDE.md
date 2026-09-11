@@ -627,7 +627,8 @@ parties/<code>/battlemap/maps/<mapId>
     grid:   { type, size, offsetX, offsetY, visible },
     tokens: { <id>: { id, name, icon, x, y, size, hostility, ownerUid } },
     walls:  { <id>: { id, kind:'rect'|'circle', x, y, w, h, r } },
-    masks:  { <id>: { id, mode:'hide'|'show', x, y, w, h } } }
+    masks:  { <id>: { id, mode:'hide'|'show', x, y, w, h } },
+    elevation: { <id>: { id, kind, x, y, w, h, height } } }   (height: ft, -500..500)
 ```
 
 - **Nothing about a map is in the save file.** `state.battlemap` is a
@@ -692,51 +693,51 @@ Worked out as a **polygon per party member**, not a grid of lit cells.
 
 #### Elevation
 
-Three ground levels — `low` / `normal` / `high` — the GM paints as regions
-(`map.elevation`, shaped exactly like a wall: `kind:'rect'|'circle'`, plus
-`level`). Unpainted ground is `normal`; there is no explicit shape for it. A
-token's own level is whatever zone it is standing in. Model and geometry live
-in `battlemap.js`'s **GEOMETRY — elevation** section; the paint tools (Low
-Ground / High Ground) and rendering are in `battlemap-view.js`, alongside Wall
-and Fog.
+The GM paints zones with the **Height** tool (`map.elevation`, shaped exactly
+like a wall: `kind:'rect'|'circle'|'poly'`, plus `height`). `height` is feet
+from the base map, an integer in `[-500, 500]` (`clampElevHeight()`); the base
+map itself is height 0 and has no shape. Unpainted ground is 0; a token's own
+height is whatever zone it stands in (`elevationAt()`). Read a zone's height
+through **`elevZoneHeight(z)`**, never `z.height` directly — it also maps a
+legacy `level:'low'|'high'` zone onto `∓20` ft. Model and geometry are in
+`battlemap.js`'s **GEOMETRY — elevation** section; the Height tool (with its
+starting-height box), right-click-to-edit, and rendering are in
+`battlemap-view.js`, alongside Wall and Fog.
 
-- **Looking down is free, looking up is tapered, never blocked outright.**
-  High sees every level below it, at any distance. The taper only touches a
-  ray once it would cross into ground *higher* than the source's own —
-  `elevationRayLimit()` shortens that ray exactly the way a wall would
-  shorten `computeVisionPolygon()`'s, except by how far rather than whether at
-  all, and the two combine with a plain `Math.min`.
-- **The formula, in degrees.** `f(x) = ceil(12 / atan(y/x)) - 1` tiles past
-  the rise are visible, where `x` is the viewer's own distance back from it
-  and `y` is how many levels it climbs (1 for low→normal or normal→high, 2
-  for low→high) — both in tiles. **Degrees, not radians**: in radians this
-  comes out to nearly unlimited sight even standing at the very edge (`atan`
-  is close to 90° for any small `x`), the opposite of what a cliff should do;
-  in degrees it is the reverse, which is the intended shape — nothing past
-  the edge up close, opening up gradually with distance, i.e. you cannot see
-  over a cliff you are standing under, but you can from across the valley.
+- **Looking down is free, looking up is tapered, never blocked outright.** A
+  viewer sees every level below their own at any distance. The taper only
+  touches a ray once it would cross into ground *higher* than the viewer's own —
+  `elevationRayLimit()` shortens that ray exactly the way a wall would shorten
+  `computeVisionPolygon()`'s, except by how far rather than whether at all, and
+  the two combine with a plain `Math.min`.
+- **The formula.** `f(d) = floor(2d / h)` tiles past the rise's near edge are
+  visible, where `d` is the viewer's own distance back from it and `h` is the
+  zone's height **relative to the viewer** (`elevZoneHeight(zone) −
+  sourceHeight`) — both in **feet** (`elevationRayLimit()` scales the ray's
+  pixel distances by `MAP_FEET_PER_CELL / cellPx`). `h ≤ 0` — level with or
+  above the zone — is `elevationVisibleTiles()`'s `Infinity`, i.e. seen
+  unimpeded.
 - **Two things can shorten a ray, independently, and it takes whichever is
   shortest:**
-  - Leaving the **source's own low ground** is itself a rise (the low→normal
-    pair) — `x` is measured to wherever that ground ends, via
-    `rayRectSpan()`/`rayCircleSpan()` (both roots of the intersection, not
-    just the near one `rayRect()`/`rayCircle()` give a wall, because this
-    needs to know how far the ray travels *inside* the source's own zone).
-  - **Entering a zone ranked above the source**, at whatever distance the ray
-    first reaches it, using *that pair's own* `y` (1 for normal→high, 2 for
-    low→high) — regardless of what the ground in between is, because `y`
-    describes how many levels the *viewer* is trying to see up, not the
-    height of the terrain step at that specific edge. This is why a low
-    viewer looking at high ground across a normal shelf uses `y=2` (the
-    low→high pair) for the high zone's own cutoff, not two stacked `y=1`
-    steps — and why seeing a rise beyond a rise needs *both* cutoffs to
-    allow it, not just the nearer one.
+  - If the **viewer's own zone is below the base map** (`elevZoneHeight < 0`),
+    leaving it is itself a rise to base (`h = −ownHeight`) — `d` is measured to
+    wherever that ground ends, via `rayRectSpan()`/`rayCircleSpan()` (both roots
+    of the intersection, not just the near one `rayRect()`/`rayCircle()` give a
+    wall, because this needs how far the ray travels *inside* the viewer's own
+    zone).
+  - **Entering a zone higher than the viewer**, at whatever distance the ray
+    first reaches it, using *that zone's own* height relative to the viewer —
+    regardless of the ground in between, because `h` is how far up the *viewer*
+    is trying to see, not the local terrain step. So a viewer at −15 looking at
+    a +10 zone across the base map uses `h = 25` for that zone's cutoff, and
+    seeing a rise beyond a rise needs *both* cutoffs to allow it, not just the
+    nearer one.
 - **Elevation zones are aimed at like walls** (`visionAngles()`'s
   `extraShapes` parameter) so their edges cut a crisp line in the fog too —
   the taper still needs a sharp boundary to taper *from*.
 - **Elevation zones never block a ray outright** the way a wall does — they
-  only ever shorten it, so a low viewer standing far enough back always sees
-  *some* distance onto high ground, never zero, past the zero-tiles-visible
+  only ever shorten it, so a viewer standing far enough back always sees
+  *some* distance onto higher ground, never zero, past the zero-tiles-visible
   case the formula returns up close.
 
 #### The board

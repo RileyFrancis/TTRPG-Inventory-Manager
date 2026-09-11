@@ -26,8 +26,9 @@ let mapCam = { x: 0, y: 0, scale: 1 };   // the world point at the centre, and t
 // back, so leaving 'draw' to pan or select does not lose your place.
 let mapTool = 'select';
 let mapShape = 'rect';   // 'rect' | 'circle' | 'lasso' — the selection outline
-let mapMode = 'wall';    // 'wall' | 'fog-hide' | 'fog-show' | 'elev-low' | 'elev-high' — what it does
+let mapMode = 'wall';    // 'wall' | 'fog-hide' | 'fog-show' | 'elev' — what it does
 let mapSelectedTokenId = null;
+let elevNewHeight = 0;   // feet — the height a freshly drawn Height zone starts at
 
 let mapCanvas = null, mapCtx = null;
 let mapCanvasW = 0, mapCanvasH = 0;      // CSS pixels
@@ -475,19 +476,21 @@ function mapShapeCenter(s) {
 }
 
 // The GM's own read of the terrain — a player never sees these, only their
-// effect on the fog. Low ground reads cool, high ground reads warm, so the two
-// are never confused at a glance the way two reds or two purples would be.
+// effect on the fog. Raised ground reads warm, lowered ground cool, so the two
+// are never confused at a glance the way two reds or two purples would be. A
+// zone at exactly base height (0) does nothing and reads neutral grey.
 const ELEVATION_TONE = {
-  low:  { fill: 'rgba(90, 150, 230, 0.14)', stroke: 'rgba(120, 175, 240, 0.9)' },
-  high: { fill: 'rgba(235, 150, 60, 0.16)', stroke: 'rgba(245, 175, 90, 0.95)' },
+  up:      { fill: 'rgba(235, 150, 60, 0.16)', stroke: 'rgba(245, 175, 90, 0.95)' },
+  down:    { fill: 'rgba(90, 150, 230, 0.14)', stroke: 'rgba(120, 175, 240, 0.9)' },
+  neutral: { fill: 'rgba(150, 150, 150, 0.12)', stroke: 'rgba(180, 180, 180, 0.85)' },
 };
 function drawMapElevation(ctx, map) {
   ctx.save();
   ctx.lineWidth = Math.max(1, 2 / mapCam.scale);
   const fs = Math.max(10, 13 / mapCam.scale);
   mapElevationZones(map).forEach(z => {
-    const tone = ELEVATION_TONE[z.level];
-    if (!tone) return;
+    const h = elevZoneHeight(z);
+    const tone = ELEVATION_TONE[h > 0 ? 'up' : h < 0 ? 'down' : 'neutral'];
     traceMapShape(ctx, z);
     ctx.fillStyle = tone.fill;
     ctx.strokeStyle = tone.stroke;
@@ -499,7 +502,7 @@ function drawMapElevation(ctx, map) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = tone.stroke;
-    ctx.fillText(z.level === 'low' ? 'Low' : 'High', c.x, c.y);
+    ctx.fillText((h > 0 ? '+' : '') + h + ' ft', c.x, c.y);
   });
   ctx.restore();
 }
@@ -666,8 +669,7 @@ const MAP_MODE_TONE = {
   'wall':      'rgba(255, 92, 92, 0.95)',
   'fog-hide':  'rgba(150, 110, 220, 0.95)',
   'fog-show':  'rgba(90, 210, 130, 0.95)',
-  'elev-low':  'rgba(120, 175, 240, 0.95)',
-  'elev-high': 'rgba(245, 175, 90, 0.95)',
+  'elev':      'rgba(245, 175, 90, 0.95)',
 };
 function drawMapDrawing(ctx) {
   if (!mapDrawing) return;
@@ -857,7 +859,12 @@ function onMapPointerDown(e) {
   mapCanvas.setPointerCapture(e.pointerId);
   const w = screenToWorld(e.clientX, e.clientY);
 
-  // Middle and right buttons always pan, whatever tool is up.
+  // Right-click on a Height zone (with the Height tool up) edits its height —
+  // otherwise middle and right buttons always pan, whatever tool is up.
+  if (e.button === 2 && canEditMap() && mapTool === 'draw' && mapMode === 'elev') {
+    const zone = mapElevationZones(map).slice().reverse().find(z => pointInWall(w.x, w.y, z));
+    if (zone) { promptElevationHeight(map.id, zone); return; }
+  }
   if (e.button === 1 || e.button === 2) { mapPan = { sx: e.clientX, sy: e.clientY, camX: mapCam.x, camY: mapCam.y }; return; }
   if (e.button !== 0) return;
 
@@ -1076,7 +1083,7 @@ function commitMapDrawing(map, d) {
   if (!shape) return;
   if (d.mode === 'wall') addWall(map.id, shape);
   else if (d.mode === 'fog-hide' || d.mode === 'fog-show') addMask(map.id, { ...shape, mode: d.mode === 'fog-hide' ? 'hide' : 'show' });
-  else if (d.mode === 'elev-low' || d.mode === 'elev-high') addElevationZone(map.id, { ...shape, level: d.mode === 'elev-low' ? 'low' : 'high' });
+  else if (d.mode === 'elev') addElevationZone(map.id, { ...shape, height: clampElevHeight(elevNewHeight) });
   fogDirty = true;
 }
 
@@ -1101,9 +1108,10 @@ function eraseMapPieceAt(map, w) {
 //
 // Drawing is two independent choices, not one flat list of tools — a shape
 // (what outline a drag makes) and a mode (what it's for), so a Wall, an
-// Obscure region and a patch of High Ground can each be a rectangle, a
-// circle or a freehand lasso. Picking either one switches `mapTool` to
-// 'draw'; Select/Grid/Erase are their own standalone tools alongside it.
+// Obscure region and a Height zone can each be a rectangle, a circle or a
+// freehand lasso. Picking either one switches `mapTool` to 'draw';
+// Select/Grid/Erase are their own standalone tools alongside it. In Height
+// mode a number box also rides the strip — the height new zones start at.
 // See mapShape/mapMode at the top of this file.
 const MAP_STANDALONE_TOOLS = [
   { id: 'select', label: 'Select', hint: 'Move creatures · drag the board to pan', gm: false },
@@ -1118,10 +1126,40 @@ const MAP_MODES = [
   { id: 'wall',      label: 'Wall',        hint: 'The region blocks sight' },
   { id: 'fog-hide',  label: 'Obscure',     hint: 'The players cannot see into the region' },
   { id: 'fog-show',  label: 'Reveal',      hint: 'The players can always see the region' },
-  { id: 'elev-low',  label: 'Low Ground',  hint: 'The region is low ground — unpainted terrain is normal ground' },
-  { id: 'elev-high', label: 'High Ground', hint: 'The region is high ground' },
+  { id: 'elev',      label: 'Height',      hint: 'A raised or lowered zone — set its height (ft from the base map) in the box, or right-click a zone to change it' },
 ];
 const MAP_ERASE_TOOL = { id: 'erase', label: 'Erase', hint: 'Click a wall, a fog edit, or an elevation region to remove it' };
+
+// The height a freshly drawn Height zone starts at — only on the strip while the
+// Height tool is up. Existing zones are re-set by right-clicking them on the map
+// (see onMapPointerDown).
+function buildElevHeightBox() {
+  const wrap = document.createElement('div');
+  wrap.className = 'map-tool-group map-elev-height';
+  const inp = document.createElement('input');
+  inp.type = 'number';
+  inp.min = -500; inp.max = 500; inp.step = 1;
+  inp.value = String(elevNewHeight);
+  inp.title = 'The height new zones start at, in feet from the base map (−500 to 500)';
+  inp.addEventListener('input', () => { elevNewHeight = clampElevHeight(inp.value); });
+  inp.addEventListener('change', () => { inp.value = String(elevNewHeight); });
+  const unit = document.createElement('span');
+  unit.className = 'map-elev-unit';
+  unit.textContent = 'ft';
+  wrap.append(inp, unit);
+  return wrap;
+}
+
+// Right-clicking a Height zone (with the Height tool up) re-sets its height.
+function promptElevationHeight(mapId, zone) {
+  const raw = prompt('Height of this zone in feet, from the base map (−500 to 500):', String(elevZoneHeight(zone)));
+  if (raw === null) return;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return;
+  setElevationHeight(mapId, zone.id, n);
+  fogDirty = true;
+  drawBattlemap();
+}
 
 // The Grid tool's own bar, under the map: what the two gestures are, and what
 // the grid is at this moment (the same three numbers the Maps pane has in
@@ -1194,6 +1232,7 @@ function renderMapToolbar() {
     // mapShape/mapMode at the top of this file.
     buildToolGroup(MAP_SHAPES, mapShape, id => { mapShape = id; mapTool = 'draw'; });
     buildToolGroup(MAP_MODES, mapMode, id => { mapMode = id; mapTool = 'draw'; });
+    if (mapMode === 'elev' && mapTool === 'draw') tools.appendChild(buildElevHeightBox());
     buildToolGroup([MAP_ERASE_TOOL], mapTool, id => { mapTool = id; });
   }
   syncGridHint();

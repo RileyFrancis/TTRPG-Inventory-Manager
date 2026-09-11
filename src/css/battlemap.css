@@ -116,6 +116,28 @@
   border-radius: 5px;
 }
 
+/* The starting-height box that rides the strip while the Height tool is up. */
+.map-elev-height {
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+}
+.map-elev-height input {
+  width: 5ch;
+  padding: 3px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+.map-elev-unit {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
 .map-tool {
   padding: 5px 10px;
   font-size: 11px;

@@ -13,7 +13,7 @@
 //       tokens: { <id>: { id, name, icon, x, y, size, hostility, ownerUid } },
 //       walls:  { <id>: <shape> },
 //       masks:  { <id>: { mode:'hide'|'show', ...<shape> } },
-//       elevation: { <id>: { level:'low'|'high', ...<shape> } } }
+//       elevation: { <id>: { height:<feet, -500..500>, ...<shape> } } }
 //
 //   <shape> = { id, kind:'rect',   x, y, w, h }
 //           | { id, kind:'circle', x, y, r }
@@ -348,6 +348,11 @@ function addElevationZone(mapId, zone) {
   mapRef(mapId, 'elevation/' + id).set({ ...zone, id });
 }
 
+function setElevationHeight(mapId, id, height) {
+  if (!canEditMap() || !firebaseDb) return;
+  mapRef(mapId, 'elevation/' + id + '/height').set(clampElevHeight(height));
+}
+
 function removePiece(mapId, kind, id) {
   if (!canEditMap() || !firebaseDb) return;
   mapRef(mapId, kind + '/' + id).remove();
@@ -482,7 +487,7 @@ function visionAngles(ox, oy, walls, bounds, extraShapes) {
 }
 
 // The polygon one creature can see, in image pixels. A wall containing the
-// source is skipped. `elev` is optional — { zones, sourceLevel, ownZone,
+// source is skipped. `elev` is optional — { zones, sourceHeight, ownZone,
 // cellPx } from elevationViewFor() — and shortens rays exactly as a wall
 // would, except by how far rather than whether at all. See the ELEVATION
 // section below and CLAUDE.md § The fog / Elevation.
@@ -490,7 +495,7 @@ function computeVisionPolygon(ox, oy, walls, bounds, elev) {
   const live = walls.filter(w => !pointInWall(ox, oy, w));
   // Never further than the far corner of the map, so the fan always terminates.
   const reach = Math.hypot(bounds.w, bounds.h) + Math.hypot(ox - bounds.x, oy - bounds.y);
-  const higherZones = elev ? elev.zones.filter(z => elevationRank(z.level) > elevationRank(elev.sourceLevel)) : [];
+  const higherZones = elev ? elev.zones.filter(z => elevZoneHeight(z) > elev.sourceHeight) : [];
 
   return visionAngles(ox, oy, live, bounds, elev ? elev.zones : null).map(a => {
     const dx = Math.cos(a), dy = Math.sin(a);
@@ -513,25 +518,27 @@ function visionSources(map) {
 // =============================================================================
 // GEOMETRY — elevation
 // =============================================================================
-// Three ground levels; anywhere the GM has not painted low or high ground is
-// 'normal' — there is no explicit shape for it. Looking down is always free
-// (a viewer sees every level below their own, no matter the distance); looking
-// up is not blocked outright, only *tapered*: the farther back a viewer stands
-// from a rise, the higher up it they can see past it, on the reasoning that a
-// shallow enough sightline clears the edge. Below the rise itself there is
-// nothing to see past — right at the foot of a cliff you see none of what is
-// above it.
+// The GM paints zones, each with a `height` in feet in [-500, 500]. The base
+// map is height 0 and has no shape; every zone's height is measured from it.
+// Looking down is always free (a viewer sees every level below their own, no
+// matter the distance); looking up is not blocked outright, only *tapered*: the
+// farther back a viewer stands from a rise, the more of it they can see past its
+// edge, on the reasoning that a shallow enough sightline clears it. Right at the
+// foot of a cliff you see none of what is above it.
 //
-// f(x) = ceil(12 / atan(y/x)) - 1   — degrees, not radians. In radians this
-// comes out to nearly unlimited sight even standing at the very edge (atan is
-// close to 90° for any small x), which is the opposite of what a cliff should
-// do; in degrees it does the reverse — nothing past the edge up close, opening
-// up gradually with distance — which is what "you can't see over a cliff you
-// are standing under, but you can from across the valley" means. x and y are
-// both in tiles: x is the viewer's own distance back from the rise, y is how
-// many levels it climbs (1 for low→normal or normal→high, 2 for low→high).
-const ELEVATION_LEVELS = ['low', 'normal', 'high'];
-function elevationRank(level) { return Math.max(0, ELEVATION_LEVELS.indexOf(level)); }
+// f(d) = floor(2d / h)   — d is how far the viewer is from the zone and h is the
+// zone's height RELATIVE to the viewer's own ground (zoneHeight − viewerHeight),
+// both in feet. f(d) is a count of tiles the viewer can see into the zone past
+// its near edge. h ≤ 0 means the viewer is level with or above the zone and
+// f(d) ≤ 0 — they see into it unimpeded.
+function elevZoneHeight(z) {
+  const h = Number(z?.height);
+  if (Number.isFinite(h)) return h;
+  return z?.level === 'low' ? -20 : z?.level === 'high' ? 20 : 0; // legacy zones
+}
+function clampElevHeight(v) {
+  return Math.max(-500, Math.min(500, Math.round(Number(v) || 0)));
+}
 
 function mapElevationZones(map) {
   return Object.values(map?.elevation ?? {}).filter(z => z && z.id);
@@ -543,8 +550,11 @@ function elevationZoneAt(map, x, y) {
   for (let i = zones.length - 1; i >= 0; i--) if (pointInWall(x, y, zones[i])) return zones[i];
   return null;
 }
-function elevationAt(map, x, y) { return elevationZoneAt(map, x, y)?.level ?? 'normal'; }
-function tokenElevation(map, token) { return elevationAt(map, token.x, token.y); }
+// The ground height at a point, in feet from the base map (0 where unpainted).
+function elevationAt(map, x, y) {
+  const zone = elevationZoneAt(map, x, y);
+  return zone ? elevZoneHeight(zone) : 0;
+}
 
 // What a vision source needs to know about elevation, worked out once per
 // source rather than once per ray (computeVisionPolygon casts ~180 of them).
@@ -553,16 +563,15 @@ function elevationViewFor(map, ox, oy) {
   const zones = mapElevationZones(map);
   if (!zones.length) return null;
   const ownZone = elevationZoneAt(map, ox, oy);
-  return { zones, sourceLevel: ownZone?.level ?? 'normal', ownZone, cellPx: mapCellSize(map) };
+  return { zones, sourceHeight: ownZone ? elevZoneHeight(ownZone) : 0, ownZone, cellPx: mapCellSize(map) };
 }
 
-// How many extra tiles past a rise a viewer standing `xTiles` back from it can
-// still see, `yLevels` up. See the section header for the formula and why it
-// is degrees rather than radians.
-function elevationVisibleTiles(xTiles, yLevels) {
-  if (xTiles <= 0) return 0;
-  const deg = Math.atan(yLevels / xTiles) * 180 / Math.PI;
-  return deg <= 0 ? Infinity : Math.max(0, Math.ceil(12 / deg) - 1);
+// f(d) = floor(2d / h) — how many tiles past a rise's near edge a viewer
+// standing `dFeet` back from it can see, where `hFeet` is the rise's height
+// relative to the viewer. h ≤ 0 (level or looking down) is unimpeded.
+function elevationVisibleTiles(dFeet, hFeet) {
+  if (hFeet <= 0) return Infinity;
+  return Math.max(0, Math.floor(2 * dFeet / hFeet));
 }
 
 // Both roots of the ray/shape intersection, not just the near one — where
@@ -652,37 +661,37 @@ function rayShapeSpan(ox, oy, dx, dy, s) {
 
 // How far along one ray elevation lets it travel, independent of walls —
 // computeVisionPolygon() takes the smaller of this and whatever a wall gives.
-// Two things can shorten it, and both can apply on the same ray at once (a low
-// viewer looking across normal ground at a rise beyond it):
-//   - leaving the source's own low ground is itself a rise (the low→normal
-//     pair) — `x` is measured to wherever that ground ends, not to whatever is
-//     beyond it, because that is genuinely how far back the *viewer* is from
-//     that particular edge;
-//   - entering a zone ranked above the source, at whatever distance the ray
-//     first reaches it, using that pair's own y (1 for normal→high, 2 for
-//     low→high) — regardless of what the ground between here and there is,
-//     because y describes how many levels the *viewer* is trying to see up,
-//     not the height of the terrain step at that specific edge.
+// Distances along the ray are in image pixels; the formula works in feet, so
+// each is scaled by MAP_FEET_PER_CELL / cellPx. Two things can shorten a ray,
+// and both can apply at once (a viewer in a pit looking across the base map at
+// a rise beyond it):
+//   - if the viewer's own zone is below the base map, leaving it is itself a
+//     rise to base — `d` is measured to wherever that ground ends (span.exit),
+//     because that is how far back the viewer is from that particular edge;
+//   - entering a zone higher than the viewer, at whatever distance the ray
+//     first reaches it, using that zone's own height relative to the viewer —
+//     regardless of the ground in between, because h describes how far up the
+//     *viewer* is trying to see, not the local terrain step.
 // Both are independent, and the ray takes whichever cuts it shortest — seeing
 // a rise beyond a rise needs both to allow it.
 function elevationRayLimit(ox, oy, dx, dy, elev, higherZones) {
   let limit = Infinity;
+  const pxToFeet = MAP_FEET_PER_CELL / elev.cellPx;
 
-  if (elev.ownZone && elev.ownZone.level === 'low') {
-    const z = elev.ownZone;
-    const span = rayShapeSpan(ox, oy, dx, dy, z);
+  const ownHeight = elev.ownZone ? elevZoneHeight(elev.ownZone) : 0;
+  if (elev.ownZone && ownHeight < 0) {
+    const span = rayShapeSpan(ox, oy, dx, dy, elev.ownZone);
     if (span && span.exit > 0) {
-      const extra = elevationVisibleTiles(span.exit / elev.cellPx, 1);
-      limit = Math.min(limit, span.exit + extra * elev.cellPx);
+      const tiles = elevationVisibleTiles(span.exit * pxToFeet, -ownHeight);
+      limit = Math.min(limit, span.exit + tiles * elev.cellPx);
     }
   }
 
   higherZones.forEach(z => {
     const hit = rayShapeHit(ox, oy, dx, dy, z);
     if (hit === null) return;
-    const yLevels = elevationRank(z.level) - elevationRank(elev.sourceLevel);
-    const extra = elevationVisibleTiles(hit / elev.cellPx, yLevels);
-    limit = Math.min(limit, hit + extra * elev.cellPx);
+    const tiles = elevationVisibleTiles(hit * pxToFeet, elevZoneHeight(z) - elev.sourceHeight);
+    limit = Math.min(limit, hit + tiles * elev.cellPx);
   });
 
   return limit;
