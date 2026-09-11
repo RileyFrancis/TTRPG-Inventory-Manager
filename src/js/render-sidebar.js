@@ -3,6 +3,11 @@
 // =============================================================================
 'use strict';
 
+// Which base items' variant families are unfolded in the Browse list — a dog-
+// eared card's own click toggles its id in here. Session-only, like the folder
+// collapse state's cousin `collapsedFeatures`: not saved, not synced.
+const expandedVariantIds = new Set();
+
 function renderItemList() {
   const listEl = document.getElementById('item-list');
   const search = document.getElementById('item-search').value.trim().toLowerCase();
@@ -10,6 +15,9 @@ function renderItemList() {
   const tagF = document.getElementById('tag-filter').value;
 
   const items = Object.values(state.db).filter(t => {
+    // A variant is never a top-level entry — it's shown nested under its base
+    // (see appendVariantRows), reached by expanding the base's dog-ear tag.
+    if (t.variantOf) return false;
     if (search && !t.name.toLowerCase().includes(search) && !t.description.toLowerCase().includes(search)) return false;
     if (rarityF && t.rarity !== rarityF) return false;
     if (tagF && !t.tags.includes(tagF)) return false;
@@ -29,7 +37,10 @@ function renderItemList() {
 
   if (state.folders.length === 0) {
     // No folders made yet — the plain flat list.
-    items.forEach(t => listEl.appendChild(buildItemCard(t)));
+    items.forEach(t => {
+      listEl.appendChild(buildItemCard(t));
+      appendVariantRows(listEl, t);
+    });
   } else {
     const filtering = !!(search || rarityF || tagF);
     groupItemsByFolder(items).forEach(group => {
@@ -45,6 +56,7 @@ function renderItemList() {
         const card = buildItemCard(t);
         card.dataset.folderId = group.id;
         listEl.appendChild(card);
+        appendVariantRows(listEl, t, group.id);
       });
     });
   }
@@ -124,6 +136,16 @@ function buildItemCard(t) {
   card.className = 'item-card';
   card.dataset.templateId = t.id;
   if (state.placing && state.placing.templateId === t.id) card.classList.add('placing');
+  if (t.variantOf) card.classList.add('item-card-variant');
+  const hasVariants = !!t.variantIds?.length;
+  if (hasVariants) {
+    card.classList.add('has-variants');
+    if (expandedVariantIds.has(t.id)) card.classList.add('variants-expanded');
+    const tag = document.createElement('div');
+    tag.className = 'item-card-variant-tag';
+    tag.title = `${t.variantIds.length} variant${t.variantIds.length > 1 ? 's' : ''}`;
+    card.appendChild(tag);
+  }
 
   const color = rarityColor(t.rarity);
 
@@ -213,6 +235,13 @@ function buildItemCard(t) {
       document.body.style.userSelect = '';
       stopDragAutoScroll();
       if (!dragging) {
+        // A dog-eared card also unfolds its variants, right where it sits —
+        // toggled before startPlacing's own renderItemList() so one rebuild
+        // shows both the placing highlight and the new expanded state.
+        if (hasVariants) {
+          if (expandedVariantIds.has(tid)) expandedVariantIds.delete(tid);
+          else expandedVariantIds.add(tid);
+        }
         // Treat as click → enter placing mode as before
         startPlacing(tid);
         return;
@@ -273,6 +302,20 @@ function buildItemCard(t) {
   });
 
   return card;
+}
+
+// A base item's variants, indented directly beneath its card — only while
+// its dog-ear tag has it expanded. Full cards, not a stripped-down row, so a
+// variant drags, places, and tooltips exactly like any other item.
+function appendVariantRows(listEl, t, folderId) {
+  if (!t.variantIds?.length || !expandedVariantIds.has(t.id)) return;
+  t.variantIds.forEach(vid => {
+    const variant = state.db[vid];
+    if (!variant) return;
+    const card = buildItemCard(variant);
+    if (folderId) card.dataset.folderId = folderId;
+    listEl.appendChild(card);
+  });
 }
 
 function buildMiniShapePreview(shape, color) {

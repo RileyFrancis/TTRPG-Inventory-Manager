@@ -268,7 +268,9 @@ function groupItemsByFolder(items) {
 // Total items in a folder, ignoring the search/filter controls — the delete
 // prompt should report everything that is about to move to Unfiled.
 function folderItemCount(folderId) {
-  return Object.values(state.db).filter(t => folderOf(t.id) === folderId).length;
+  // Variants aren't counted on their own — they ride along with their base
+  // item, same as they're excluded from the list itself (see renderItemList).
+  return Object.values(state.db).filter(t => !t.variantOf && folderOf(t.id) === folderId).length;
 }
 
 // `currentId` is an *explicit* assignment (see explicitFolderOf): the empty

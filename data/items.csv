@@ -1,94 +1,94 @@
-name,rarity,description,cost,tags,damage,damageType,attunement,stackSize,image,shape,container,containerRows,containerCols,properties,mastery,source
-Copper Piece,special,"Ooh, shiny!",1cp,currency|valuable,,,,50,,1,,,,,,PHB
-Silver Piece,special,"Ooh, shiny!",1sp,currency|valuable,,,,50,,1,,,,,,PHB
-Electrum Piece,special,"Ooh, shiny!",1ep,currency|valuable,,,,50,,1,,,,,,PHB
-Gold Piece,special,"Ooh, shiny!",1gp,currency|valuable,,,,50,,1,,,,,,PHB
-Platinum Piece,special,"Ooh, shiny!",1pp,currency|valuable,,,,50,,1,,,,,,PHB
-Club,,,1sp,weapon|simple mele weapon,1d4,bludgeoning,,,,1|1,,,,Light,Slow,PHB
-Dagger,,,2gp,weapon|simple mele weapon,1d4,piercing,,,,1,,,,Finesse; Light; Thrown (Range 20/60),Nick,PHB
-Greatclub,,,2sp,weapon|simple mele weapon,1d8,bludgeoning,,,,111|111|110|010|010,,,,Two-Handed,Push,PHB
-Handaxe,,,5gp,weapon|simple mele weapon,1d6,slashing,,,,1|1,,,,Light; Thrown (Range 20/60),Vex,PHB
-Javelin,,,5sp,weapon|simple mele weapon,1d6,piercing,,,,1|1,,,,Thrown (Range 30/120),Slow,PHB
-Light Hammer,,,2gp,weapon|simple mele weapon,1d4,bludgeoning,,,,1|1,,,,Light; Thrown (Range 20/60),Nick,PHB
-Mace,,,5gp,weapon|simple mele weapon,1d6,bludgeoning,,,,11|01|01,,,,,Sap,PHB
-Quarterstaff,,,2sp,weapon|simple mele weapon,1d6,bludgeoning,,,,1|1|1|1,,,,Versatile (1d8),Topple,PHB
-Sickle,,,1gp,weapon|simple mele weapon,1d4,slashing,,,,1|1,,,,Light,Nick,PHB
-Spear,,,1gp,weapon|simple mele weapon,1d6,piercing,,,,1|1|1,,,,Thrown (Range 20/60); Versatile (1d8),Sap,PHB
-Dart,,,5cp,weapon|simple ranged weapon,1d4,piercing,,4,,1,,,,Finesse; Thrown (Range 20/60),Vex,PHB
-Light Crossbow,,,25gp,weapon|simple ranged weapon,1d8,piercing,,,,111|010|010,,,,"Ammunition (Range 80/320, Bolt); Loading; Two-Handed",Slow,PHB
-Shortbow,,,25gp,weapon|simple ranged weapon,1d6,piercing,,,,1|1,,,,"Ammunition (Range 80/320, Arrow); Two-Handed",Vex,PHB
-Sling,,,1sp,weapon|simple ranged weapon,1d4,bludgeoning,,,,1,,,,"Ammunition (Range 30/120, Bullet)",Slow,PHB
-Battleaxe,,,10gp,weapon|martial mele weapon,1d8,slashing,,,,11|01|01,,,,Versatile (1d10),Topple,PHB
-Flail,,,10gp,weapon|martial mele weapon,1d8,bludgeoning,,,,1|1,,,,,Sap,PHB
-Glaive,,,20gp,weapon|martial mele weapon,1d10,slashing,,,,11|01|01|01|01,,,,Heavy; Reach; Two-Handed,Graze,PHB
-Greataxe,,,30gp,weapon|martial mele weapon,1d12,slashing,,,,111|110|010|010,,,,Heavy; Two-Handed,Cleave,PHB
-Greatsword,,,50gp,weapon|martial mele weapon,2d6,slashing,,,,010|010|111|010,,,,Heavy; Two-Handed,Graze,PHB
-Halberd,,,20gp,weapon|martial mele weapon,1d10,slashing,,,,01|11|01|01|01,,,,Heavy; Reach; Two-Handed,Cleave,PHB
-Lance,,,10gp,weapon|martial mele weapon,1d10,piercing,,,,1|1|1|1|1|1,,,,Heavy; Reach; Two-Handed (unless mounted),Topple,PHB
-Longsword,,,15gp,weapon|martial mele weapon,1d8,slashing,,,,1|1|1,,,,Versatile (1d10),Sap,PHB
-Maul,,,10gp,weapon|martial mele weapon,2d6,bludgeoning,,,,1111|1110|0010|0010|0010,,,,Heavy; Two-Handed,Topple,PHB
-Morningstar,,,15gp,weapon|martial mele weapon,1d8,piercing,,,,01|11|10,,,,,Sap,PHB
-Pike,,,5gp,weapon|martial mele weapon,1d10,piercing,,,,010|111|111|010|010|010|110|010|010|010|010|010|010,,,,Heavy; Reach; Two-Handed,Push,PHB
-Rapier,,,25gp,weapon|martial mele weapon,1d8,piercing,,,,1|1,,,,Finesse,Vex,PHB
-Scimitar,,,25gp,weapon|martial mele weapon,1d6,slashing,,,,1|1|1,,,,Finesse; Light,Nick,PHB
-Shortsword,,,10gp,weapon|martial mele weapon,1d6,piercing,,,,1|1,,,,Finesse; Light,Vex,PHB
-Trident,,,5gp,weapon|martial mele weapon,1d8,piercing,,,,1|1|1|1,,,,Thrown (Range 20/60); Versatile (1d10),Topple,PHB
-Warhammer,,,15gp,weapon|martial mele weapon,1d8,bludgeoning,,,,111|010|010,,,,Versatile (1d10),Push,PHB
-War Pick,,,5gp,weapon|martial mele weapon,1d8,piercing,,,,1|1,,,,Versatile (1d10),Sap,PHB
-Whip,,,2gp,weapon|martial mele weapon,1d4,slashing,,,,11|01,,,,Finesse; Reach,Slow,PHB
-Blowgun,,,10gp,weapon|martial ranged weapon,1,piercing,,,,1,,,,"Ammunition (Range 25/100, Needle); Loading",Vex,PHB
-Hand Crossbow,,,75gp,weapon|martial ranged weapon,1d6,piercing,,,,11|01,,,,"Ammunition (Range 30/120, Bolt); Light; Loading",Vex,PHB
-Heavy Crossbow,,,50gp,weapon|martial ranged weapon,1d10,piercing,,,,01110|11111|01110|01110|01110|00100,,,,"Ammunition (Range 100/400, Bolt); Heavy; Loading; Two-Handed",Push,PHB
-Longbow,,,50gp,weapon|martial ranged weapon,1d8,piercing,,,,1|1,,,,"Ammunition (Range 150/600, Arrow); Heavy; Two-Handed",Slow,PHB
-Musket,,,500gp,weapon|martial ranged weapon,1d12,piercing,,,,11111|11111,,,,"Ammunition (Range 40/120, Bullet); Loading; Two-Handed",Slow,DMG
-Pistol,,,250gp,weapon|martial ranged weapon,1d10,piercing,,,,11|10,,,,"Ammunition (Range 30/90, Bullet); Loading",Vex,DMG
-Padded Armor,,,5gp,armor|light armor,,,,,,101|111|111,,,,AC 11 + Dex; Stealth Disadvantage,,PHB
-Leather Armor,,,10gp,armor|light armor,,,,,,1001|1111|0110|0110,,,,AC 11 + Dex,,PHB
-Studded Leather Armor,,,45gp,armor|light armor,,,,,,1001|1111|1111|0110|0010,,,,AC 12 + Dex,,PHB
-Hide Armor,,,10gp,armor|medium armor,,,,,,1001|1111|1111|0110,,,,AC 12 + Dex (max 2),,PHB
-Chain Shirt,,,50gp,armor|medium armor,,,,,,010010|111111|011110|011110|011110,,,,AC 13 + Dex (max 2),,PHB
-Scale Mail,,,50gp,armor|medium armor,,,,,,01100110|11111111|11111111|01111110|01111110|00111100|00111100,,,,AC 14 + Dex (max 2); Stealth Disadvantage,,PHB
-Breastplate,,,400gp,armor|medium armor,,,,,,1001|1111|1111|1111|1111|0110,,,,AC 14 + Dex (max 2),,PHB
-Half Plate Armor,,,750gp,armor|medium armor,,,,,,01000010|11111111|11111111|01111110|01111110|01111110|01100110,,,,AC 15 + Dex (max 2); Stealth Disadvantage,,PHB
-Ring Mail,,,30gp,armor|heavy armor,,,,,,01000010|11111111|11111111|01111110|01111110|01111110|01100110,,,,AC 14; Stealth Disadvantage,,PHB
-Chain Mail,,,75gp,armor|heavy armor,,,,,,0010000100|0111111110|1111111111|1111111111|0011111100|0011111100|0011111100|0001111100|0000001100,,,,AC 16; Str 13; Stealth Disadvantage,,PHB
-Splint Armor,,,200gp,armor|heavy armor,,,,,,0010000100|0111111110|1111111111|1111111111|0011111100|0011111100|0011111100|0011111100|0011111100,,,,AC 17; Str 15; Stealth Disadvantage,,PHB
-Plate Armor,,,1500gp,armor|heavy armor,,,,,,00100000100|01110101110|11111111111|11111111111|00111111100|00111111100|00111111100|00011111000|00011111000|00001110000,,,,AC 18; Str 15; Stealth Disadvantage,,PHB
-Shield,,,10gp,armor|shield,,,,,,11|11|11,,,,AC +2,,PHB
-Alchemist's Supplies,,"An alembic, a mortar and pestle, glass beakers, pouches of reagents and a stirring rod.",50gp,tool|artisan's tools,,,,,,1111|1111,,,,"Ability: Intelligence; Utilize: Identify a substance (DC 15) or start a fire (DC 15); Craft: Acid, Alchemist's Fire, Component Pouch, Oil, Paper, Perfume",,PHB
-Brewer's Supplies,,"A siphon, tubing, a stirring rod, a thermometer and a sack of hops.",20gp,tool|artisan's tools,,,,,,111|111|111,,,,"Ability: Intelligence; Utilize: Detect poison or impurities in a drink (DC 15) or identify alcohol (DC 10); Craft: Antitoxin",,PHB
-Calligrapher's Supplies,,"Ink, a dozen sheets of parchment and three quills with spare nibs.",10gp,tool|artisan's tools,,,,,,01|11|11,,,,"Ability: Dexterity; Utilize: Write text with impressive flourishes (DC 10) or determine whether handwriting is forged (DC 15); Craft: Ink, Spell Scroll",,PHB
-Carpenter's Tools,,"A saw, a hammer and nails, a hatchet, a square, a ruler, an adze, a plane and a chisel.",8gp,tool|artisan's tools,,,,,,111|111,,,,"Ability: Strength; Utilize: Seal or pry open a door or container (DC 20); Craft: Club, Greatclub, Quarterstaff, Barrel, Chest, Ladder, Pole, Portable Ram, Torch",,PHB
-Cartographer's Tools,,"Quills, ink, parchment, a pair of compasses, calipers and a ruler.",15gp,tool|artisan's tools,,,,,,111|111,,,,"Ability: Wisdom; Utilize: Draft a map of a small area (DC 15); Craft: Map",,PHB
-Cobbler's Tools,,"A hammer, an awl, a knife, a shoe stand, cured leather and thread.",5gp,tool|artisan's tools,,,,,,111|110,,,,"Ability: Dexterity; Utilize: Modify footwear to give advantage on the wearer's next Dexterity (Acrobatics) check (DC 10); Craft: Climber's Kit",,PHB
-Cook's Utensils,,"A metal pot, knives, forks, a stirring spoon and a ladle.",1gp,tool|artisan's tools,,,,,,1111|1111,,,,"Ability: Wisdom; Utilize: Improve food's flavor (DC 10) or detect spoiled or poisoned food (DC 15); Craft: Rations",,PHB
-Glassblower's Tools,,"A blowpipe, a small marver, blocks and a bag of sand.",30gp,tool|artisan's tools,,,,,,11111,,,,"Ability: Intelligence; Utilize: Discern what a glass object held within the past 24 hours (DC 15); Craft: Glass Bottle, Magnifying Glass, Spyglass, Vial",,PHB
-Jeweler's Tools,,"A loupe, pliers, a file, tweezers and a small saw.",25gp,tool|artisan's tools,,,,,,11,,,,"Ability: Intelligence; Utilize: Discern a gem's value (DC 15); Craft: Arcane Focus, Holy Symbol",,PHB
-Leatherworker's Tools,,"A knife, thread, leather scraps, an awl and a small mallet.",5gp,tool|artisan's tools,,,,,,111|110,,,,"Ability: Dexterity; Utilize: Add a design to a leather item (DC 10); Craft: Sling, Whip, Hide Armor, Leather Armor, Studded Leather Armor, Backpack, Crossbow Bolt Case, Map or Scroll Case, Parchment, Pouch, Quiver, Waterskin",,PHB
-Mason's Tools,,"A trowel, a hammer, a chisel, brushes and a square.",10gp,tool|artisan's tools,,,,,,011|111|111,,,,"Ability: Strength; Utilize: Chisel a symbol or hole in stone (DC 10); Craft: Block and Tackle",,PHB
-Painter's Supplies,,"An easel, canvas, paints, brushes, charcoal sticks and a palette.",10gp,tool|artisan's tools,,,,,,111|110,,,,"Ability: Wisdom; Utilize: Paint an accurate portrait of something you've seen (DC 10); Craft: Druidic Focus, Holy Symbol",,PHB
-Potter's Tools,,"Potter's needles, ribs, scrapers, a knife and calipers.",10gp,tool|artisan's tools,,,,,,111,,,,"Ability: Intelligence; Utilize: Determine what a ceramic object held within the past 24 hours (DC 15); Craft: Jug, Lamp",,PHB
-Smith's Tools,,"Hammers, tongs, charcoal, rags and a whetstone.",20gp,tool|artisan's tools,,,,,,1111|1111,,,,"Ability: Strength; Utilize: Pry apart two objects (DC 20); Craft: most Melee weapons and Medium or Heavy armor, Ball Bearings, Bucket, Caltrops, Chain, Crowbar, Firearm Bullets, Grappling Hook, Iron Pot, Iron Spikes",,PHB
-Tinker's Tools,,"Files, a hammer, a small saw, pliers, a whetstone and scraps of metal.",50gp,tool|artisan's tools,,,,,,11111|11111,,,,"Ability: Dexterity; Utilize: Assemble a Tiny item from scrap that falls apart in 1 minute (DC 20); Craft: Bell, Bullseye Lantern, Flask, Hooded Lantern, Hunting Trap, Lock, Manacles, Mirror, Shovel, Signal Whistle, Tinderbox",,PHB
-Weaver's Tools,,"Thread, needles, scraps of cloth, a spindle and a loom.",1gp,tool|artisan's tools,,,,,,111|110,,,,"Ability: Dexterity; Utilize: Repair a damaged cloth item (DC 10) or sew a Tiny design into a cloth item (DC 10); Craft: Basket, Fishing Net, Rope, Net, Robe, String, Bedroll, Blanket",,PHB
-Woodcarver's Tools,,"A knife, a gouge and a small saw.",1gp,tool|artisan's tools,,,,,,111|110,,,,"Ability: Dexterity; Utilize: Carve a pattern in wood (DC 10); Craft: Arcane Focus, Druidic Focus, Club, Greatclub, Quarterstaff, Arrows, Bolts, Needles",,PHB
-Disguise Kit,,"Cosmetics, hair dye, small props and a few costume pieces for altering your appearance.",25gp,tool|other tools,,,,,,111,,,,"Ability: Charisma; Utilize: Apply makeup (DC 10); Craft: Costume",,PHB
-Forgery Kit,,"Ink, several sheets of paper, a small stamp press, a variety of wax seals and a bottle of sealing wax.",15gp,tool|other tools,,,,,,111|110,,,,"Ability: Dexterity; Utilize: Mimic 10 or fewer words of someone else's handwriting (DC 15) or duplicate a wax seal (DC 20)",,PHB
-Herbalism Kit,,"Clippers, a mortar and pestle, and small pouches and vials for drying and storing herbs.",5gp,tool|other tools,,,,,,111,,,,"Ability: Intelligence; Utilize: Identify a plant (DC 10); Craft: Antitoxin, Candle, Healer's Kit, Potion of Healing",,PHB
-Navigator's Tools,,"A sextant, a compass, a set of dividers and a small collection of charts.",25gp,tool|other tools,,,,,,11,,,,"Ability: Wisdom; Utilize: Plot a course (DC 10) or determine your position by the stars (DC 15)",,PHB
-Poisoner's Kit,,"Vials, a mortar and pestle, and a small blade for safely handling toxins.",50gp,tool|other tools,,,,,,11,,,,"Ability: Intelligence; Utilize: Detect a poisoned object (DC 10); Craft: Basic Poison",,PHB
-Thieves' Tools,,"A small file, a set of lockpicks, a mirror on a handle, narrow-bladed scissors and pliers.",25gp,tool|other tools,,,,,,1,,,,"Ability: Dexterity; Utilize: Pick a lock (DC 15) or disarm a trap (DC 15)",,PHB
-Gaming Set (Dice),,A pair of carved bone dice.,1sp,tool|gaming set,,,,,,1,,,,"Ability: Wisdom; Utilize: Discern whether someone is cheating (DC 10) or win the game (DC 20)",,PHB
-Gaming Set (Dragonchess),,"A checkered playing board with pyramid- and disc-shaped pieces.",1gp,tool|gaming set,,,,,,11,,,,"Ability: Wisdom; Utilize: Discern whether someone is cheating (DC 10) or win the game (DC 20)",,PHB
-Gaming Set (Playing Cards),,"A deck of illustrated cards, worn soft at the edges.",5sp,tool|gaming set,,,,,,1,,,,"Ability: Wisdom; Utilize: Discern whether someone is cheating (DC 10) or win the game (DC 20)",,PHB
-Gaming Set (Three-Dragon Ante),,A specialized deck of cards used for the popular gambling game.,1gp,tool|gaming set,,,,,,1,,,,"Ability: Wisdom; Utilize: Discern whether someone is cheating (DC 10) or win the game (DC 20)",,PHB
-Bagpipes,,"A leather bag, a mouth-blown chanter and a set of drone pipes.",30gp,tool|musical instrument,,,,,,111|111,,,,"Ability: Charisma; Utilize: Play a known tune (DC 10) or improvise a song (DC 15)",,PHB
-Drum,,"A wooden shell stretched with a taut drumhead, played with a pair of sticks.",6gp,tool|musical instrument,,,,,,111,,,,"Ability: Charisma; Utilize: Play a known tune (DC 10) or improvise a song (DC 15)",,PHB
-Dulcimer,,"A trapezoidal soundbox strung with metal strings, struck with small hammers.",25gp,tool|musical instrument,,,,,,11111|11111,,,,"Ability: Charisma; Utilize: Play a known tune (DC 10) or improvise a song (DC 15)",,PHB
-Flute,,A slender wooden pipe with a row of finger holes.,2gp,tool|musical instrument,,,,,,1,,,,"Ability: Charisma; Utilize: Play a known tune (DC 10) or improvise a song (DC 15)",,PHB
-Horn,,A coiled length of brass ending in a flared bell.,3gp,tool|musical instrument,,,,,,11,,,,"Ability: Charisma; Utilize: Play a known tune (DC 10) or improvise a song (DC 15)",,PHB
-Lute,,"A pear-shaped wooden body with a fretted neck and a course of strings.",35gp,tool|musical instrument,,,,,,11,,,,"Ability: Charisma; Utilize: Play a known tune (DC 10) or improvise a song (DC 15)",,PHB
-Lyre,,A small U-shaped frame of wood strung across an open soundbox.,30gp,tool|musical instrument,,,,,,11,,,,"Ability: Charisma; Utilize: Play a known tune (DC 10) or improvise a song (DC 15)",,PHB
-Pan Flute,,A row of hollow pipes of graduated length bound together.,12gp,tool|musical instrument,,,,,,11,,,,"Ability: Charisma; Utilize: Play a known tune (DC 10) or improvise a song (DC 15)",,PHB
-Shawm,,A double-reed wooden pipe with a flared bell.,2gp,tool|musical instrument,,,,,,1,,,,"Ability: Charisma; Utilize: Play a known tune (DC 10) or improvise a song (DC 15)",,PHB
-Viol,,"A bowed wooden instrument with a fretted neck, played upright on the knee.",30gp,tool|musical instrument,,,,,,1,,,,"Ability: Charisma; Utilize: Play a known tune (DC 10) or improvise a song (DC 15)",,PHB
+name,rarity,description,cost,tags,damage,damageType,attunement,stackSize,image,shape,container,containerRows,containerCols,properties,mastery,source,variants
+Copper Piece,special,"Ooh, shiny!",1cp,currency|valuable,,,,50,,1,,,,,,PHB,
+Silver Piece,special,"Ooh, shiny!",1sp,currency|valuable,,,,50,,1,,,,,,PHB,
+Electrum Piece,special,"Ooh, shiny!",1ep,currency|valuable,,,,50,,1,,,,,,PHB,
+Gold Piece,special,"Ooh, shiny!",1gp,currency|valuable,,,,50,,1,,,,,,PHB,
+Platinum Piece,special,"Ooh, shiny!",1pp,currency|valuable,,,,50,,1,,,,,,PHB,
+Club,,,1sp,weapon|simple mele weapon,1d4,bludgeoning,,,,1|1,,,,Light,Slow,PHB,
+Dagger,,,2gp,weapon|simple mele weapon,1d4,piercing,,,,1,,,,Finesse; Light; Thrown (Range 20/60),Nick,PHB,
+Greatclub,,,2sp,weapon|simple mele weapon,1d8,bludgeoning,,,,111|111|110|010|010,,,,Two-Handed,Push,PHB,
+Handaxe,,,5gp,weapon|simple mele weapon,1d6,slashing,,,,1|1,,,,Light; Thrown (Range 20/60),Vex,PHB,
+Javelin,,,5sp,weapon|simple mele weapon,1d6,piercing,,,,1|1,,,,Thrown (Range 30/120),Slow,PHB,
+Light Hammer,,,2gp,weapon|simple mele weapon,1d4,bludgeoning,,,,1|1,,,,Light; Thrown (Range 20/60),Nick,PHB,
+Mace,,,5gp,weapon|simple mele weapon,1d6,bludgeoning,,,,11|01|01,,,,,Sap,PHB,
+Quarterstaff,,,2sp,weapon|simple mele weapon,1d6,bludgeoning,,,,1|1|1|1,,,,Versatile (1d8),Topple,PHB,
+Sickle,,,1gp,weapon|simple mele weapon,1d4,slashing,,,,1|1,,,,Light,Nick,PHB,
+Spear,,,1gp,weapon|simple mele weapon,1d6,piercing,,,,1|1|1,,,,Thrown (Range 20/60); Versatile (1d8),Sap,PHB,
+Dart,,,5cp,weapon|simple ranged weapon,1d4,piercing,,4,,1,,,,Finesse; Thrown (Range 20/60),Vex,PHB,
+Light Crossbow,,,25gp,weapon|simple ranged weapon,1d8,piercing,,,,111|010|010,,,,"Ammunition (Range 80/320, Bolt); Loading; Two-Handed",Slow,PHB,
+Shortbow,,,25gp,weapon|simple ranged weapon,1d6,piercing,,,,1|1,,,,"Ammunition (Range 80/320, Arrow); Two-Handed",Vex,PHB,
+Sling,,,1sp,weapon|simple ranged weapon,1d4,bludgeoning,,,,1,,,,"Ammunition (Range 30/120, Bullet)",Slow,PHB,
+Battleaxe,,,10gp,weapon|martial mele weapon,1d8,slashing,,,,11|01|01,,,,Versatile (1d10),Topple,PHB,
+Flail,,,10gp,weapon|martial mele weapon,1d8,bludgeoning,,,,1|1,,,,,Sap,PHB,
+Glaive,,,20gp,weapon|martial mele weapon,1d10,slashing,,,,11|01|01|01|01,,,,Heavy; Reach; Two-Handed,Graze,PHB,
+Greataxe,,,30gp,weapon|martial mele weapon,1d12,slashing,,,,111|110|010|010,,,,Heavy; Two-Handed,Cleave,PHB,
+Greatsword,,,50gp,weapon|martial mele weapon,2d6,slashing,,,,010|010|111|010,,,,Heavy; Two-Handed,Graze,PHB,
+Halberd,,,20gp,weapon|martial mele weapon,1d10,slashing,,,,01|11|01|01|01,,,,Heavy; Reach; Two-Handed,Cleave,PHB,
+Lance,,,10gp,weapon|martial mele weapon,1d10,piercing,,,,1|1|1|1|1|1,,,,Heavy; Reach; Two-Handed (unless mounted),Topple,PHB,
+Longsword,,,15gp,weapon|martial mele weapon,1d8,slashing,,,,1|1|1,,,,Versatile (1d10),Sap,PHB,
+Maul,,,10gp,weapon|martial mele weapon,2d6,bludgeoning,,,,1111|1110|0010|0010|0010,,,,Heavy; Two-Handed,Topple,PHB,
+Morningstar,,,15gp,weapon|martial mele weapon,1d8,piercing,,,,01|11|10,,,,,Sap,PHB,
+Pike,,,5gp,weapon|martial mele weapon,1d10,piercing,,,,010|111|111|010|010|010|110|010|010|010|010|010|010,,,,Heavy; Reach; Two-Handed,Push,PHB,
+Rapier,,,25gp,weapon|martial mele weapon,1d8,piercing,,,,1|1,,,,Finesse,Vex,PHB,
+Scimitar,,,25gp,weapon|martial mele weapon,1d6,slashing,,,,1|1|1,,,,Finesse; Light,Nick,PHB,
+Shortsword,,,10gp,weapon|martial mele weapon,1d6,piercing,,,,1|1,,,,Finesse; Light,Vex,PHB,
+Trident,,,5gp,weapon|martial mele weapon,1d8,piercing,,,,1|1|1|1,,,,Thrown (Range 20/60); Versatile (1d10),Topple,PHB,
+Warhammer,,,15gp,weapon|martial mele weapon,1d8,bludgeoning,,,,111|010|010,,,,Versatile (1d10),Push,PHB,
+War Pick,,,5gp,weapon|martial mele weapon,1d8,piercing,,,,1|1,,,,Versatile (1d10),Sap,PHB,
+Whip,,,2gp,weapon|martial mele weapon,1d4,slashing,,,,11|01,,,,Finesse; Reach,Slow,PHB,
+Blowgun,,,10gp,weapon|martial ranged weapon,1,piercing,,,,1,,,,"Ammunition (Range 25/100, Needle); Loading",Vex,PHB,
+Hand Crossbow,,,75gp,weapon|martial ranged weapon,1d6,piercing,,,,11|01,,,,"Ammunition (Range 30/120, Bolt); Light; Loading",Vex,PHB,
+Heavy Crossbow,,,50gp,weapon|martial ranged weapon,1d10,piercing,,,,01110|11111|01110|01110|01110|00100,,,,"Ammunition (Range 100/400, Bolt); Heavy; Loading; Two-Handed",Push,PHB,
+Longbow,,,50gp,weapon|martial ranged weapon,1d8,piercing,,,,1|1,,,,"Ammunition (Range 150/600, Arrow); Heavy; Two-Handed",Slow,PHB,
+Musket,,,500gp,weapon|martial ranged weapon,1d12,piercing,,,,11111|11111,,,,"Ammunition (Range 40/120, Bullet); Loading; Two-Handed",Slow,DMG,
+Pistol,,,250gp,weapon|martial ranged weapon,1d10,piercing,,,,11|10,,,,"Ammunition (Range 30/90, Bullet); Loading",Vex,DMG,
+Padded Armor,,,5gp,armor|light armor,,,,,,101|111|111,,,,AC 11 + Dex; Stealth Disadvantage,,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Leather Armor,,,10gp,armor|light armor,,,,,,1001|1111|0110|0110,,,,AC 11 + Dex,,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Studded Leather Armor,,,45gp,armor|light armor,,,,,,1001|1111|1111|0110|0010,,,,AC 12 + Dex,,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Hide Armor,,,10gp,armor|medium armor,,,,,,1001|1111|1111|0110,,,,AC 12 + Dex (max 2),,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Chain Shirt,,,50gp,armor|medium armor,,,,,,010010|111111|011110|011110|011110,,,,AC 13 + Dex (max 2),,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Scale Mail,,,50gp,armor|medium armor,,,,,,01100110|11111111|11111111|01111110|01111110|00111100|00111100,,,,AC 14 + Dex (max 2); Stealth Disadvantage,,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Breastplate,,,400gp,armor|medium armor,,,,,,1001|1111|1111|1111|1111|0110,,,,AC 14 + Dex (max 2),,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Half Plate Armor,,,750gp,armor|medium armor,,,,,,01000010|11111111|11111111|01111110|01111110|01111110|01100110,,,,AC 15 + Dex (max 2); Stealth Disadvantage,,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Ring Mail,,,30gp,armor|heavy armor,,,,,,01000010|11111111|11111111|01111110|01111110|01111110|01100110,,,,AC 14; Stealth Disadvantage,,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Chain Mail,,,75gp,armor|heavy armor,,,,,,0010000100|0111111110|1111111111|1111111111|0011111100|0011111100|0011111100|0001111100|0000001100,,,,AC 16; Str 13; Stealth Disadvantage,,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Splint Armor,,,200gp,armor|heavy armor,,,,,,0010000100|0111111110|1111111111|1111111111|0011111100|0011111100|0011111100|0011111100|0011111100,,,,AC 17; Str 15; Stealth Disadvantage,,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Plate Armor,,,1500gp,armor|heavy armor,,,,,,00100000100|01110101110|11111111111|11111111111|00111111100|00111111100|00111111100|00011111000|00011111000|00001110000,,,,AC 18; Str 15; Stealth Disadvantage,,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Shield,,,10gp,armor|shield,,,,,,11|11|11,,,,AC +2,,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Alchemist's Supplies,,"An alembic, a mortar and pestle, glass beakers, pouches of reagents and a stirring rod.",50gp,tool|artisan's tools,,,,,,1111|1111,,,,"Ability: Intelligence; Utilize: Identify a substance (DC 15) or start a fire (DC 15); Craft: Acid, Alchemist's Fire, Component Pouch, Oil, Paper, Perfume",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Brewer's Supplies,,"A siphon, tubing, a stirring rod, a thermometer and a sack of hops.",20gp,tool|artisan's tools,,,,,,111|111|111,,,,"Ability: Intelligence; Utilize: Detect poison or impurities in a drink (DC 15) or identify alcohol (DC 10); Craft: Antitoxin",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Calligrapher's Supplies,,"Ink, a dozen sheets of parchment and three quills with spare nibs.",10gp,tool|artisan's tools,,,,,,01|11|11,,,,"Ability: Dexterity; Utilize: Write text with impressive flourishes (DC 10) or determine whether handwriting is forged (DC 15); Craft: Ink, Spell Scroll",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Carpenter's Tools,,"A saw, a hammer and nails, a hatchet, a square, a ruler, an adze, a plane and a chisel.",8gp,tool|artisan's tools,,,,,,111|111,,,,"Ability: Strength; Utilize: Seal or pry open a door or container (DC 20); Craft: Club, Greatclub, Quarterstaff, Barrel, Chest, Ladder, Pole, Portable Ram, Torch",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Cartographer's Tools,,"Quills, ink, parchment, a pair of compasses, calipers and a ruler.",15gp,tool|artisan's tools,,,,,,111|111,,,,"Ability: Wisdom; Utilize: Draft a map of a small area (DC 15); Craft: Map",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Cobbler's Tools,,"A hammer, an awl, a knife, a shoe stand, cured leather and thread.",5gp,tool|artisan's tools,,,,,,111|110,,,,"Ability: Dexterity; Utilize: Modify footwear to give advantage on the wearer's next Dexterity (Acrobatics) check (DC 10); Craft: Climber's Kit",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Cook's Utensils,,"A metal pot, knives, forks, a stirring spoon and a ladle.",1gp,tool|artisan's tools,,,,,,1111|1111,,,,"Ability: Wisdom; Utilize: Improve food's flavor (DC 10) or detect spoiled or poisoned food (DC 15); Craft: Rations",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Glassblower's Tools,,"A blowpipe, a small marver, blocks and a bag of sand.",30gp,tool|artisan's tools,,,,,,11111,,,,"Ability: Intelligence; Utilize: Discern what a glass object held within the past 24 hours (DC 15); Craft: Glass Bottle, Magnifying Glass, Spyglass, Vial",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Jeweler's Tools,,"A loupe, pliers, a file, tweezers and a small saw.",25gp,tool|artisan's tools,,,,,,11,,,,"Ability: Intelligence; Utilize: Discern a gem's value (DC 15); Craft: Arcane Focus, Holy Symbol",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Leatherworker's Tools,,"A knife, thread, leather scraps, an awl and a small mallet.",5gp,tool|artisan's tools,,,,,,111|110,,,,"Ability: Dexterity; Utilize: Add a design to a leather item (DC 10); Craft: Sling, Whip, Hide Armor, Leather Armor, Studded Leather Armor, Backpack, Crossbow Bolt Case, Map or Scroll Case, Parchment, Pouch, Quiver, Waterskin",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Mason's Tools,,"A trowel, a hammer, a chisel, brushes and a square.",10gp,tool|artisan's tools,,,,,,011|111|111,,,,"Ability: Strength; Utilize: Chisel a symbol or hole in stone (DC 10); Craft: Block and Tackle",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Painter's Supplies,,"An easel, canvas, paints, brushes, charcoal sticks and a palette.",10gp,tool|artisan's tools,,,,,,111|110,,,,"Ability: Wisdom; Utilize: Paint an accurate portrait of something you've seen (DC 10); Craft: Druidic Focus, Holy Symbol",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Potter's Tools,,"Potter's needles, ribs, scrapers, a knife and calipers.",10gp,tool|artisan's tools,,,,,,111,,,,"Ability: Intelligence; Utilize: Determine what a ceramic object held within the past 24 hours (DC 15); Craft: Jug, Lamp",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Smith's Tools,,"Hammers, tongs, charcoal, rags and a whetstone.",20gp,tool|artisan's tools,,,,,,1111|1111,,,,"Ability: Strength; Utilize: Pry apart two objects (DC 20); Craft: most Melee weapons and Medium or Heavy armor, Ball Bearings, Bucket, Caltrops, Chain, Crowbar, Firearm Bullets, Grappling Hook, Iron Pot, Iron Spikes",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Tinker's Tools,,"Files, a hammer, a small saw, pliers, a whetstone and scraps of metal.",50gp,tool|artisan's tools,,,,,,11111|11111,,,,"Ability: Dexterity; Utilize: Assemble a Tiny item from scrap that falls apart in 1 minute (DC 20); Craft: Bell, Bullseye Lantern, Flask, Hooded Lantern, Hunting Trap, Lock, Manacles, Mirror, Shovel, Signal Whistle, Tinderbox",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Weaver's Tools,,"Thread, needles, scraps of cloth, a spindle and a loom.",1gp,tool|artisan's tools,,,,,,111|110,,,,"Ability: Dexterity; Utilize: Repair a damaged cloth item (DC 10) or sew a Tiny design into a cloth item (DC 10); Craft: Basket, Fishing Net, Rope, Net, Robe, String, Bedroll, Blanket",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Woodcarver's Tools,,"A knife, a gouge and a small saw.",1gp,tool|artisan's tools,,,,,,111|110,,,,"Ability: Dexterity; Utilize: Carve a pattern in wood (DC 10); Craft: Arcane Focus, Druidic Focus, Club, Greatclub, Quarterstaff, Arrows, Bolts, Needles",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Disguise Kit,,"Cosmetics, hair dye, small props and a few costume pieces for altering your appearance.",25gp,tool|other tools,,,,,,111,,,,"Ability: Charisma; Utilize: Apply makeup (DC 10); Craft: Costume",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Forgery Kit,,"Ink, several sheets of paper, a small stamp press, a variety of wax seals and a bottle of sealing wax.",15gp,tool|other tools,,,,,,111|110,,,,"Ability: Dexterity; Utilize: Mimic 10 or fewer words of someone else's handwriting (DC 15) or duplicate a wax seal (DC 20)",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Herbalism Kit,,"Clippers, a mortar and pestle, and small pouches and vials for drying and storing herbs.",5gp,tool|other tools,,,,,,111,,,,"Ability: Intelligence; Utilize: Identify a plant (DC 10); Craft: Antitoxin, Candle, Healer's Kit, Potion of Healing",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Navigator's Tools,,"A sextant, a compass, a set of dividers and a small collection of charts.",25gp,tool|other tools,,,,,,11,,,,"Ability: Wisdom; Utilize: Plot a course (DC 10) or determine your position by the stars (DC 15)",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Poisoner's Kit,,"Vials, a mortar and pestle, and a small blade for safely handling toxins.",50gp,tool|other tools,,,,,,11,,,,"Ability: Intelligence; Utilize: Detect a poisoned object (DC 10); Craft: Basic Poison",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Thieves' Tools,,"A small file, a set of lockpicks, a mirror on a handle, narrow-bladed scissors and pliers.",25gp,tool|other tools,,,,,,1,,,,"Ability: Dexterity; Utilize: Pick a lock (DC 15) or disarm a trap (DC 15)",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Gaming Set (Dice),,A pair of carved bone dice.,1sp,tool|gaming set,,,,,,1,,,,"Ability: Wisdom; Utilize: Discern whether someone is cheating (DC 10) or win the game (DC 20)",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Gaming Set (Dragonchess),,"A checkered playing board with pyramid- and disc-shaped pieces.",1gp,tool|gaming set,,,,,,11,,,,"Ability: Wisdom; Utilize: Discern whether someone is cheating (DC 10) or win the game (DC 20)",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Gaming Set (Playing Cards),,"A deck of illustrated cards, worn soft at the edges.",5sp,tool|gaming set,,,,,,1,,,,"Ability: Wisdom; Utilize: Discern whether someone is cheating (DC 10) or win the game (DC 20)",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Gaming Set (Three-Dragon Ante),,A specialized deck of cards used for the popular gambling game.,1gp,tool|gaming set,,,,,,1,,,,"Ability: Wisdom; Utilize: Discern whether someone is cheating (DC 10) or win the game (DC 20)",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Bagpipes,,"A leather bag, a mouth-blown chanter and a set of drone pipes.",30gp,tool|musical instrument,,,,,,111|111,,,,"Ability: Charisma; Utilize: Play a known tune (DC 10) or improvise a song (DC 15)",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Drum,,"A wooden shell stretched with a taut drumhead, played with a pair of sticks.",6gp,tool|musical instrument,,,,,,111,,,,"Ability: Charisma; Utilize: Play a known tune (DC 10) or improvise a song (DC 15)",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Dulcimer,,"A trapezoidal soundbox strung with metal strings, struck with small hammers.",25gp,tool|musical instrument,,,,,,11111|11111,,,,"Ability: Charisma; Utilize: Play a known tune (DC 10) or improvise a song (DC 15)",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Flute,,A slender wooden pipe with a row of finger holes.,2gp,tool|musical instrument,,,,,,1,,,,"Ability: Charisma; Utilize: Play a known tune (DC 10) or improvise a song (DC 15)",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Horn,,A coiled length of brass ending in a flared bell.,3gp,tool|musical instrument,,,,,,11,,,,"Ability: Charisma; Utilize: Play a known tune (DC 10) or improvise a song (DC 15)",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Lute,,"A pear-shaped wooden body with a fretted neck and a course of strings.",35gp,tool|musical instrument,,,,,,11,,,,"Ability: Charisma; Utilize: Play a known tune (DC 10) or improvise a song (DC 15)",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Lyre,,A small U-shaped frame of wood strung across an open soundbox.,30gp,tool|musical instrument,,,,,,11,,,,"Ability: Charisma; Utilize: Play a known tune (DC 10) or improvise a song (DC 15)",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Pan Flute,,A row of hollow pipes of graduated length bound together.,12gp,tool|musical instrument,,,,,,11,,,,"Ability: Charisma; Utilize: Play a known tune (DC 10) or improvise a song (DC 15)",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Shawm,,A double-reed wooden pipe with a flared bell.,2gp,tool|musical instrument,,,,,,1,,,,"Ability: Charisma; Utilize: Play a known tune (DC 10) or improvise a song (DC 15)",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)
+Viol,,"A bowed wooden instrument with a fretted neck, played upright on the knee.",30gp,tool|musical instrument,,,,,,1,,,,"Ability: Charisma; Utilize: Play a known tune (DC 10) or improvise a song (DC 15)",,PHB,+1 (uncommon); +2 (rare); +3 (very rare)

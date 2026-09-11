@@ -49,7 +49,7 @@ tools/              Standalone dev helpers (not part of the app)
 
 | File | Contents |
 |------|----------|
-| `items.js` | CSV parsing → `DEFAULT_ITEMS` (`loadDefaultItems`) |
+| `items.js` | CSV parsing → `DEFAULT_ITEMS` (`loadDefaultItems`); variant materialization |
 | `constants.js` | `CELL`, `GRID_COLS`, `RARITY_META`, `RARITY_ORDER`, `getDefaultEquipLayout` |
 | `state.js` | The `state` object and convenience accessors |
 | `folders.js` | Browse-list folders: model, per-browser persistence, folder modals |
@@ -206,6 +206,39 @@ stack. Read it through `stackSizeOf` / `isStackable` / `unitWeight` in
 `helpers.js`, never off the template directly — those helpers also translate the
 pre-`stackSize` `stackable` + `weightEach` pair still present in old saves and
 party data.
+
+### Item variants
+
+A row's `variants` column (e.g. `+1 (uncommon, 500gp); +2 (rare); +3`) is a
++1/+2/+3-style family sharing one base item — `parseVariantSpecs()` /
+`parseVariantSpec()` in `items.js`. Either half of a variant's parens, or the
+parens entirely, is optional: whatever's missing is inherited from the base
+row's own rarity/cost. A bare label with nothing in parens (`Ornate`) inherits
+both.
+
+- **A variant is materialized as a full item template of its own**
+  (`materializeVariants()`, run once after the CSV parse), named `"<base name>
+  <label>"` and appended to `DEFAULT_ITEMS` — so it lands in `state.db` and is
+  placeable, stashable and sellable exactly like any other item, with nothing
+  elsewhere needing to know it's derived. It carries `variantOf` (the base's id)
+  and `variantLabel`; the base carries `variantIds`, the list of what it made.
+  A variant's own `variantSpecs`/`variantIds` are empty — variants don't nest.
+  Because it lives in `DEFAULT_ITEMS`, `getCustomDb()`'s `!DEFAULT_ITEMS.find(…)`
+  filter already treats it as a default: never saved, rebuilt fresh on every load.
+- **A variant is never a top-level Browse entry.** `renderItemList()` filters
+  out anything with `variantOf` before sorting/foldering; `appendVariantRows()`
+  is what actually draws them, directly under the base's card, indented
+  (`.item-card-variant`), and only while that base's id is in
+  `expandedVariantIds` (session-only, like a folder's collapsed state).
+- **The dog-ear is the affordance and the toggle is on the whole card.**
+  `buildItemCard()` adds `.has-variants` and a corner `.item-card-variant-tag`
+  triangle whenever `variantIds` is non-empty; the card's existing click (the
+  one that starts placing the base item) also flips its id in
+  `expandedVariantIds` before that click's own `renderItemList()`, so one
+  rebuild shows both the placing highlight and the newly (un)folded family.
+- `folderItemCount()` excludes variants for the same reason the list does — its
+  count backs the delete-folder confirmation, which should match what the
+  folder visibly holds.
 
 ### Side panels
 

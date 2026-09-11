@@ -27,10 +27,17 @@ function costToCSVStr(cost) {
   return parts.join(' ');
 }
 
+function variantSpecToCSVStr(s) {
+  const parens = [];
+  if (s.rarity) parens.push(s.rarity.replace(/_/g, ' '));
+  if (s.cost) parens.push(s.cost);
+  return parens.length ? `${s.label} (${parens.join(', ')})` : s.label;
+}
+
 function exportItemsCSV() {
   const headers = ['name','rarity','description','cost','tags','damage','damageType',
                    'attunement','stackSize','image','shape','container','containerRows','containerCols',
-                   'properties','mastery','source'];
+                   'properties','mastery','source','variants'];
   const rows = [headers.join(',')];
   Object.values(state.db).forEach(t => {
     const shapeStr = isStackable(t) ? '1' : normalizeShape(t.shape).map(r => r.join('')).join('|');
@@ -52,6 +59,7 @@ function exportItemsCSV() {
       (t.properties || []).join(';'),
       t.mastery || '',
       t.source || '',
+      (t.variantSpecs || []).map(variantSpecToCSVStr).join('; '),
     ].map(csvField).join(','));
   });
   const blob = new Blob([rows.join('\n')], { type: 'text/csv' });

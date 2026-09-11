@@ -76,6 +76,7 @@
 #item-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
 
 .item-card {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -97,6 +98,33 @@
   background: color-mix(in srgb, var(--accent) 16%, var(--panel));
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
 }
+
+/* The corner flag on a card whose item has magic (or other) variants —
+   a folded-paper triangle, same trick as a dog-eared page. Filled in the
+   accent so it reads as "more here" without a label. */
+.item-card.has-variants { padding-right: 16px; }
+.item-card-variant-tag {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 14px 14px 0;
+  border-color: transparent var(--accent) transparent transparent;
+  border-top-right-radius: 2px;
+  pointer-events: none;
+}
+.item-card.variants-expanded .item-card-variant-tag {
+  border-right-color: var(--on-accent);
+}
+
+/* A variant card, nested under its base once expanded — indented and a touch
+   quieter, so the family reads as one group rather than more top-level items.
+   Stacks on top of (rather than replacing) the foldered list's own 10px
+   indent — see #item-list.foldered .item-card below. */
+.item-card.item-card-variant { margin-left: 16px; opacity: 0.92; }
+#item-list.foldered .item-card.item-card-variant { margin-left: 26px; }
 
 .item-card-swatch {
   width: 10px;
