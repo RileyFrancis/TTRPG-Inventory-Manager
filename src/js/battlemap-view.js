@@ -54,6 +54,7 @@ let mapPan = null;      // { sx, sy, camX, camY }
 let mapTokenDrag = null;// { id, x, y, dx, dy, moved }
 let mapDrawing = null;  // { tool, x0, y0, x1, y1 }
 let mapGridDrag = null; // { mode, held, pivot, sx, sy, grid0, grid, moved }
+let mapErasing = false; // the Erase tool's button is held — every point the cursor crosses is wiped
 
 const MAP_MIN_SCALE = 0.05;
 const MAP_MAX_SCALE = 8;
@@ -161,6 +162,7 @@ function onMapViewHidden() {
   if (!mapOpen) return;
   mapOpen = false;
   mapPan = mapTokenDrag = mapDrawing = mapGridDrag = null;
+  mapErasing = false;
   mapSelectedTokenId = null;
   setInitiativeHover(null);
   syncGridHint();
@@ -868,7 +870,7 @@ function onMapPointerDown(e) {
   if (e.button === 1 || e.button === 2) { mapPan = { sx: e.clientX, sy: e.clientY, camX: mapCam.x, camY: mapCam.y }; return; }
   if (e.button !== 0) return;
 
-  if (mapTool === 'erase') { eraseMapPieceAt(map, w); return; }
+  if (mapTool === 'erase') { mapErasing = true; eraseMapPieceAt(map, w); return; }
 
   // Grid tool: a corner or edge magnifies about the point opposite, anywhere
   // else slides the whole grid (it runs over the whole picture, so the whole
@@ -932,6 +934,8 @@ function onMapPointerMove(e) {
     return;
   }
 
+  if (mapErasing) { eraseMapPieceAt(map, w); drawBattlemap(); return; }
+
   if (mapTokenDrag) {
     let nx = w.x + mapTokenDrag.dx;
     let ny = w.y + mapTokenDrag.dy;
@@ -991,6 +995,7 @@ function onMapPointerUp(e) {
   if (mapCanvas.hasPointerCapture(e.pointerId)) mapCanvas.releasePointerCapture(e.pointerId);
   const map = viewedMap();
   mapPan = null;
+  mapErasing = false;
 
   // The grid is written once, on release — a write per pointermove would be a
   // write per move into a database every other member is reading.
@@ -1128,7 +1133,7 @@ const MAP_MODES = [
   { id: 'fog-show',  label: 'Reveal',      hint: 'The players can always see the region' },
   { id: 'elev',      label: 'Height',      hint: 'A raised or lowered zone — set its height (ft from the base map) in the box, or right-click a zone to change it' },
 ];
-const MAP_ERASE_TOOL = { id: 'erase', label: 'Erase', hint: 'Click a wall, a fog edit, or an elevation region to remove it' };
+const MAP_ERASE_TOOL = { id: 'erase', label: 'Erase', hint: 'Click, or hold and drag, over a wall, a fog edit, or an elevation region to remove it' };
 
 // The height a freshly drawn Height zone starts at — only on the strip while the
 // Height tool is up. Existing zones are re-set by right-clicking them on the map
@@ -1229,9 +1234,12 @@ function renderMapToolbar() {
   buildToolGroup(MAP_STANDALONE_TOOLS.filter(t => !t.gm || gm), mapTool, id => { mapTool = id; });
   if (gm) {
     // Picking a shape or a mode is also picking "I want to draw" — see
-    // mapShape/mapMode at the top of this file.
-    buildToolGroup(MAP_SHAPES, mapShape, id => { mapShape = id; mapTool = 'draw'; });
-    buildToolGroup(MAP_MODES, mapMode, id => { mapMode = id; mapTool = 'draw'; });
+    // mapShape/mapMode at the top of this file. Their buttons only read as
+    // "selected" while draw is actually the live tool — switching to
+    // Select/Grid/Erase must not leave every group looking chosen at once.
+    const drawActive = mapTool === 'draw';
+    buildToolGroup(MAP_SHAPES, drawActive ? mapShape : null, id => { mapShape = id; mapTool = 'draw'; });
+    buildToolGroup(MAP_MODES, drawActive ? mapMode : null, id => { mapMode = id; mapTool = 'draw'; });
     if (mapMode === 'elev' && mapTool === 'draw') tools.appendChild(buildElevHeightBox());
     buildToolGroup([MAP_ERASE_TOOL], mapTool, id => { mapTool = id; });
   }
