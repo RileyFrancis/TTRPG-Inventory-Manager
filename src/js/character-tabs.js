@@ -259,5 +259,11 @@ document.addEventListener('keydown', e => {
   if (e.key.length === 1 && e.key >= '1' && e.key <= '9') {
     closeCharacterTabMenu();
     showCharacterAt(Number(e.key) - 1);
+    return;
+  }
+
+  if ((e.key === 'm' || e.key === 'M') && state.view !== 'map' && mapForViewer()) {
+    closeCharacterTabMenu();
+    openBattlemap();
   }
 });
