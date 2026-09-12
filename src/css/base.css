@@ -29,6 +29,36 @@ body::after {
     repeating-linear-gradient(115deg, var(--grain-a) 0 1px, transparent 1px 11px);
 }
 
+/* ─── LOADING SCREEN ─────────────────────────────────────── */
+/* Sits above everything (even modals — nothing else is up yet) while the
+   boot-time blocking loads run. Faded and removed by hideLoadingScreen() in
+   main.js. */
+#loading-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  transition: opacity 0.4s ease;
+}
+#loading-screen.loading-done {
+  opacity: 0;
+  pointer-events: none;
+}
+/* Drawn straight on --bg, so its ink is --on-bg like everything else that sits
+   directly on the ground rather than a panel. */
+#loading-screen .ico-d20 {
+  font-size: 64px;
+  color: var(--on-bg);
+  animation: loading-breathe 2.6s ease-in-out infinite;
+}
+@keyframes loading-breathe {
+  0%, 100% { transform: scale(0.9); opacity: 0.6; }
+  50%      { transform: scale(1.08); opacity: 1; }
+}
+
 /* Display face for anything that should feel lettered rather than typed */
 h1, h2, h3,
 #char-name-display,

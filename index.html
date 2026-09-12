@@ -61,6 +61,14 @@
 </head>
 <body>
 
+<!-- Covers the app while the boot-time synchronous loads run (items.csv,
+     classes.json, species.json — all blocking XHRs, see items.js /
+     class-features.js / species-traits.js). init() in main.js fades and
+     removes it once the first render is on screen. -->
+<div id="loading-screen" aria-hidden="true">
+  <span class="ico ico-d20"></span>
+</div>
+
 <!-- Glows around the whole viewport while it is the reader's turn in a battle
      map's initiative order — a fixed overlay, not part of #app, so it lays over
      everything and never displaces a thing. Toggled by syncMyTurnBorder() in

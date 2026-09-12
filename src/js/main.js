@@ -21,6 +21,16 @@ function loadAppVersion() {
     .catch(() => { /* no VERSION file — the footer simply stays empty */ });
 }
 
+// Fades and removes the boot-time loading screen. Matches the dice flight's
+// pattern (see CLAUDE.md § Dice) — transitionend doesn't fire in a background
+// tab, so the timeout, not the event, is what actually clears it.
+function hideLoadingScreen() {
+  const el = document.getElementById('loading-screen');
+  if (!el) return;
+  el.classList.add('loading-done');
+  setTimeout(() => el.remove(), 450);
+}
+
 // =============================================================================
 // INITIALIZATION
 // =============================================================================
@@ -43,6 +53,7 @@ function init() {
   maybeOpenHomeAtBoot();
   initFirebase();
   initAuth();       // restores a previous session, which then starts cloud sync
+  hideLoadingScreen();
 }
 
 init();
