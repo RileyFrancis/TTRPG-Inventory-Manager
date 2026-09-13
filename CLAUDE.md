@@ -230,12 +230,18 @@ both.
   is what actually draws them, directly under the base's card, indented
   (`.item-card-variant`), and only while that base's id is in
   `expandedVariantIds` (session-only, like a folder's collapsed state).
-- **The dog-ear is the affordance and the toggle is on the whole card.**
+- **The dog-ear is the affordance and the toggle is the whole card's click —
+  and, on a card with variants, the *only* thing that click does.**
   `buildItemCard()` adds `.has-variants` and a corner `.item-card-variant-tag`
-  triangle whenever `variantIds` is non-empty; the card's existing click (the
-  one that starts placing the base item) also flips its id in
-  `expandedVariantIds` before that click's own `renderItemList()`, so one
-  rebuild shows both the placing highlight and the newly (un)folded family.
+  triangle whenever `variantIds` is non-empty; clicking such a card flips its
+  id in `expandedVariantIds` and re-renders, rather than placing the base item
+  or opening its details — a family's card is a fold to open, not a pick.
+- **The base item leads its own unfolded family.** `appendVariantRows()`
+  inserts a row for the base itself (`buildItemCard(t, { indent: true })`)
+  before its variants, so the plain item is still reachable once its card has
+  stopped being clickable-to-place. `opts.indent` is what tells
+  `buildItemCard()` to render as an ordinary indented row — no dog-ear, click
+  starts placing — even though `t.variantIds` is non-empty.
 - `folderItemCount()` excludes variants for the same reason the list does — its
   count backs the delete-folder confirmation, which should match what the
   folder visibly holds.

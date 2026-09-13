@@ -131,13 +131,15 @@ function buildFolderHeader(group, expanded, searchLocked) {
   return el;
 }
 
-function buildItemCard(t) {
+function buildItemCard(t, opts = {}) {
   const card = document.createElement('div');
   card.className = 'item-card';
   card.dataset.templateId = t.id;
   if (state.placing && state.placing.templateId === t.id) card.classList.add('placing');
-  if (t.variantOf) card.classList.add('item-card-variant');
-  const hasVariants = !!t.variantIds?.length;
+  if (t.variantOf || opts.indent) card.classList.add('item-card-variant');
+  // opts.indent means this is the base's own row, nested under its dog-ear —
+  // it must behave like a plain placeable item there, not a second toggle.
+  const hasVariants = !!t.variantIds?.length && !opts.indent;
   if (hasVariants) {
     card.classList.add('has-variants');
     if (expandedVariantIds.has(t.id)) card.classList.add('variants-expanded');
@@ -235,12 +237,15 @@ function buildItemCard(t) {
       document.body.style.userSelect = '';
       stopDragAutoScroll();
       if (!dragging) {
-        // A dog-eared card also unfolds its variants, right where it sits —
-        // toggled before startPlacing's own renderItemList() so one rebuild
-        // shows both the placing highlight and the new expanded state.
+        // A dog-eared card's click is the fold toggle, full stop — it never
+        // places the base item or opens its details. The base item itself is
+        // reached as the first row of the unfolded family (see
+        // appendVariantRows), where it's a plain card like any variant.
         if (hasVariants) {
           if (expandedVariantIds.has(tid)) expandedVariantIds.delete(tid);
           else expandedVariantIds.add(tid);
+          renderItemList();
+          return;
         }
         // Treat as click → enter placing mode as before
         startPlacing(tid);
@@ -307,8 +312,15 @@ function buildItemCard(t) {
 // A base item's variants, indented directly beneath its card — only while
 // its dog-ear tag has it expanded. Full cards, not a stripped-down row, so a
 // variant drags, places, and tooltips exactly like any other item.
+//
+// The base item leads the list as a row of itself (opts.indent) — its own
+// card no longer places it (see buildItemCard's click handler), so the plain,
+// unenhanced item has to be reachable somewhere once the family is unfolded.
 function appendVariantRows(listEl, t, folderId) {
   if (!t.variantIds?.length || !expandedVariantIds.has(t.id)) return;
+  const selfCard = buildItemCard(t, { indent: true });
+  if (folderId) selfCard.dataset.folderId = folderId;
+  listEl.appendChild(selfCard);
   t.variantIds.forEach(vid => {
     const variant = state.db[vid];
     if (!variant) return;
