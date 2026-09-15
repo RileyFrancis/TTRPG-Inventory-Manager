@@ -95,7 +95,8 @@
 }
 #inventory-panel.sheet-view #grid-scroll,
 #inventory-panel.sheet-view #stash-section,
-#inventory-panel.sheet-view #container-tabs { display: none; }
+#inventory-panel.sheet-view #container-tabs,
+#inventory-panel.sheet-view #spell-sheet { display: none; }
 
 /* `auto` on the sides keeps it centred; the block margin comes from
    `.paper-sheet`, whose torn edge needs the room. */

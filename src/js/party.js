@@ -811,7 +811,7 @@ function updateViewingBanner() {
 
   // The map is the party's, not this player's — the banner names the view the
   // reader is handed back rather than claiming they are editing a board.
-  const what = { sheet: 'character sheet', map: 'inventory' }[state.view] || 'inventory';
+  const what = { sheet: 'character sheet', spells: 'spell sheet', map: 'inventory' }[state.view] || 'inventory';
   if (state.party.role === 'gm') {
     textEl.textContent = `Editing ${name}'s ${what}`;
     returnBtn.textContent = 'Deselect Player';

@@ -40,6 +40,7 @@ function openCharModal(targetId = null, { isNew = false } = {}) {
   document.getElementById('char-background-input').value = c.background ?? '';
   document.getElementById('char-alignment-input').value  = c.alignment ?? '';
   document.getElementById('char-level-input').value      = c.level ?? 1;
+  document.getElementById('char-spells-input').checked   = spellSheetEnabled(c);
   document.getElementById('save-char-btn').textContent   = charModalIsNew ? 'Create' : 'Save';
 
   // A copy, not the character's own array — nothing here may reach the model
@@ -71,6 +72,7 @@ function readCharModalFields(current) {
     alignment: document.getElementById('char-alignment-input').value.trim(),
     classLevels: charModalClasses,
     level: Number.isFinite(level) ? level : (current?.level ?? 1),
+    spellsEnabled: document.getElementById('char-spells-input').checked,
   };
 }
 

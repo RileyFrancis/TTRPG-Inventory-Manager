@@ -70,6 +70,7 @@ const HIT_DICE = ['d6', 'd8', 'd10', 'd12'];
 function defaultSheetFields() {
   return {
     background: '', alignment: '', subclass: '', xp: 0, size: 'Medium',
+    spellsEnabled: true, // whether the Spell Sheet view is offered at all — see spells.js
     ac: 10, speed: 30,
     hp: { current: 0, max: 0, temp: 0 },
     hitDice: { die: 'd8', max: 1, spent: 0 },

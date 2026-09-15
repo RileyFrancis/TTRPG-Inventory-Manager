@@ -4,10 +4,11 @@
 'use strict';
 
 // One tab per character you can look at (your own, plus every party member).
-// Clicking a tab opens a two-item menu — sheet or inventory. Which character is
-// shown is `state.party.viewingPlayerId` (shared with the Party panel); which
-// view is `state.view`. Neither is saved. `syncCharacterViewUI()` is the single
-// entry point for "who or what we're looking at changed".
+// Clicking a tab opens a menu of that character's views — sheet, spell sheet
+// (when they have not turned it off), inventory. Which character is shown is
+// `state.party.viewingPlayerId` (shared with the Party panel); which view is
+// `state.view`. Neither is saved. `syncCharacterViewUI()` is the single entry
+// point for "who or what we're looking at changed".
 
 const charTabsEl    = document.getElementById('character-tabs');
 const charTabMenuEl = document.getElementById('char-tab-menu');
@@ -132,6 +133,27 @@ function updateCharacterTabMenuState() {
   charTabMenuEl.querySelectorAll('.char-view-btn').forEach(b => {
     b.classList.toggle('active', onShownCharacter && b.dataset.view === state.view);
   });
+  // The Spell Sheet option is per CHARACTER, not per app — a tab whose
+  // character turned it off in Character Setup does not offer it.
+  document.getElementById('char-view-spells-btn')
+    .classList.toggle('hidden', !spellsEnabledForTabKey(openTabMenuKey));
+}
+
+// The character behind a given tab, without switching to it — used only to
+// ask spellSheetEnabled() of it. Mirrors characterTabList()'s own reasoning
+// for the own-tab's name while viewing someone else.
+function characterForTabKey(key) {
+  if (key === OWN_TAB) {
+    const { active, role, players, playerId, viewingPlayerId } = state.party;
+    return (active && role === 'player' && viewingPlayerId !== null)
+      ? players[playerId]?.character
+      : state.character;
+  }
+  return state.party.players[key]?.character;
+}
+
+function spellsEnabledForTabKey(key) {
+  return spellSheetEnabled(characterForTabKey(key));
 }
 
 charTabMenuEl.querySelectorAll('.char-view-btn').forEach(btn => {
@@ -157,7 +179,7 @@ document.addEventListener('keydown', e => {
 // SWITCHING
 // =============================================================================
 // Picking from a tab's menu can change both halves of the selection at once:
-// whose character it is, and which of their two views to show.
+// whose character it is, and which of their views to show.
 function selectCharacterView(key, view) {
   if (key === OWN_TAB) {
     if (state.party.viewingPlayerId !== null) switchViewToOwn();
@@ -169,7 +191,7 @@ function selectCharacterView(key, view) {
 
 // The battle map is not a view OF a character, so it is never reached from a
 // tab's menu — only from the corner button and the Maps pane.
-const INVENTORY_VIEWS = ['inventory', 'sheet', 'map'];
+const INVENTORY_VIEWS = ['inventory', 'sheet', 'spells', 'map'];
 
 function setInventoryView(view) {
   state.view = INVENTORY_VIEWS.includes(view) ? view : 'inventory';
@@ -187,14 +209,21 @@ function hasViewedCharacter() {
 function syncCharacterViewUI() {
   const showMap = mapViewIsShowing();
   const showSheet = !showMap && state.view === 'sheet' && hasViewedCharacter();
+  // Also refused once the character on screen has turned it off — a state.view
+  // left over from before it was disabled falls back to the inventory, exactly
+  // like a GM's leftover 'sheet' does above.
+  const showSpells = !showMap && state.view === 'spells' && hasViewedCharacter()
+    && spellSheetEnabled(state.character);
   const panel = document.getElementById('inventory-panel');
   panel.classList.toggle('map-view', showMap);
   panel.classList.toggle('sheet-view', showSheet);
+  panel.classList.toggle('spell-view', showSpells);
   // Arriving back at the inventory is where a Strength typed on the sheet
   // finally resizes the grid (the deferred resize in grid.js) — costs nothing
   // when nothing was edited.
-  if (!showSheet && !showMap) rebuildGridIfSizeDirty();
+  if (!showSheet && !showSpells && !showMap) rebuildGridIfSizeDirty();
   if (showSheet) renderCharacterSheet();
+  if (showSpells) renderSpellSheet();
   // The canvas has no size until the panel is showing it; both halves are
   // no-ops when nothing changed.
   if (showMap) onMapViewShown(); else onMapViewHidden();
@@ -207,9 +236,10 @@ function syncCharacterViewUI() {
 // =============================================================================
 // KEYBOARD SHORTCUTS
 // =============================================================================
-// Tab flips the two views of whoever is shown; Shift+Tab walks to the next
-// character; 1–9 walk by absolute position. Off while typing, while a modal is
-// up, and mid-drag (a character swap would strand the dragged item).
+// Tab walks the views of whoever is shown (`ownViewCycle()`); Shift+Tab walks
+// to the next character; 1–9 walk by absolute position. Off while typing,
+// while a modal is up, and mid-drag (a character swap would strand the
+// dragged item).
 function characterShortcutsAllowed(e) {
   if (e.ctrlKey || e.altKey || e.metaKey) return false;
   const t = e.target;
@@ -220,11 +250,21 @@ function characterShortcutsAllowed(e) {
   return state.mode === 'idle';
 }
 
+// Inventory, then the sheet, then the spell sheet if this character has not
+// turned it off — Tab walks this ring one step at a time.
+function ownViewCycle() {
+  return spellSheetEnabled(state.character)
+    ? ['inventory', 'sheet', 'spells']
+    : ['inventory', 'sheet'];
+}
+
 function toggleInventoryView() {
   if (!hasViewedCharacter()) return; // a GM with nobody picked has no sheet to show
   // From the map, this key means "back to the character", not "the other page".
   if (state.view === 'map') { setInventoryView('inventory'); return; }
-  setInventoryView(state.view === 'sheet' ? 'inventory' : 'sheet');
+  const cycle = ownViewCycle();
+  const at = cycle.indexOf(state.view);
+  setInventoryView(cycle[(Math.max(at, 0) + 1) % cycle.length]);
 }
 
 // Keeps the current view (this half is about WHO). From the board, though, it

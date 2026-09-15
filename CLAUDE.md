@@ -29,6 +29,8 @@ data/items.csv      Default item database, loaded at startup
 data/_item_dtypes.csv  Reference only — the allowed values for each items.csv column
 data/classes.json   The classes the app knows, and the features each grants
 data/species.json   The species the app knows, and the traits each grants
+data/spell-slots.json  Spell slots granted per class, indexed by that class's level
+data/spells.json    The spells the app knows, each tagged with the classes that cast it
 img/                Image assets (icon set, paper texture)
 functions/          Cloudflare Pages Function serving Firebase keys on a deploy
 tools/              Standalone dev helpers (not part of the app)
@@ -82,6 +84,7 @@ tools/              Standalone dev helpers (not part of the app)
 | `sheet-layout.js` | The sheet's sections as widgets: split tree, drag-to-tile, seams |
 | `class-features.js` | The class registry, and the Class Features section |
 | `species-traits.js` | The species registry, and the Species Traits section |
+| `spells.js` | The spell-slot and spell registries, and the Spell Sheet view |
 | `markdown.js` | Markdown → HTML for the written sections, and the sanitizer |
 | `sheet-prose.js` | Backstory & Appearance: the editor/preview swap |
 | `equipment.js` | Equip slots, layout editor, equip/unequip |
@@ -114,6 +117,7 @@ one that owns the element wins.
 | `sheet-layout.css` | The sheet's split containers, resize seams, drop feedback |
 | `class-features.css` | Feature cards, corner badges, Markdown in a description — Class Features *and* Species Traits |
 | `sheet-prose.css` | The written sections: the bar, the editor, the rendered prose |
+| `spells.css` | The Spell Sheet view: slot tiles, spell cards |
 | `party.css` | Party header badge, the sidebar Party tab, kick |
 | `campaigns.css` | The home screen's Campaigns section, its cards, the campaign modal |
 | `equipment.css` | The equip rack, the left-panel tabs, the layout editor |
@@ -158,7 +162,7 @@ state.leftTab     'equip' | 'shop' | 'map'
 state.shopOpenId  shopId | null                     (null = the list of shops)
 state.mapLibraryOpenId  mapId | null                (null = the list of maps)
 state.auth        { user, ready }
-state.view        'inventory' | 'sheet' | 'map'
+state.view        'inventory' | 'sheet' | 'spells' | 'map'
 state.mode        'idle' | 'placing' | 'dragging'
 state.placing     { templateId, rotation }
 state.dragging    { instanceId, anchorRow, anchorCol, origRow, origCol, origRotation }
@@ -338,6 +342,7 @@ showing:
 ```
 inventory view    Browse · Details · Party
 sheet view        Chat · Dice · Party
+spells view       Chat · Dice · Party      (the same three — see below)
 map view          Chat · Dice · Party      (the same three, deliberately)
 ```
 
@@ -349,8 +354,9 @@ with a null in it rather than two flat lists.
   raw field would strand them on Chat/Dice with no **Browse** (the pane they
   stock shops from). It reproduces the `showSheet` test `syncCharacterViewUI()`
   uses for `.sheet-view`.
-- **The battle map answers `'sheet'`** rather than earning a third row — the
-  question is "which panes belong beside it", and that is Chat, Dice, Party.
+- **The battle map, and the spell sheet, both answer `'sheet'`** rather than
+  earning their own row — the question is "which panes belong beside it", and
+  for every view of a character (or the board) that is Chat, Dice, Party.
 - **Asking for a tab is asking for the view it lives in.** A shop entry clicked
   from the character sheet calls `switchTab('details')`; the honest answer is to
   show the item, which means going where items are shown. That one line in
@@ -1016,6 +1022,10 @@ character on screen.
 - Class, subclass, species and alignment are free text with a `<datalist>` hint,
   never a constraint (`ALIGNMENTS` offers the nine). Each row mints its own
   subclass list.
+- **`char-spells-input`** is the one field here that is not about what the
+  character *is* — it is whether their Spell Sheet tab shows at all
+  (`spellsEnabled`, read by `spells.js`). It sits beside the class rows because
+  this is the one modal every path to editing a character goes through.
 
 ### The character sheet
 
@@ -1263,6 +1273,46 @@ mechanism and gathers both sets; `speciesUnlockKeys()` /
   and unknown* one disables the mechanism.
 - No species uses `unlocks` today — a Lineage field is the obvious next one.
 
+### Spells
+
+A character's third view, alongside the inventory and the sheet — not a section
+*within* the sheet, because a spell list and a slot count answer "what can I
+cast right now", not "what am I". `src/js/spells.js`.
+
+- **Two small registries**, same shape as classes/species:
+  `data/spell-slots.json` (`{ classes: [{ name, slotsByLevel: { "<class
+  level>": [nine numbers, spell levels 1–9] } }] }`) and `data/spells.json`
+  (`{ spells: [{ id, name, level (0 = cantrip), school, castingTime, range,
+  components, duration, classes: [...], description }] }`). A spell's
+  `description` is **plain text**, not Markdown — unlike a class feature's, it
+  is never user-authored.
+- **Classes are matched by name**, exactly the way `class-features.js` matches
+  a character's `classLevels` — a class with no entry in `spell-slots.json`
+  grants no spells at all, the same way an unknown class shows no features.
+  `spellcastingEntriesOf()` is that filter: the character's classes that
+  *this app* knows cast spells, each read at **that class's own level**
+  (`characterClassLevel()`'s idea, applied here directly off the entry).
+- **Combining multiple spellcasting classes is a plain sum**, not the rules'
+  own multiclass slot table (which blends caster levels before consulting one
+  shared table) — `combinedSpellSlots()` says so in its own comment. A
+  deliberate simplification for a small, content-driven feature.
+- **A cantrip needs no slot** — knowing a matching class is enough
+  (`spellAvailableTo()`). A leveled spell needs the character's own
+  highest reachable spell level, off that class's slots, to be at least the
+  spell's level.
+- **Off is a per-character choice, not a global one.** `character.spellsEnabled`
+  (default **on** — a missing field, from before this existed, reads as
+  enabled) is a Character Setup checkbox, read by `spellSheetEnabled()`.
+  Turning it off removes the option from that character's tab menu and from
+  Tab's cycle (see *Character tabs*) — it does not touch the data underneath.
+- **Rendering is signature-gated** like `classFeaturesSig` — `renderSpellSheet()`
+  only rebuilds when the character's classes or levels have actually changed,
+  not on every roster-sync repaint.
+- `#spell-sheet` is a **third view of the middle panel**, `.spell-view` on
+  `#inventory-panel` — see *Character tabs* for how it is reached and *The
+  character sheet* / battlemap.css for the sibling views it shares the
+  panel-swap pattern with.
+
 ### The written sections
 
 Backstory & Personality and Appearance: `src/js/sheet-prose.js` (the sections),
@@ -1313,18 +1363,26 @@ place in the app that turns a string into markup.
 ### Character tabs
 
 The strip above the inventory (`character-tabs.js`) holds one tab per character
-(your own, plus every party member). Clicking one opens a two-item menu.
+(your own, plus every party member). Clicking one opens a menu of that
+character's views — Character Sheet, Spell Sheet (when that character has not
+turned it off), Inventory.
 
 - **Which** character is shown is `state.party.viewingPlayerId` (shared with the
   Party panel); **which view** is `state.view`. Neither is saved.
 - `syncCharacterViewUI()` is the single entry point for "who or what we're
   looking at changed". `updatePartyPanel()` calls it.
-- The sheet/inventory swap is one class, `sheet-view` on `#inventory-panel`.
+- **The Spell Sheet option is per character, not per app.** `#char-view-spells-btn`
+  is hidden whenever `spellsEnabledForTabKey()` — asked of whichever tab's menu
+  is open, without switching to it — says that character's own `spellsEnabled`
+  is off. See *Spells*.
+- The sheet/inventory swap is one class per view (`sheet-view` / `spell-view` on
+  `#inventory-panel`) — see *Spells* for the third.
 - A GM has no own-tab and no active tab until they pick a player.
-- One key per half of the selection: **Tab** flips the shown character between
-  its two views, **Shift+Tab** walks to the next tab, **1–9** jump by position.
-  Suppressed while typing, while any modal is open, and unless `state.mode ===
-  'idle'` (`characterShortcutsAllowed`).
+- One key per half of the selection: **Tab** walks the shown character's own
+  view ring (`ownViewCycle()`: inventory → sheet → spells, skipping spells
+  when that character has turned it off), **Shift+Tab** walks to the next tab,
+  **1–9** jump by position. Suppressed while typing, while any modal is open,
+  and unless `state.mode === 'idle'` (`characterShortcutsAllowed`).
 
 ### Coins
 

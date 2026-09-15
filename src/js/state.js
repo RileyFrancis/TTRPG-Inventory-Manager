@@ -43,7 +43,7 @@ const state = {
   battlemap: { activeId: null, maps: {} }, // read-through cache of parties/<code>/battlemap
   mapLibraryOpenId: null, // which map the GM has open in their library pane
 
-  view: 'inventory',      // 'inventory' | 'sheet' | 'map' — WHICH character is state.party.viewingPlayerId
+  view: 'inventory',      // 'inventory' | 'sheet' | 'spells' | 'map' — WHICH character is state.party.viewingPlayerId
   activeContainer: null,  // null = main inventory, instanceId = that container's interior
   containerGrids: {},     // { [instanceId]: 2D array }
 

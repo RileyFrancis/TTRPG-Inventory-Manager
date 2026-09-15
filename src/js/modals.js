@@ -4,8 +4,8 @@
 'use strict';
 
 // The sidebar shows the tabs that belong to what the inventory panel is showing:
-//   inventory view   Browse · Details · Party
-//   sheet / map view Chat · Dice · Party
+//   inventory view            Browse · Details · Party
+//   sheet / spells / map view Chat · Dice · Party
 // Party is in both, hence a map with a null rather than two flat lists.
 // See CLAUDE.md § The sidebar's tabs.
 const SIDEBAR_TAB_VIEW = {
@@ -24,10 +24,13 @@ function sidebarTabView(name) {
 // What the inventory panel is actually showing, which is not always
 // `state.view`: a GM who deselects a player keeps `state.view === 'sheet'` while
 // the panel falls back to the placeholder. The battle map answers 'sheet' — the
-// panes beside a board are Chat, Dice and Party, not a third row.
+// panes beside a board are Chat, Dice and Party, not a third row. The spell
+// sheet answers 'sheet' for the same reason — it is a view of a character, not
+// a fourth row of tabs.
 function sidebarView() {
   if (mapViewIsShowing()) return 'sheet';
-  return (state.view === 'sheet' && hasViewedCharacter()) ? 'sheet' : 'inventory';
+  const onCharacterView = state.view === 'sheet' || state.view === 'spells';
+  return (onCharacterView && hasViewedCharacter()) ? 'sheet' : 'inventory';
 }
 
 function sidebarTabAvailable(name) {

@@ -64,7 +64,8 @@
 #inventory-panel.map-view #grid-scroll,
 #inventory-panel.map-view #stash-section,
 #inventory-panel.map-view #container-tabs,
-#inventory-panel.map-view #character-sheet { display: none; }
+#inventory-panel.map-view #character-sheet,
+#inventory-panel.map-view #spell-sheet { display: none; }
 
 /* The map belongs to the table rather than to a character, so a GM with nobody
    selected is allowed to be looking at one — and the placeholder that otherwise
