@@ -267,6 +267,23 @@ function toggleInventoryView() {
   setInventoryView(cycle[(Math.max(at, 0) + 1) % cycle.length]);
 }
 
+// C / I / S jump straight to a view of whoever is shown, rather than stepping
+// ownViewCycle() one place at a time. Same refusals as that cycle: no sheet/
+// spell sheet for a GM with nobody picked, no spell sheet once turned off.
+function openCharacterSheetView() {
+  if (!hasViewedCharacter()) return;
+  setInventoryView('sheet');
+}
+
+function openInventoryView() {
+  setInventoryView('inventory');
+}
+
+function openSpellSheetView() {
+  if (!hasViewedCharacter() || !spellSheetEnabled(state.character)) return;
+  setInventoryView('spells');
+}
+
 // Keeps the current view (this half is about WHO). From the board, though, it
 // means leave the board.
 function showCharacterAt(index) {
@@ -305,5 +322,23 @@ document.addEventListener('keydown', e => {
   if ((e.key === 'm' || e.key === 'M') && state.view !== 'map' && mapForViewer()) {
     closeCharacterTabMenu();
     openBattlemap();
+    return;
+  }
+
+  if (e.key === 'c' || e.key === 'C') {
+    closeCharacterTabMenu();
+    openCharacterSheetView();
+    return;
+  }
+
+  if (e.key === 'i' || e.key === 'I') {
+    closeCharacterTabMenu();
+    openInventoryView();
+    return;
+  }
+
+  if (e.key === 's' || e.key === 'S') {
+    closeCharacterTabMenu();
+    openSpellSheetView();
   }
 });
