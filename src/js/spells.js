@@ -183,6 +183,28 @@ function spellSheetEnabled(character) {
   return character?.spellsEnabled !== false;
 }
 
+// Whether a spell is on the character's own list, kept separately from
+// availability: `spellAvailableTo()` answers "could this character ever cast
+// it", this answers "have they actually picked it" for the Available Spells
+// panel's toggle and #spell-list's own filter.
+function isSpellKnown(character, spellId) {
+  return Array.isArray(character?.knownSpells) && character.knownSpells.includes(spellId);
+}
+
+// The panel's whole write path — a card's click, nothing else touches
+// `knownSpells`. Guarded the way every other character edit is
+// (`isReadOnly()`), since a picker card is a button, not an `<input>`
+// `renderCharacterSheet()` can just disable.
+function toggleKnownSpell(spellId) {
+  if (isReadOnly()) return;
+  const known = Array.isArray(state.character.knownSpells) ? state.character.knownSpells.slice() : [];
+  const at = known.indexOf(spellId);
+  if (at === -1) known.push(spellId); else known.splice(at, 1);
+  state.character.knownSpells = known;
+  renderSpellSheetContent(); // bypasses the signature gate — classes/level didn't change
+  debouncedSync();
+}
+
 // =============================================================================
 // THE SECTION
 // =============================================================================
@@ -196,25 +218,35 @@ function spellSheetSignature() {
 }
 
 function renderSpellSheet() {
-  const slotsBox = document.getElementById('spell-slots');
-  const listBox = document.getElementById('spell-list');
-  if (!slotsBox || !listBox) return;
-
   const sig = spellSheetSignature();
   if (sig === spellSheetSig) return;
   spellSheetSig = sig;
+  renderSpellSheetContent();
+}
+
+// The actual draw, split out from the signature gate above so
+// `toggleKnownSpell()` can force a repaint on every click — picking a spell
+// changes nothing the signature watches (classes/level).
+function renderSpellSheetContent() {
+  const slotsBox = document.getElementById('spell-slots');
+  const listBox = document.getElementById('spell-list');
+  const pickerBox = document.getElementById('spell-picker-list');
+  if (!slotsBox || !listBox || !pickerBox) return;
 
   const character = state.character;
   const entries = spellcastingEntriesOf(character);
 
   slotsBox.textContent = '';
   listBox.textContent = '';
+  pickerBox.textContent = '';
 
   if (!entries.length) {
     const names = classEntriesOf(character).map(e => e.name);
-    listBox.appendChild(spellNote(names.length
+    const note = names.length
       ? `No known spellcasting class among ${names.map(n => `“${n}”`).join(', ')}.`
-      : 'Add a class in Character Setup to see its spells.'));
+      : 'Add a class in Character Setup to see its spells.';
+    listBox.appendChild(spellNote(note));
+    pickerBox.appendChild(spellNote(note));
     return;
   }
 
@@ -225,19 +257,35 @@ function renderSpellSheet() {
     slotsBox.appendChild(spellNote('No spell slots yet — cantrips only.'));
   }
 
-  const spells = spellsForCharacter(character, entries);
-  if (!spells.length) {
+  const available = spellsForCharacter(character, entries);
+  if (!available.length) {
     listBox.appendChild(spellNote('No spells known at this level yet.'));
+    pickerBox.appendChild(spellNote('No spells known at this level yet.'));
     return;
   }
 
-  let lastLevel = null;
-  spells.forEach(spell => {
-    if (spell.level !== lastLevel) {
-      lastLevel = spell.level;
-      listBox.appendChild(spellLevelHeading(spell.level));
+  const known = available.filter(s => isSpellKnown(character, s.id));
+  if (!known.length) {
+    listBox.appendChild(spellNote('Nothing picked yet — choose from Available Spells.'));
+  } else {
+    let lastLevel = null;
+    known.forEach(spell => {
+      if (spell.level !== lastLevel) {
+        lastLevel = spell.level;
+        listBox.appendChild(spellLevelHeading(spell.level));
+      }
+      listBox.appendChild(spellCard(spell));
+    });
+  }
+
+  const readOnly = isReadOnly();
+  let pickerLastLevel = null;
+  available.forEach(spell => {
+    if (spell.level !== pickerLastLevel) {
+      pickerLastLevel = spell.level;
+      pickerBox.appendChild(spellLevelHeading(spell.level));
     }
-    listBox.appendChild(spellCard(spell));
+    pickerBox.appendChild(spellPickerCard(spell, isSpellKnown(character, spell.id), readOnly));
   });
 }
 
@@ -301,6 +349,31 @@ function spellCard(spell) {
   desc.textContent = spell.description;
 
   card.append(head, meta, desc);
+  return card;
+}
+
+// A row in the Available Spells panel — the whole card is the toggle, same as
+// a Browse card starting a placement is its whole click.
+function spellPickerCard(spell, known, readOnly) {
+  const card = document.createElement('button');
+  card.type = 'button';
+  card.className = 'spell-pick-card' + (known ? ' known' : '');
+  card.disabled = readOnly;
+  card.title = spell.description || spell.name;
+
+  const dot = document.createElement('span');
+  dot.className = 'spell-pick-dot';
+
+  const name = document.createElement('span');
+  name.className = 'spell-pick-name';
+  name.textContent = spell.name;
+
+  const meta = document.createElement('span');
+  meta.className = 'spell-pick-meta';
+  meta.textContent = spell.school || spellLevelLabel(spell.level);
+
+  card.append(dot, name, meta);
+  card.addEventListener('click', () => toggleKnownSpell(spell.id));
   return card;
 }
 

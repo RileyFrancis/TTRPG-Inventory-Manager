@@ -435,9 +435,17 @@
         <div class="sheet-scroll paper-sheet">
           <h3 class="sheet-h">Spell Slots</h3>
           <div id="spell-slots" class="spell-slots"></div>
-          <h3 class="sheet-h">Spells</h3>
+          <h3 class="sheet-h">Spells Known</h3>
           <div id="spell-list" class="spell-list"></div>
         </div>
+        <!-- Every spell the character's classes currently give access to, not
+             just what they've picked — clicking a card is the whole toggle
+             (src/js/spells.js's toggleKnownSpell()); #spell-list above only
+             ever shows what that has already put on the list. -->
+        <aside id="spell-picker">
+          <h3 class="sheet-h">Available Spells</h3>
+          <div id="spell-picker-list" class="spell-picker-list"></div>
+        </aside>
       </div>
 
       <!-- ===== BATTLE MAP =====

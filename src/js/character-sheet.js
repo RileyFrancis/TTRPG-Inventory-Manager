@@ -82,6 +82,7 @@ function defaultSheetFields() {
     weaponProf: '', toolProf: '', languages: '',
     // The written sections — Markdown, rendered by sheet-prose.js; plain strings here.
     backstory: '', appearance: '',
+    knownSpells: [], // ids picked from the Spell Sheet's Available Spells panel — see spells.js
   };
 }
 

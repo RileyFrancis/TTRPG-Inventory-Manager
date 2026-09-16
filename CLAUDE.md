@@ -1307,11 +1307,37 @@ cast right now", not "what am I". `src/js/spells.js`.
   Tab's cycle (see *Character tabs*) — it does not touch the data underneath.
 - **Rendering is signature-gated** like `classFeaturesSig` — `renderSpellSheet()`
   only rebuilds when the character's classes or levels have actually changed,
-  not on every roster-sync repaint.
+  not on every roster-sync repaint. `renderSpellSheetContent()` is the draw
+  itself, split out so a pick (below) can force it with no signature change to
+  trigger it.
 - `#spell-sheet` is a **third view of the middle panel**, `.spell-view` on
   `#inventory-panel` — see *Character tabs* for how it is reached and *The
   character sheet* / battlemap.css for the sibling views it shares the
   panel-swap pattern with.
+
+**Availability is not the same question as "on the list."** `spellAvailableTo()`
+answers whether a class could ever cast a spell; **`character.knownSpells`** (an
+array of spell ids, defaulting to `[]` like every other sheet field — see
+`defaultSheetFields()`) is which of those the player has actually picked.
+`#spell-list` on the sheet itself shows only the intersection of the two — a
+spell dropped from `knownSpells` by a reclass is never deleted from the array,
+just filtered out of what's shown, so it reappears if the class comes back.
+
+- **The picker is a second, side panel** (`#spell-picker`, beside
+  `.sheet-scroll` inside `#spell-sheet`, which is a flex row only in
+  `.spell-view`) listing *every* available spell, not just known ones — same
+  list `spellsForCharacter()` already built for the sheet itself. It is
+  furniture beside the sheet, not drawn on the torn paper, the same distinction
+  that keeps the equip rack and sidebar off it.
+- **A card's whole click is the toggle** (`toggleKnownSpell()`) — there is no
+  separate add/remove control, the same "the click is the only thing it does"
+  rule variant cards use. It is guarded by `isReadOnly()` like every other
+  character write, and calls `renderSpellSheetContent()` directly (not
+  `renderSpellSheet()`) since picking a spell changes nothing the signature
+  watches.
+- `.sheet-scroll`'s existing centring (`margin: 62px auto` in character.css)
+  still holds at `flex: 1` — flexbox hands the picker's width to those auto
+  margins before centring what's left, so a wide panel still reads centred.
 
 ### The written sections
 
