@@ -98,6 +98,7 @@ function sanitizeSpellList(raw) {
       components: String(s?.components ?? '').trim(),
       duration: String(s?.duration ?? '').trim(),
       classes,
+      source: cleanSource(s?.source), // short book label, same helper class-features.js uses
       description: String(s?.description ?? ''),
     };
   }).filter(Boolean);
@@ -557,10 +558,11 @@ function spellCard(spell) {
   name.className = 'spell-name';
   name.textContent = spell.name;
   head.appendChild(name);
-  if (spell.school) {
+  const schoolText = [spell.school, spell.source].filter(Boolean).join(' · ');
+  if (schoolText) {
     const school = document.createElement('span');
     school.className = 'spell-school';
-    school.textContent = spell.school;
+    school.textContent = schoolText;
     head.appendChild(school);
   }
 
