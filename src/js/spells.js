@@ -21,6 +21,13 @@
 // The whole sheet can be turned off per character (`character.spellsEnabled`,
 // default on), from Character Setup — see character-setup.js — for a
 // character with no need of it.
+//
+// The Available Spells panel (in the sidebar's Spells tab) is not limited to
+// the character's own classes the way Spell Slots and Spells Known are — a
+// feat (Magic Initiate and the like) can grant a spell from a class with no
+// levels in it at all, so its class checkboxes always list every class this
+// app's spell data knows of, just unchecked by default for any the character
+// doesn't actually have. See `spellbookClassRows()` / `spellbookAvailableSpells()`.
 
 // =============================================================================
 // LOADING THE REGISTRIES
@@ -155,27 +162,6 @@ function classMatchesAny(className, names) {
   return names.some(n => n.trim().toLowerCase() === key);
 }
 
-// Cantrips need no slot — knowing the class is enough. A leveled spell needs
-// at least one of the character's matching classes to have reached a slot of
-// that level.
-function spellAvailableTo(spell, entries) {
-  return entries.some(e => {
-    if (!classMatchesAny(e.name, spell.classes)) return false;
-    return spell.level === 0 || e.maxSpellLevel >= spell.level;
-  });
-}
-
-// Every spell the character's known classes currently give access to, sorted
-// by level then name. `entries` is `spellcastingEntriesOf(character)`, taken
-// as a parameter so a caller that already has it (the section, below) need not
-// walk the class list twice.
-function spellsForCharacter(character, entries) {
-  if (!entries.length) return [];
-  return allSpells()
-    .filter(s => spellAvailableTo(s, entries))
-    .sort((a, b) => a.level - b.level || a.name.localeCompare(b.name));
-}
-
 // Whether the sheet's own view is offered at all for this character — a
 // per-character preference set in Character Setup, on by default so an older
 // save (no field yet) still gets it.
@@ -184,9 +170,9 @@ function spellSheetEnabled(character) {
 }
 
 // Whether a spell is on the character's own list, kept separately from
-// availability: `spellAvailableTo()` answers "could this character ever cast
-// it", this answers "have they actually picked it" for the Available Spells
-// panel's toggle and #spell-list's own filter.
+// availability: `spellbookAvailableSpells()` answers "could this character
+// ever cast it", this answers "have they actually picked it" for the
+// Available Spells panel's toggle and #spell-list's own filter.
 function isSpellKnown(character, spellId) {
   return Array.isArray(character?.knownSpells) && character.knownSpells.includes(spellId);
 }
@@ -206,22 +192,24 @@ function toggleKnownSpell(spellId) {
 }
 
 // =============================================================================
-// THE AVAILABLE SPELLS PANEL — filter and sort preferences
+// THE AVAILABLE SPELLS PANEL — the pool, and its filter/sort preferences
 // =============================================================================
 // This browser's furniture, like item-sort.js's own key — a way of reading the
 // spell list, not a fact about any character. Never saved or synced.
 const SPELLBOOK_PREFS_KEY = 'dnd_inventory_spellbook';
+const SPELLBOOK_SORT_MODES = ['class', 'school', 'all'];
 
 function loadSpellbookPrefs() {
   try {
     const raw = JSON.parse(localStorage.getItem(SPELLBOOK_PREFS_KEY));
     return {
-      sortMode: raw?.sortMode === 'school' ? 'school' : 'class',
+      sortMode: SPELLBOOK_SORT_MODES.includes(raw?.sortMode) ? raw.sortMode : 'class',
       hiddenClasses: Array.isArray(raw?.hiddenClasses) ? raw.hiddenClasses.filter(x => typeof x === 'string') : [],
+      shownExtraClasses: Array.isArray(raw?.shownExtraClasses) ? raw.shownExtraClasses.filter(x => typeof x === 'string') : [],
       hiddenSchools: Array.isArray(raw?.hiddenSchools) ? raw.hiddenSchools.filter(x => typeof x === 'string') : [],
     };
   } catch (e) {
-    return { sortMode: 'class', hiddenClasses: [], hiddenSchools: [] };
+    return { sortMode: 'class', hiddenClasses: [], shownExtraClasses: [], hiddenSchools: [] };
   }
 }
 
@@ -231,11 +219,80 @@ function saveSpellbookPrefs() {
   try { localStorage.setItem(SPELLBOOK_PREFS_KEY, JSON.stringify(spellbookPrefs)); } catch (e) { /* private mode */ }
 }
 
-// Every one of the character's OWN spellcasting classes that grants this spell
-// — a spell shared by two of them (e.g. Guidance for a Cleric/Druid) is listed
-// under both, the same way a real spellbook would repeat it.
-function spellClassNames(spell, entries) {
-  return entries.filter(e => classMatchesAny(e.name, spell.classes)).map(e => e.name);
+// Every class this app's spell data knows of, alphabetically — deliberately
+// not limited to the character's own classes. A feat (Magic Initiate and the
+// like) can grant a spell from a class the character has no levels in at all,
+// so the panel must be able to show any class's list on request.
+function spellbookAllClassNames() {
+  const names = new Set();
+  allSpells().forEach(s => s.classes.forEach(c => names.add(c)));
+  return [...names].sort((a, b) => a.localeCompare(b));
+}
+
+// The rows the panel offers: the character's own spellcasting classes first
+// (their own class order, carrying their own `entry` for the level gate
+// below), then every other class, alphabetically. `own` decides both that
+// gate and which preference list a checkbox toggles.
+function spellbookClassRows(entries) {
+  const ownNames = new Set(entries.map(e => e.name));
+  const extra = spellbookAllClassNames().filter(n => !ownNames.has(n));
+  return entries.map(e => ({ name: e.name, own: true, entry: e }))
+    .concat(extra.map(name => ({ name, own: false, entry: null })));
+}
+
+// An owned class defaults to shown — `hiddenClasses` is an opt-OUT list, same
+// as `hiddenSchools`. Any other class defaults to hidden — `shownExtraClasses`
+// is an opt-IN list — so "every class is an option, but only your own are
+// checked to start" needs no first-run bookkeeping: an empty prefs object
+// already means exactly that.
+function spellbookClassChecked(row) {
+  return row.own
+    ? !spellbookPrefs.hiddenClasses.includes(row.name)
+    : spellbookPrefs.shownExtraClasses.includes(row.name);
+}
+
+function setSpellbookClassChecked(row, checked) {
+  const list = row.own ? spellbookPrefs.hiddenClasses : spellbookPrefs.shownExtraClasses;
+  const member = row.own ? !checked : checked;
+  const at = list.indexOf(row.name);
+  if (member && at === -1) list.push(row.name);
+  else if (!member && at !== -1) list.splice(at, 1);
+  saveSpellbookPrefs();
+  renderSpellSheetContent();
+}
+
+// Whether `row`'s class actually grants `spell` — the one reachability rule
+// everything else in this section is built from. An owned class is gated by
+// its own slots, same as ever; any other class has no level to gate it by, so
+// a name match is reachable outright. Tag membership alone is *not* enough
+// for an owned class past its own cap — a spell tagged with both an owned and
+// an unrelated class (e.g. Misty Step, Wizard/Warlock) must not read as
+// "granted by Wizard" for a Wizard too low-level to actually reach it, even
+// though it's still reachable overall via the other tag.
+function spellGrantsRow(spell, row) {
+  if (!classMatchesAny(row.name, spell.classes)) return false;
+  if (!row.own) return true;
+  return spell.level === 0 || row.entry.maxSpellLevel >= spell.level;
+}
+
+// Every row among `classRows` that actually grants this spell — own classes
+// first, in class order, extra classes after. A spell shared by two of them
+// (e.g. Guidance for a Cleric/Druid) is listed under both, the same way a
+// real spellbook would repeat it.
+function spellGrantingClasses(spell, classRows) {
+  return classRows.filter(r => spellGrantsRow(spell, r)).map(r => r.name);
+}
+
+// The panel's whole pool, independent of which checkboxes are currently on —
+// those only decide what's *displayed* (`spellbookSections()`), not what's
+// known. A spell reachable via any row at all (owned-and-in-range, or simply
+// tagged with a class the character has no levels in) belongs in the pool;
+// the checkbox, defaulting off for a class the character doesn't have, is
+// what actually keeps it out of sight until asked for.
+function spellbookAvailableSpells(classRows) {
+  return allSpells()
+    .filter(spell => spellGrantingClasses(spell, classRows).length > 0)
+    .sort((a, b) => a.level - b.level || a.name.localeCompare(b.name));
 }
 
 function spellbookAvailableSchools(available) {
@@ -243,21 +300,32 @@ function spellbookAvailableSchools(available) {
   return [...schools].sort((a, b) => a.localeCompare(b));
 }
 
-// Groups `available` for the panel per `prefs` — by class (the character's own
-// class order) or by school (alphabetical) — sorted by level then name within
-// every group either way. A hidden class or school drops its spells entirely;
-// a spell surviving via more than one visible class is still listed once per
-// class group, but only once in a school group (a spell has one school).
-function spellbookSections(available, entries, prefs) {
+// Groups `available` for the panel per `prefs`: by class (checked classes, in
+// `classRows` order), by school (alphabetical), or `all` (one flat list) —
+// sorted by level then name within every group either way. An unchecked class
+// or school drops its spells from view entirely (never from `knownSpells`
+// itself — see `renderSpellSheetContent()`). A spell surviving via more than
+// one checked class is listed once per class group, but only once for
+// school/all (a spell has one school, and `all` has no groups to repeat it
+// into).
+function spellbookSections(available, classRows, prefs) {
   const byLevelThenName = (a, b) => a.level - b.level || a.name.localeCompare(b.name);
+  const enabledNames = new Set(classRows.filter(spellbookClassChecked).map(r => r.name));
+  const isVisible = spell => {
+    if (prefs.hiddenSchools.includes(spell.school || 'Other')) return false;
+    return spellGrantingClasses(spell, classRows).some(c => enabledNames.has(c));
+  };
+
+  if (prefs.sortMode === 'all') {
+    const spells = available.filter(isVisible).sort(byLevelThenName);
+    return spells.length ? [{ heading: null, spells }] : [];
+  }
 
   if (prefs.sortMode === 'school') {
     const bySchool = new Map();
     available.forEach(spell => {
-      const classes = spellClassNames(spell, entries);
-      if (!classes.some(c => !prefs.hiddenClasses.includes(c))) return;
+      if (!isVisible(spell)) return;
       const school = spell.school || 'Other';
-      if (prefs.hiddenSchools.includes(school)) return;
       if (!bySchool.has(school)) bySchool.set(school, []);
       bySchool.get(school).push(spell);
     });
@@ -267,10 +335,10 @@ function spellbookSections(available, entries, prefs) {
   }
 
   const byClass = new Map();
-  entries.forEach(e => { if (!prefs.hiddenClasses.includes(e.name)) byClass.set(e.name, []); });
+  classRows.forEach(row => { if (spellbookClassChecked(row)) byClass.set(row.name, []); });
   available.forEach(spell => {
     if (prefs.hiddenSchools.includes(spell.school || 'Other')) return;
-    spellClassNames(spell, entries).forEach(cls => {
+    spellGrantingClasses(spell, classRows).forEach(cls => {
       if (byClass.has(cls)) byClass.get(cls).push(spell);
     });
   });
@@ -280,25 +348,25 @@ function spellbookSections(available, entries, prefs) {
 }
 
 // The meta line on a picker card — whichever axis isn't already the group
-// heading is the useful thing to print beside the spell's name.
-function spellPickerMeta(spell, entries, prefs) {
-  if (prefs.sortMode === 'school') {
-    const classes = spellClassNames(spell, entries);
-    return classes.length ? classes.join(', ') : (spell.school || '');
-  }
+// heading is the useful thing to print beside the spell's name; `all` has no
+// heading at all, so it gets both.
+function spellPickerMeta(spell, classRows, prefs) {
+  const classes = spellGrantingClasses(spell, classRows);
+  if (prefs.sortMode === 'school') return classes.join(', ') || (spell.school || '');
+  if (prefs.sortMode === 'all') return [spell.school, classes.join(', ')].filter(Boolean).join(' · ');
   return spell.school || spellLevelLabel(spell.level);
 }
 
-function renderSpellbookSettings(entries, available) {
+function renderSpellbookSettings(classRows, available) {
   const classBox = document.getElementById('spellbook-class-filters');
   const schoolBox = document.getElementById('spellbook-school-filters');
   if (!classBox || !schoolBox) return;
 
   classBox.textContent = '';
-  entries.forEach(e => {
+  classRows.forEach(row => {
     classBox.appendChild(spellbookFilterCheckbox(
-      e.name, !spellbookPrefs.hiddenClasses.includes(e.name),
-      checked => setSpellbookFilter('hiddenClasses', e.name, !checked)));
+      row.name, spellbookClassChecked(row),
+      checked => setSpellbookClassChecked(row, checked)));
   });
 
   schoolBox.textContent = '';
@@ -339,7 +407,7 @@ document.getElementById('spellbook-settings-btn').addEventListener('click', () =
 document.querySelectorAll('#spellbook-sort input[name="spellbook-sort"]').forEach(radio => {
   radio.addEventListener('change', () => {
     if (!radio.checked) return;
-    spellbookPrefs.sortMode = radio.value === 'school' ? 'school' : 'class';
+    spellbookPrefs.sortMode = SPELLBOOK_SORT_MODES.includes(radio.value) ? radio.value : 'class';
     saveSpellbookPrefs();
     renderSpellSheetContent();
   });
@@ -387,7 +455,7 @@ function renderSpellSheetContent() {
       : 'Add a class in Character Setup to see its spells.';
     listBox.appendChild(spellNote(note));
     pickerBox.appendChild(spellNote(note));
-    renderSpellbookSettings(entries, []);
+    renderSpellbookSettings([], []);
     return;
   }
 
@@ -398,8 +466,9 @@ function renderSpellSheetContent() {
     slotsBox.appendChild(spellNote('No spell slots yet — cantrips only.'));
   }
 
-  const available = spellsForCharacter(character, entries);
-  renderSpellbookSettings(entries, available);
+  const classRows = spellbookClassRows(entries);
+  const available = spellbookAvailableSpells(classRows);
+  renderSpellbookSettings(classRows, available);
 
   if (!available.length) {
     listBox.appendChild(spellNote('No spells known at this level yet.'));
@@ -422,13 +491,13 @@ function renderSpellSheetContent() {
   }
 
   const readOnly = isReadOnly();
-  const sections = spellbookSections(available, entries, spellbookPrefs);
+  const sections = spellbookSections(available, classRows, spellbookPrefs);
   if (!sections.length) {
     pickerBox.appendChild(spellNote('Nothing matches the current filters.'));
     return;
   }
   sections.forEach(({ heading, spells }) => {
-    pickerBox.appendChild(spellbookGroupHeading(heading));
+    if (heading) pickerBox.appendChild(spellbookGroupHeading(heading));
     let lastLevel = null;
     spells.forEach(spell => {
       if (spell.level !== lastLevel) {
@@ -437,7 +506,7 @@ function renderSpellSheetContent() {
       }
       pickerBox.appendChild(spellPickerCard(
         spell, isSpellKnown(character, spell.id), readOnly,
-        spellPickerMeta(spell, entries, spellbookPrefs)));
+        spellPickerMeta(spell, classRows, spellbookPrefs)));
     });
   });
 }

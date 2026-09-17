@@ -239,25 +239,43 @@ because "what can I cast now" differs from "what am I". Same two-registry
 shape (`data/spell-slots.json`, `data/spells.json`); combining multiple
 casting classes is a **plain sum**, not the rules' real multiclass table — a
 deliberate simplification. Per-character on/off via `character.spellsEnabled`
-(default on). **Availability ≠ "on the list"**: `spellAvailableTo()` says a
-class *could* cast something; `character.knownSpells` (an id array) is what
-the player actually picked, toggled from the **Available Spells** panel
-(`#spellbook-list`, a whole-card click) — which lives in the sidebar's
-Spells tab (see *The sidebar's tabs*), not beside the sheet.
+(default on). **Availability ≠ "on the list"**: `character.knownSpells` (an id
+array) is what the player actually picked, toggled from the **Available
+Spells** panel (`#spellbook-list`, a whole-card click) — which lives in the
+sidebar's Spells tab (see *The sidebar's tabs*), not beside the sheet.
 
-- **Grouped by class or by school, always sorted by level within a group**
-  (`spellbookSections()`) — a spell shared by two of the character's classes
-  is listed once per matching class group, but once per school group (a spell
-  has one school). The gear button opens `#spellbook-settings`: sort-mode
-  radios plus class/school checkboxes, built fresh from the character's own
-  casting classes and the schools actually present, so a hidden class/school
-  from a prior character doesn't manufacture an empty checkbox.
+- **The panel's pool is wider than the character's own classes**
+  (`spellbookAvailableSpells()`) — a spell tagged with one of the character's
+  real classes is still level-gated by that class's own slots, but a spell
+  tagged only with classes the character has no levels in is included
+  unconditionally, because there's no level to gate it by. This is what lets a
+  feat (Magic Initiate and the like) grant a spell the character's own classes
+  never would; it also means `available` no longer shrinks to `[]` just
+  because the checkboxes below hide everything — what's actually *displayed*
+  is a separate, later question.
+- **Every class is a checkbox option; only the character's own start checked**
+  (`spellbookClassRows()` builds the full list — every class this app's spell
+  data knows of — tagging each `own: true/false`). An owned class is an
+  opt-OUT preference (`hiddenClasses`, shown unless hidden, same as schools);
+  any other class is opt-IN (`shownExtraClasses`, hidden unless revealed) — so
+  "all classes are options, but only yours are checked" needs no first-run
+  logic: an empty prefs object already means exactly that.
+- **Sort/group modes: Class, School, or All** (`spellbookSections()`), always
+  sorted by level then name within whatever grouping results. A spell reachable
+  via two checked classes is listed once per class group, but once only for
+  School or All (one school, and All has no groups to repeat it into). All
+  drops the group heading entirely — a single flat list.
 - **Prefs are this browser's furniture** (`dnd_inventory_spellbook`, own key
   like `item-sort.js`), not per-character, never synced — a reading
-  preference, not a fact about anyone's spell list.
-- A settings change calls `renderSpellSheetContent()` directly, the same
-  signature-bypass `toggleKnownSpell()` uses — neither changes classes/level,
-  which is all `renderSpellSheet()`'s gate watches.
+  preference, not a fact about anyone's spell list. A settings change calls
+  `renderSpellSheetContent()` directly, the same signature-bypass
+  `toggleKnownSpell()` uses — neither changes classes/level, which is all
+  `renderSpellSheet()`'s gate watches.
+- **Hiding a class or school never touches `knownSpells`** — same "filtered,
+  not deleted" rule as a reclass (above): `known` is always computed from the
+  full, unfiltered `available` pool, so a spell you've already picked keeps
+  showing in Spells Known even after you uncheck the class or school that
+  grants it.
 
 ### Markdown and the written sections
 
