@@ -8,8 +8,13 @@
 //          container, containerRows, containerCols, properties, mastery,
 //          source, variants
 //
-// source     — the source material the item comes from, e.g. PHB, DMG, TCoE.
+// source      — the source material the item comes from, e.g. PHB, DMG, TCoE.
 //              "HB" (homebrew) is used for items the player adds in-app.
+// description — rendered as Markdown (markdown.js), same rules as a sheet's
+//              written sections. A row can't hold a real newline (the file is
+//              split on \n before any row is parsed), so a paragraph break,
+//              list, or heading is written with a literal "\n", unescaped by
+//              unescapeDescription() above.
 // tags       — pipe-separated list, e.g.  weapon|melee|finesse
 // properties — semicolon-separated list, e.g.  finesse;light;thrown
 // shape      — rows pipe-separated, each row is 0/1 digits,  e.g.  11|01|10
@@ -72,6 +77,15 @@ function parseCost(str) {
 function parseShape(str) {
   if (!str || !str.trim()) return [[1]];
   return str.trim().split('|').map(row => row.split('').map(c => parseInt(c, 10)));
+}
+
+// The loader splits the whole file on real newlines before parsing rows (see
+// loadDefaultItems), so a field can never hold one — a description that wants
+// paragraphs, a list, or a heading writes a literal "\n" instead, unescaped
+// here. description is Markdown (see markdown.js); nothing else in the row
+// needs multiple lines.
+function unescapeDescription(str) {
+  return str.replace(/\\n/g, '\n');
 }
 
 function parseStackSize(str, legacyStackable, legacyWeightEach) {
@@ -146,7 +160,7 @@ function loadDefaultItems() {
         id:          String(rowIndex + 1),
         name:        v('name'),
         rarity:      v('rarity') || 'common',
-        description: v('description'),
+        description: unescapeDescription(v('description')),
         cost:        parseCost(v('cost')),
         tags:        v('tags') ? v('tags').split('|') : [],
         damage:      v('damage')     || undefined,

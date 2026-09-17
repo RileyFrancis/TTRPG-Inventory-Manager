@@ -479,7 +479,9 @@ function populateDetailsPanel(t, inst) {
     tagsEl.appendChild(pill);
   });
 
-  document.getElementById('details-desc').textContent = t.description || '';
+  const descEl = document.getElementById('details-desc');
+  descEl.textContent = '';
+  if (t.description) renderMarkdownInto(descEl, t.description);
 
   // Only the "Label: text" properties (Ability/Utilize/Craft, on artisan's
   // tools and the like) are abilities — a bare flag like "Finesse" or

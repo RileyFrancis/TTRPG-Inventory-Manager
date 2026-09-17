@@ -41,33 +41,36 @@ function renderTooltip(t, weight, x, y) {
   const color = rarityColor(t.rarity);
 
   const dmgHtml    = t.damage
-    ? `<div class="tip-row"><span>Damage</span><span>${t.damage}${t.damageType ? ' ' + t.damageType : ''}</span></div>`
+    ? `<div class="tip-row"><span>Damage</span><span>${escapeHTML(t.damage)}${t.damageType ? ' ' + escapeHTML(t.damageType) : ''}</span></div>`
     : '';
   const costHtml   = hasCost(t.cost)
-    ? `<div class="tip-row"><span>Cost</span><span>${formatCost(t.cost)}</span></div>`
+    ? `<div class="tip-row"><span>Cost</span><span>${escapeHTML(formatCost(t.cost))}</span></div>`
     : '';
   const attuneHtml = t.attunement
     ? `<div class="tip-attune">Requires Attunement</div>`
     : '';
-  const descHtml   = t.description
-    ? `<div class="tip-desc">${t.description}</div>`
-    : '';
+  // Left empty here — a custom item's description is Markdown and syncs to
+  // Firebase, so it is filled below through renderMarkdownInto, the only
+  // place that may turn a string into markup (see markdown.js).
+  const descHtml   = t.description ? `<div class="tip-desc"></div>` : '';
   const tagsHtml   = t.tags?.length
-    ? `<div class="tip-tags">${t.tags.map(tag => `<span class="tag-pill">${tag}</span>`).join('')}</div>`
+    ? `<div class="tip-tags">${t.tags.map(tag => `<span class="tag-pill">${escapeHTML(tag)}</span>`).join('')}</div>`
     : '';
 
   el.innerHTML = `
     <div class="tip-header">
-      <span class="tip-name">${t.name}</span>
-      <span class="tip-rarity" style="color:${color}">${RARITY_META[t.rarity]?.label ?? ''}</span>
+      <span class="tip-name">${escapeHTML(t.name)}</span>
+      <span class="tip-rarity" style="color:${color}">${escapeHTML(RARITY_META[t.rarity]?.label ?? '')}</span>
     </div>
     ${attuneHtml}
-    <div class="tip-row"><span>Weight</span><span>${weight}</span></div>
+    <div class="tip-row"><span>Weight</span><span>${escapeHTML(weight)}</span></div>
     ${costHtml}
     ${dmgHtml}
     ${descHtml}
     ${tagsHtml}
   `;
+
+  if (t.description) renderMarkdownInto(el.querySelector('.tip-desc'), t.description);
 
   el.classList.remove('hidden');
 

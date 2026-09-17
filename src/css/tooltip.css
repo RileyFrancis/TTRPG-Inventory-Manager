@@ -52,6 +52,70 @@
   line-height: 1.45;
 }
 
+/* Markdown, rendered by markdown.js. The tooltip is a fixed 240px and never
+   scrolls (pointer-events: none up top), so this stays compact — a table
+   just shrinks its own columns rather than growing the box. */
+.tip-desc > :first-child { margin-top: 0; }
+.tip-desc > :last-child { margin-bottom: 0; }
+
+.tip-desc p { margin: 0 0 0.5em; }
+
+.tip-desc h1, .tip-desc h2, .tip-desc h3,
+.tip-desc h4, .tip-desc h5, .tip-desc h6 {
+  margin: 0.6em 0 0.2em;
+  font-size: 1em;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.tip-desc ul, .tip-desc ol { margin: 0 0 0.5em; padding-left: 1.2em; }
+.tip-desc li { margin-bottom: 0.1em; }
+
+.tip-desc blockquote {
+  margin: 0 0 0.5em;
+  padding: 0.1em 0 0.1em 0.6em;
+  border-left: 2px solid var(--accent-soft);
+}
+
+.tip-desc code {
+  padding: 0.05em 0.25em;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.92em;
+  background: var(--field);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+.tip-desc pre {
+  margin: 0 0 0.5em;
+  padding: 5px 7px;
+  background: var(--field);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow-x: auto;
+}
+.tip-desc pre code { padding: 0; background: none; border: none; }
+
+.tip-desc strong, .tip-desc b { font-weight: 700; }
+.tip-desc em, .tip-desc i { font-style: italic; }
+
+.tip-desc table {
+  width: 100%;
+  table-layout: fixed;
+  margin: 0 0 0.5em;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+.tip-desc th, .tip-desc td {
+  padding: 2px 4px;
+  border: 1px solid var(--border);
+  text-align: left;
+  overflow-wrap: break-word;
+}
+.tip-desc th {
+  background: var(--field);
+  font-weight: 700;
+}
+
 .tip-tags {
   display: flex;
   flex-wrap: wrap;
