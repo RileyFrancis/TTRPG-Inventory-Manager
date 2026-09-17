@@ -4,38 +4,43 @@
 'use strict';
 
 // The sidebar shows the tabs that belong to what the inventory panel is showing:
-//   inventory view            Browse · Details · Party
-//   sheet / spells / map view Chat · Dice · Party
-// Party is in both, hence a map with a null rather than two flat lists.
+//   inventory view    Browse · Details · Party
+//   sheet / map view  Chat · Dice · Party
+//   spells view       Spells · Dice · Party   (Spells takes Chat's place)
+// Party (and Dice) belong to more than one view, hence values that are `null`
+// (every view) or an array (some) rather than three flat lists.
 // See CLAUDE.md § The sidebar's tabs.
 const SIDEBAR_TAB_VIEW = {
-  browse:  'inventory',
-  details: 'inventory',
-  chat:    'sheet',
-  dice:    'sheet',
-  party:   null, // both
+  browse:    'inventory',
+  details:   'inventory',
+  chat:      'sheet',
+  spellbook: 'spells',
+  dice:      ['sheet', 'spells'],
+  party:     null, // all three
 };
 
-// Which view a tab belongs to, or null for one that belongs to both.
+// Which view(s) a tab belongs to: a view name, an array of them, or null for
+// every view.
 function sidebarTabView(name) {
   return SIDEBAR_TAB_VIEW[name] ?? null;
 }
 
 // What the inventory panel is actually showing, which is not always
-// `state.view`: a GM who deselects a player keeps `state.view === 'sheet'` while
-// the panel falls back to the placeholder. The battle map answers 'sheet' — the
-// panes beside a board are Chat, Dice and Party, not a third row. The spell
-// sheet answers 'sheet' for the same reason — it is a view of a character, not
-// a fourth row of tabs.
+// `state.view`: a GM who deselects a player keeps `state.view === 'sheet'`
+// while the panel falls back to the placeholder. The battle map answers
+// 'sheet' — the panes beside a board are Chat, Dice and Party, not a fourth
+// row. The spell sheet gets its own row (Spells replacing Chat) since,
+// unlike the map, it has its own side panel worth putting there.
 function sidebarView() {
   if (mapViewIsShowing()) return 'sheet';
-  const onCharacterView = state.view === 'sheet' || state.view === 'spells';
-  return (onCharacterView && hasViewedCharacter()) ? 'sheet' : 'inventory';
+  if (state.view === 'spells') return hasViewedCharacter() ? 'spells' : 'inventory';
+  return (state.view === 'sheet' && hasViewedCharacter()) ? 'sheet' : 'inventory';
 }
 
 function sidebarTabAvailable(name) {
   const view = sidebarTabView(name);
-  return view === null || view === sidebarView();
+  if (view === null) return true;
+  return Array.isArray(view) ? view.includes(sidebarView()) : view === sidebarView();
 }
 
 // The plain DOM half: light one button, show one pane. Called from the sync
@@ -72,13 +77,16 @@ function syncSidebarTabs() {
 
 // Asking for a tab is asking for the view it lives in — a shop entry clicked
 // from the character sheet calls `switchTab('details')`, and the honest answer
-// is to show the item.
+// is to show the item. A tab belonging to more than one view (Dice, Party)
+// never forces a switch — same as Party's old `null` case — since the only
+// way to click one is from a view it's already visible in.
 function switchTab(name) {
   const view = sidebarTabView(name);
-  // Only the sheet can be refused (`hasViewedCharacter()`): a GM with nobody
-  // picked has no character. An inventory pane is always reachable.
+  if (typeof view !== 'string') { activateSidebarTab(name); return; }
+  // Only a character view can be refused (`hasViewedCharacter()`): a GM with
+  // nobody picked has no character. An inventory pane is always reachable.
   const reachable = view === 'inventory' || hasViewedCharacter();
-  if (view && view !== sidebarView() && reachable) setInventoryView(view);
+  if (view !== sidebarView() && reachable) setInventoryView(view);
   activateSidebarTab(name);
 }
 

@@ -101,14 +101,19 @@ character they bring (`campaigns.js`; live session in `party.js`).
 ### The sidebar's tabs
 
 ```
-inventory view              Browse · Details · Party
-sheet / spells / map view   Chat · Dice · Party
+inventory view    Browse · Details · Party
+sheet / map view  Chat · Dice · Party
+spells view       Spells · Dice · Party   (Spells takes Chat's place)
 ```
 
-`sidebarView()` ≠ `state.view` — a GM who deselects a player keeps
-`state.view === 'sheet'` while the panel shows a placeholder, so reading the
-raw field would strand them with no Browse tab. The battle map and spell sheet
-both answer `'sheet'` rather than earning their own row.
+`SIDEBAR_TAB_VIEW` values are a view name, an array of them (Dice belongs to
+both `sheet` and `spells`), or `null` (Party, every view) — `sidebarTabView()`
+callers must handle all three. `sidebarView()` ≠ `state.view` — a GM who
+deselects a player keeps `state.view === 'sheet'` while the panel shows a
+placeholder, so reading the raw field would strand them with no Browse tab.
+The battle map still answers `'sheet'` (no fourth row for it), but the spell
+sheet gets its own row precisely because it now has its own side panel — see
+*Spells*.
 
 ### Chat and Dice
 
@@ -236,8 +241,23 @@ casting classes is a **plain sum**, not the rules' real multiclass table — a
 deliberate simplification. Per-character on/off via `character.spellsEnabled`
 (default on). **Availability ≠ "on the list"**: `spellAvailableTo()` says a
 class *could* cast something; `character.knownSpells` (an id array) is what
-the player actually picked, toggled from the **Available Spells** side panel
-(`#spell-picker`) whose whole-card click is the only control.
+the player actually picked, toggled from the **Available Spells** panel
+(`#spellbook-list`, a whole-card click) — which lives in the sidebar's
+Spells tab (see *The sidebar's tabs*), not beside the sheet.
+
+- **Grouped by class or by school, always sorted by level within a group**
+  (`spellbookSections()`) — a spell shared by two of the character's classes
+  is listed once per matching class group, but once per school group (a spell
+  has one school). The gear button opens `#spellbook-settings`: sort-mode
+  radios plus class/school checkboxes, built fresh from the character's own
+  casting classes and the schools actually present, so a hidden class/school
+  from a prior character doesn't manufacture an empty checkbox.
+- **Prefs are this browser's furniture** (`dnd_inventory_spellbook`, own key
+  like `item-sort.js`), not per-character, never synced — a reading
+  preference, not a fact about anyone's spell list.
+- A settings change calls `renderSpellSheetContent()` directly, the same
+  signature-bypass `toggleKnownSpell()` uses — neither changes classes/level,
+  which is all `renderSpellSheet()`'s gate watches.
 
 ### Markdown and the written sections
 

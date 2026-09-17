@@ -206,6 +206,146 @@ function toggleKnownSpell(spellId) {
 }
 
 // =============================================================================
+// THE AVAILABLE SPELLS PANEL — filter and sort preferences
+// =============================================================================
+// This browser's furniture, like item-sort.js's own key — a way of reading the
+// spell list, not a fact about any character. Never saved or synced.
+const SPELLBOOK_PREFS_KEY = 'dnd_inventory_spellbook';
+
+function loadSpellbookPrefs() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(SPELLBOOK_PREFS_KEY));
+    return {
+      sortMode: raw?.sortMode === 'school' ? 'school' : 'class',
+      hiddenClasses: Array.isArray(raw?.hiddenClasses) ? raw.hiddenClasses.filter(x => typeof x === 'string') : [],
+      hiddenSchools: Array.isArray(raw?.hiddenSchools) ? raw.hiddenSchools.filter(x => typeof x === 'string') : [],
+    };
+  } catch (e) {
+    return { sortMode: 'class', hiddenClasses: [], hiddenSchools: [] };
+  }
+}
+
+let spellbookPrefs = loadSpellbookPrefs();
+
+function saveSpellbookPrefs() {
+  try { localStorage.setItem(SPELLBOOK_PREFS_KEY, JSON.stringify(spellbookPrefs)); } catch (e) { /* private mode */ }
+}
+
+// Every one of the character's OWN spellcasting classes that grants this spell
+// — a spell shared by two of them (e.g. Guidance for a Cleric/Druid) is listed
+// under both, the same way a real spellbook would repeat it.
+function spellClassNames(spell, entries) {
+  return entries.filter(e => classMatchesAny(e.name, spell.classes)).map(e => e.name);
+}
+
+function spellbookAvailableSchools(available) {
+  const schools = new Set(available.map(s => s.school || 'Other'));
+  return [...schools].sort((a, b) => a.localeCompare(b));
+}
+
+// Groups `available` for the panel per `prefs` — by class (the character's own
+// class order) or by school (alphabetical) — sorted by level then name within
+// every group either way. A hidden class or school drops its spells entirely;
+// a spell surviving via more than one visible class is still listed once per
+// class group, but only once in a school group (a spell has one school).
+function spellbookSections(available, entries, prefs) {
+  const byLevelThenName = (a, b) => a.level - b.level || a.name.localeCompare(b.name);
+
+  if (prefs.sortMode === 'school') {
+    const bySchool = new Map();
+    available.forEach(spell => {
+      const classes = spellClassNames(spell, entries);
+      if (!classes.some(c => !prefs.hiddenClasses.includes(c))) return;
+      const school = spell.school || 'Other';
+      if (prefs.hiddenSchools.includes(school)) return;
+      if (!bySchool.has(school)) bySchool.set(school, []);
+      bySchool.get(school).push(spell);
+    });
+    return [...bySchool.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([heading, spells]) => ({ heading, spells: spells.sort(byLevelThenName) }));
+  }
+
+  const byClass = new Map();
+  entries.forEach(e => { if (!prefs.hiddenClasses.includes(e.name)) byClass.set(e.name, []); });
+  available.forEach(spell => {
+    if (prefs.hiddenSchools.includes(spell.school || 'Other')) return;
+    spellClassNames(spell, entries).forEach(cls => {
+      if (byClass.has(cls)) byClass.get(cls).push(spell);
+    });
+  });
+  return [...byClass.entries()]
+    .filter(([, spells]) => spells.length)
+    .map(([heading, spells]) => ({ heading, spells: spells.sort(byLevelThenName) }));
+}
+
+// The meta line on a picker card — whichever axis isn't already the group
+// heading is the useful thing to print beside the spell's name.
+function spellPickerMeta(spell, entries, prefs) {
+  if (prefs.sortMode === 'school') {
+    const classes = spellClassNames(spell, entries);
+    return classes.length ? classes.join(', ') : (spell.school || '');
+  }
+  return spell.school || spellLevelLabel(spell.level);
+}
+
+function renderSpellbookSettings(entries, available) {
+  const classBox = document.getElementById('spellbook-class-filters');
+  const schoolBox = document.getElementById('spellbook-school-filters');
+  if (!classBox || !schoolBox) return;
+
+  classBox.textContent = '';
+  entries.forEach(e => {
+    classBox.appendChild(spellbookFilterCheckbox(
+      e.name, !spellbookPrefs.hiddenClasses.includes(e.name),
+      checked => setSpellbookFilter('hiddenClasses', e.name, !checked)));
+  });
+
+  schoolBox.textContent = '';
+  spellbookAvailableSchools(available).forEach(school => {
+    schoolBox.appendChild(spellbookFilterCheckbox(
+      school, !spellbookPrefs.hiddenSchools.includes(school),
+      checked => setSpellbookFilter('hiddenSchools', school, !checked)));
+  });
+
+  document.querySelectorAll('#spellbook-sort input[name="spellbook-sort"]').forEach(radio => {
+    radio.checked = radio.value === spellbookPrefs.sortMode;
+  });
+}
+
+function spellbookFilterCheckbox(label, checked, onChange) {
+  const wrap = document.createElement('label');
+  const box = document.createElement('input');
+  box.type = 'checkbox';
+  box.checked = checked;
+  box.addEventListener('change', () => onChange(box.checked));
+  wrap.append(box, document.createTextNode(label));
+  return wrap;
+}
+
+function setSpellbookFilter(prefKey, name, hidden) {
+  const list = spellbookPrefs[prefKey];
+  const at = list.indexOf(name);
+  if (hidden && at === -1) list.push(name);
+  else if (!hidden && at !== -1) list.splice(at, 1);
+  saveSpellbookPrefs();
+  renderSpellSheetContent();
+}
+
+document.getElementById('spellbook-settings-btn').addEventListener('click', () => {
+  document.getElementById('spellbook-settings').classList.toggle('hidden');
+});
+
+document.querySelectorAll('#spellbook-sort input[name="spellbook-sort"]').forEach(radio => {
+  radio.addEventListener('change', () => {
+    if (!radio.checked) return;
+    spellbookPrefs.sortMode = radio.value === 'school' ? 'school' : 'class';
+    saveSpellbookPrefs();
+    renderSpellSheetContent();
+  });
+});
+
+// =============================================================================
 // THE SECTION
 // =============================================================================
 // `syncCharacterViewUI()` re-runs on every roster sync, but this view only
@@ -230,7 +370,7 @@ function renderSpellSheet() {
 function renderSpellSheetContent() {
   const slotsBox = document.getElementById('spell-slots');
   const listBox = document.getElementById('spell-list');
-  const pickerBox = document.getElementById('spell-picker-list');
+  const pickerBox = document.getElementById('spellbook-list');
   if (!slotsBox || !listBox || !pickerBox) return;
 
   const character = state.character;
@@ -247,6 +387,7 @@ function renderSpellSheetContent() {
       : 'Add a class in Character Setup to see its spells.';
     listBox.appendChild(spellNote(note));
     pickerBox.appendChild(spellNote(note));
+    renderSpellbookSettings(entries, []);
     return;
   }
 
@@ -258,9 +399,11 @@ function renderSpellSheetContent() {
   }
 
   const available = spellsForCharacter(character, entries);
+  renderSpellbookSettings(entries, available);
+
   if (!available.length) {
     listBox.appendChild(spellNote('No spells known at this level yet.'));
-    pickerBox.appendChild(spellNote('No spells known at this level yet.'));
+    pickerBox.appendChild(spellNote('No spells available at this level yet.'));
     return;
   }
 
@@ -279,14 +422,31 @@ function renderSpellSheetContent() {
   }
 
   const readOnly = isReadOnly();
-  let pickerLastLevel = null;
-  available.forEach(spell => {
-    if (spell.level !== pickerLastLevel) {
-      pickerLastLevel = spell.level;
-      pickerBox.appendChild(spellLevelHeading(spell.level));
-    }
-    pickerBox.appendChild(spellPickerCard(spell, isSpellKnown(character, spell.id), readOnly));
+  const sections = spellbookSections(available, entries, spellbookPrefs);
+  if (!sections.length) {
+    pickerBox.appendChild(spellNote('Nothing matches the current filters.'));
+    return;
+  }
+  sections.forEach(({ heading, spells }) => {
+    pickerBox.appendChild(spellbookGroupHeading(heading));
+    let lastLevel = null;
+    spells.forEach(spell => {
+      if (spell.level !== lastLevel) {
+        lastLevel = spell.level;
+        pickerBox.appendChild(spellLevelHeading(spell.level));
+      }
+      pickerBox.appendChild(spellPickerCard(
+        spell, isSpellKnown(character, spell.id), readOnly,
+        spellPickerMeta(spell, entries, spellbookPrefs)));
+    });
   });
+}
+
+function spellbookGroupHeading(text) {
+  const h = document.createElement('h4');
+  h.className = 'spellbook-group-heading';
+  h.textContent = text;
+  return h;
 }
 
 function spellLevelLabel(level) {
@@ -353,8 +513,9 @@ function spellCard(spell) {
 }
 
 // A row in the Available Spells panel — the whole card is the toggle, same as
-// a Browse card starting a placement is its whole click.
-function spellPickerCard(spell, known, readOnly) {
+// a Browse card starting a placement is its whole click. `metaText` is
+// whichever axis isn't already the group heading (see `spellPickerMeta()`).
+function spellPickerCard(spell, known, readOnly, metaText) {
   const card = document.createElement('button');
   card.type = 'button';
   card.className = 'spell-pick-card' + (known ? ' known' : '');
@@ -370,7 +531,7 @@ function spellPickerCard(spell, known, readOnly) {
 
   const meta = document.createElement('span');
   meta.className = 'spell-pick-meta';
-  meta.textContent = spell.school || spellLevelLabel(spell.level);
+  meta.textContent = metaText || '';
 
   card.append(dot, name, meta);
   card.addEventListener('click', () => toggleKnownSpell(spell.id));

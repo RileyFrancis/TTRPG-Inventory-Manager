@@ -438,14 +438,6 @@
           <h3 class="sheet-h">Spells Known</h3>
           <div id="spell-list" class="spell-list"></div>
         </div>
-        <!-- Every spell the character's classes currently give access to, not
-             just what they've picked — clicking a card is the whole toggle
-             (src/js/spells.js's toggleKnownSpell()); #spell-list above only
-             ever shows what that has already put on the list. -->
-        <aside id="spell-picker">
-          <h3 class="sheet-h">Available Spells</h3>
-          <div id="spell-picker-list" class="spell-picker-list"></div>
-        </aside>
       </div>
 
       <!-- ===== BATTLE MAP =====
@@ -551,12 +543,14 @@
     <!-- ===== SIDEBAR ===== -->
     <aside id="sidebar">
       <!-- Browse and Details belong beside a grid of items; Chat and Dice belong
-           beside a character sheet. `syncSidebarTabs()` in modals.js shows one
-           set or the other from `state.view`, and Party is in both. -->
+           beside a character sheet; Spellbook takes Chat's place while viewing
+           the Spell Sheet (see `sidebarView()` in modals.js — the two never
+           show together). Party is in all three. -->
       <div id="sidebar-tabs">
         <button class="tab-btn active" data-tab="browse">Browse</button>
         <button class="tab-btn" data-tab="details">Details</button>
         <button class="tab-btn hidden" data-tab="chat">Chat</button>
+        <button class="tab-btn hidden" data-tab="spellbook">Spells</button>
         <button class="tab-btn hidden" data-tab="dice">Dice</button>
         <button class="tab-btn" data-tab="party">Party</button>
       </div>
@@ -655,6 +649,38 @@
                     title="Send (Enter)" aria-label="Send">Send</button>
           </form>
         </div>
+      </div>
+
+      <!-- Spellbook Tab -->
+      <!-- Every spell the character's classes currently give access to, not
+           just what they've picked — a card's click is the whole toggle
+           (src/js/spells.js's toggleKnownSpell()); the Spell Sheet's own
+           #spell-list only ever shows what that has already put on the list.
+           Takes Chat's place in the tab strip; never shown alongside it. -->
+      <div id="tab-spellbook" class="tab-pane">
+        <div id="spellbook-header">
+          <span>Available Spells</span>
+          <button id="spellbook-settings-btn" class="btn-sm icon-only"
+                  title="Filter &amp; sort" aria-label="Filter and sort spells"><span class="ico ico-setting"></span></button>
+        </div>
+        <div id="spellbook-settings" class="hidden">
+          <div>
+            <span class="spellbook-settings-label">Sort by</span>
+            <div id="spellbook-sort">
+              <label><input type="radio" name="spellbook-sort" value="class" checked>Class</label>
+              <label><input type="radio" name="spellbook-sort" value="school">School</label>
+            </div>
+          </div>
+          <div>
+            <span class="spellbook-settings-label">Classes</span>
+            <div id="spellbook-class-filters" class="spellbook-filter-group"><!-- built by renderSpellbookSettings() --></div>
+          </div>
+          <div>
+            <span class="spellbook-settings-label">Schools</span>
+            <div id="spellbook-school-filters" class="spellbook-filter-group"><!-- built by renderSpellbookSettings() --></div>
+          </div>
+        </div>
+        <div id="spellbook-list" class="spell-picker-list"></div>
       </div>
 
       <!-- Dice Tab -->
