@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Item Data Entry</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: monospace;
+    background: #1a1a2e;
+    color: #e0e0e0;
+    padding: 20px;
+    min-height: 100vh;
+  }
+
+  h1 { font-size: 16px; text-transform: uppercase; letter-spacing: 2px; color: #ccc; margin-bottom: 4px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: #888; margin-bottom: 10px; }
+  .sub { font-size: 12px; color: #666; margin-bottom: 18px; }
+
+  a { color: #a090f0; }
+
+  button {
+    background: #2a2a3e;
+    border: 1px solid #555;
+    color: #ccc;
+    padding: 6px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: monospace;
+    font-size: 13px;
+    transition: background 0.1s;
+  }
+  button:hover { background: #3a3a5e; color: #fff; }
+  button.primary { border-color: #7c6fcd; color: #b4acf0; }
+  button.primary:hover { background: #3a3060; }
+  button.danger { border-color: #7c3535; color: #f08080; }
+  button.danger:hover { background: #3a1515; }
+  button:disabled { opacity: 0.4; cursor: default; }
+  button:disabled:hover { background: #2a2a3e; color: #ccc; }
+  button.small { padding: 3px 9px; font-size: 12px; }
+
+  input[type=text], input[type=number], select, textarea {
+    background: #2a2a3e;
+    border: 1px solid #444;
+    color: #e0e0e0;
+    padding: 5px 8px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 13px;
+    width: 100%;
+  }
+  textarea { resize: vertical; min-height: 44px; }
+  input[type=checkbox] { width: auto; accent-color: #7c6fcd; }
+
+  label { color: #aaa; font-size: 12px; }
+
+  .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+  .field-row { display: flex; gap: 10px; }
+  .field-row > .field { flex: 1; }
+  .hint { font-size: 11px; color: #666; }
+  .checkline { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+  .checkline label { color: #ccc; font-size: 13px; }
+
+  fieldset { border: 1px solid #333; border-radius: 6px; padding: 12px 14px 14px; margin-bottom: 16px; }
+  legend { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #888; padding: 0 6px; }
+
+  .warn { color: #e0b060; font-size: 12px; margin-top: -4px; margin-bottom: 8px; }
+
+  /* Layout */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    background: #15152488;
+    border: 1px solid #2e2e44;
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin-bottom: 18px;
+  }
+  .toolbar .status { font-size: 12px; color: #888; margin-right: auto; }
+  .toolbar .status span { color: #b4acf0; }
+
+  .main { display: flex; gap: 20px; align-items: flex-start; }
+  .col-form { width: 380px; flex-shrink: 0; }
+  .col-shape { width: 300px; flex-shrink: 0; }
+  .col-list { flex: 1; min-width: 320px; }
+
+  .panel {
+    background: #14141f;
+    border: 1px solid #2e2e44;
+    border-radius: 6px;
+    padding: 14px 16px;
+  }
+
+  /* Chip / property picker */
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .chip {
+    font-size: 12px;
+    padding: 4px 9px;
+    border-radius: 12px;
+    border: 1px solid #444;
+    background: #22223a;
+    color: #aaa;
+    cursor: pointer;
+    user-select: none;
+  }
+  .chip.on { background: #3a3060; border-color: #7c6fcd; color: #d0c8f8; }
+  .chip:hover { filter: brightness(1.2); }
+
+  /* Variant list */
+  .variant-row { display: flex; gap: 6px; margin-bottom: 6px; align-items: center; }
+  .variant-row input, .variant-row select { flex: 1; }
+  #variant-list { list-style: none; margin: 8px 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+  #variant-list li {
+    display: flex; justify-content: space-between; align-items: center;
+    background: #22223a; border: 1px solid #333; border-radius: 4px;
+    padding: 4px 8px; font-size: 12px; color: #ccc;
+  }
+
+  /* Shape grid (from shape-editor.html) */
+  #grid-wrap { display: flex; flex-direction: column; gap: 2px; user-select: none; margin-bottom: 12px; }
+  .grid-row { display: flex; gap: 2px; }
+  .cell {
+    width: 30px; height: 30px; border-radius: 3px;
+    background: #2a2a3e; border: 1px solid #3a3a5e; cursor: pointer;
+    transition: background 0.07s;
+  }
+  .cell.on { background: #7c6fcd; border-color: #a090f0; }
+  .cell:not(.ghost):hover { filter: brightness(1.3); }
+  .cell.ghost {
+    background: rgba(124, 111, 205, 0.04); border: 1px dashed #5a5080;
+    cursor: cell; transition: background 0.1s, border-color 0.1s;
+  }
+  .cell.ghost:hover { background: rgba(124, 111, 205, 0.18); border-color: #9080e0; filter: none; }
+
+  .previews { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+  .preview-box { display: flex; flex-direction: column; gap: 4px; }
+  .preview-label { font-size: 10px; color: #666; text-align: center; }
+  .mini-grid { display: flex; flex-direction: column; gap: 1px; }
+  .mini-row { display: flex; gap: 1px; }
+  .mini-cell { width: 12px; height: 12px; border-radius: 2px; background: #2a2a3e; border: 1px solid #333; }
+  .mini-cell.on { background: #7c6fcd; border-color: #a090f0; }
+
+  #stats { font-size: 12px; color: #888; margin-top: 8px; }
+  #stats span { color: #ccc; }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #2a2a3e; }
+  th { color: #888; text-transform: uppercase; font-size: 10px; letter-spacing: 1px; }
+  tr:hover td { background: #1c1c2c; }
+  td.actions { white-space: nowrap; text-align: right; }
+  .empty-row td { color: #555; text-align: center; padding: 24px; }
+
+  .output-block {
+    background: #0f0f1a;
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 12px;
+    font-size: 12px;
+    color: #a0d0a0;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 220px;
+    overflow-y: auto;
+    margin-top: 10px;
+  }
+
+  #csv-preview-block { margin-top: 12px; }
+</style>
+</head>
+<body>
+
+<h1>Item Data Entry</h1>
+<div class="sub">
+  Builds rows for <code>data/items.csv</code>. Columns and rules match
+  <code>data/_item_dtypes.csv</code>. Shape grid reused from
+  <a href="shape-editor.html">shape-editor.html</a>.
+</div>
+
+<div class="toolbar">
+  <button onclick="fetchExisting()">Fetch data/items.csv</button>
+  <input type="file" id="file-input" accept=".csv" style="display:none" onchange="onFilePicked(event)">
+  <button onclick="document.getElementById('file-input').click()">Choose File…</button>
+  <div class="status" id="load-status">No existing file loaded — export will start a fresh CSV with just the header.</div>
+  <button class="primary" onclick="copyNewRowsOnly()">Copy New Rows</button>
+  <button class="primary" onclick="downloadFullCSV()">Download Full items.csv</button>
+</div>
+
+<div class="main">
+
+  <!-- FORM -->
+  <div class="col-form panel">
+    <h2>Item Fields</h2>
+
+    <fieldset>
+      <legend>Basic</legend>
+      <div class="field">
+        <label for="f-name">Name *</label>
+        <input type="text" id="f-name" placeholder="Longsword">
+        <div class="warn" id="dup-warning" style="display:none;">An item with this name already exists.</div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="f-rarity">Rarity</label>
+          <select id="f-rarity">
+            <option value="common">common</option>
+            <option value="uncommon">uncommon</option>
+            <option value="rare">rare</option>
+            <option value="very_rare">very_rare</option>
+            <option value="legendary">legendary</option>
+            <option value="artifact">artifact</option>
+            <option value="special">special</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-source">Source</label>
+          <input type="text" id="f-source" list="source-list" placeholder="PHB">
+          <datalist id="source-list">
+            <option value="PHB"><option value="DMG"><option value="TCoE">
+            <option value="XGtE"><option value="HB">
+          </datalist>
+        </div>
+      </div>
+      <div class="field">
+        <label for="f-desc">Description</label>
+        <textarea id="f-desc" placeholder="Free text (single line — newlines will be flattened to spaces)"></textarea>
+      </div>
+      <div class="field">
+        <label for="f-cost">Cost</label>
+        <input type="text" id="f-cost" placeholder="15 gp, or 2 gp 5 sp, or 5cp">
+        <div class="hint">Bare number = gp. Blank = 0.</div>
+      </div>
+      <div class="field">
+        <label for="f-tags">Tags</label>
+        <input type="text" id="f-tags" placeholder="weapon, melee, finesse">
+        <div class="hint">Comma or pipe separated — drives the sidebar tag filter.</div>
+      </div>
+      <div class="field">
+        <label for="f-image">Image</label>
+        <input type="text" id="f-image" placeholder="img/items/longsword.png">
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Combat</legend>
+      <div class="field-row">
+        <div class="field">
+          <label for="f-damage">Damage</label>
+          <input type="text" id="f-damage" placeholder="1d8">
+        </div>
+        <div class="field">
+          <label for="f-damageType">Damage Type</label>
+          <select id="f-damageType">
+            <option value="">(none)</option>
+            <option>acid</option><option>bludgeoning</option><option>cold</option>
+            <option>fire</option><option>force</option><option>lightning</option>
+            <option>necrotic</option><option>piercing</option><option>poison</option>
+            <option>psychic</option><option>radiant</option><option>slashing</option>
+            <option>thunder</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="f-mastery">Mastery</label>
+        <select id="f-mastery">
+          <option value="">(none)</option>
+          <option>Cleave</option><option>Nick</option><option>Push</option>
+          <option>Sap</option><option>Slow</option><option>Topple</option><option>Vex</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Properties</label>
+        <div class="chips" id="property-chips"></div>
+        <input type="text" id="f-property-extra" placeholder="Add a custom property, comma separated">
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Physical</legend>
+      <div class="checkline">
+        <input type="checkbox" id="f-attunement">
+        <label for="f-attunement">Requires attunement</label>
+      </div>
+      <div class="field">
+        <label for="f-stackSize">Stack Size</label>
+        <input type="number" id="f-stackSize" min="1" placeholder="blank or 1 = doesn't stack">
+        <div class="hint">Units per cell — a full stack weighs 1 lb. Stacked items should use a 1×1 shape.</div>
+      </div>
+      <div class="checkline">
+        <input type="checkbox" id="f-container" onchange="toggleContainerFields()">
+        <label for="f-container">Is a container</label>
+      </div>
+      <div class="field-row" id="container-fields" style="display:none;">
+        <div class="field">
+          <label for="f-containerRows">Interior Rows</label>
+          <input type="number" id="f-containerRows" min="1" placeholder="5">
+        </div>
+        <div class="field">
+          <label for="f-containerCols">Interior Cols</label>
+          <input type="number" id="f-containerCols" min="1" placeholder="5">
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Variants</legend>
+      <div class="hint" style="margin-bottom:8px;">
+        e.g. "+1 (uncommon, 500gp)" — blank rarity/cost inherits the base item's.
+      </div>
+      <div class="variant-row">
+        <input type="text" id="variant-label" placeholder="Label, e.g. +1">
+        <select id="variant-rarity">
+          <option value="">(inherit rarity)</option>
+          <option value="common">common</option><option value="uncommon">uncommon</option>
+          <option value="rare">rare</option><option value="very_rare">very_rare</option>
+          <option value="legendary">legendary</option><option value="artifact">artifact</option>
+          <option value="special">special</option>
+        </select>
+        <input type="text" id="variant-cost" placeholder="(inherit cost)">
+        <button class="small" onclick="addVariant()">Add</button>
+      </div>
+      <ul id="variant-list"></ul>
+    </fieldset>
+
+    <div style="display:flex; gap:8px;">
+      <button class="primary" onclick="submitItem()">Add Item to List</button>
+      <button onclick="resetForm()">Clear Form</button>
+    </div>
+  </div>
+
+  <!-- SHAPE EDITOR -->
+  <div class="col-shape panel">
+    <h2>Shape</h2>
+    <div class="field-row">
+      <div class="field">
+        <label for="inp-rows">Rows</label>
+        <input type="number" id="inp-rows" value="1" min="1" max="12">
+      </div>
+      <div class="field">
+        <label for="inp-cols">Cols</label>
+        <input type="number" id="inp-cols" value="1" min="1" max="12">
+      </div>
+    </div>
+    <div class="field-row" style="margin-bottom:12px;">
+      <button onclick="resizeShape()">Resize</button>
+      <button onclick="trimShape()" class="primary">Trim</button>
+      <button onclick="clearShape()" class="danger">Clear</button>
+    </div>
+
+    <div id="grid-wrap"></div>
+
+    <div id="stats">
+      Weight: <span id="stat-weight">0</span> lb &nbsp;|&nbsp; Cells: <span id="stat-cells">0</span>
+    </div>
+
+    <div class="previews" id="previews"></div>
+  </div>
+
+  <!-- LIST -->
+  <div class="col-list panel">
+    <h2>Items In This Session (<span id="item-count">0</span>)</h2>
+    <table>
+      <thead>
+        <tr><th>Name</th><th>Rarity</th><th>Cost</th><th>Wt</th><th>Source</th><th></th></tr>
+      </thead>
+      <tbody id="item-tbody">
+        <tr class="empty-row"><td colspan="6">No items added yet.</td></tr>
+      </tbody>
+    </table>
+    <div style="margin-top:10px; display:flex; gap:8px;">
+      <button class="danger" onclick="clearAllItems()">Clear All</button>
+    </div>
+
+    <div id="csv-preview-block">
+      <h2 style="margin-top:16px;">New Rows (CSV)</h2>
+      <div class="output-block" id="output-csv">(none yet)</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// =============================================================================
+// Constants matching data/_item_dtypes.csv
+// =============================================================================
+const RARITY_ORDER = ['common','uncommon','rare','very_rare','legendary','artifact','special'];
+const PROPERTY_OPTIONS = [
+  'Finesse', 'Light', 'Heavy', 'Reach', 'Loading', 'Special', 'Two-Handed',
+  'Versatile (1d10)', 'Thrown (Range 20/60)', 'Ammunition (Range 80/320, Bolt)',
+];
+const CSV_HEADER = 'name,rarity,description,cost,tags,damage,damageType,attunement,stackSize,image,shape,container,containerRows,containerCols,properties,mastery,source,variants';
+const DRAFT_KEY = 'dnd_item_editor_draft';
+
+// =============================================================================
+// CSV parsing / writing (same quoting rules as src/js/items.js parseCSVRow)
+// =============================================================================
+function parseCSVRow(line) {
+  const fields = [];
+  let i = 0;
+  while (i <= line.length) {
+    if (i === line.length) { fields.push(''); break; }
+    if (line[i] === '"') {
+      let val = '';
+      i++;
+      while (i < line.length) {
+        if (line[i] === '"' && line[i + 1] === '"') { val += '"'; i += 2; }
+        else if (line[i] === '"') { i++; break; }
+        else { val += line[i++]; }
+      }
+      fields.push(val);
+      if (line[i] === ',') i++;
+    } else {
+      const end = line.indexOf(',', i);
+      if (end === -1) { fields.push(line.slice(i)); break; }
+      fields.push(line.slice(i, end));
+      i = end + 1;
+    }
+  }
+  return fields;
+}
+
+function csvField(v) {
+  let s = v == null ? '' : String(v);
+  s = s.replace(/\r?\n/g, ' '); // the loader splits on \n before parsing fields — embedded newlines would break the row
+  if (/[",]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
+function itemToCSVRow(item) {
+  return [
+    item.name, item.rarity, item.description, item.cost, item.tags,
+    item.damage, item.damageType, item.attunement ? 'true' : '',
+    item.stackSize || '', item.image, item.shape,
+    item.container ? 'true' : '', item.containerRows || '', item.containerCols || '',
+    item.properties, item.mastery, item.source, item.variants,
+  ].map(csvField).join(',');
+}
+
+// =============================================================================
+// Existing file (loaded for context + merged download)
+// =============================================================================
+let existingLines = null; // raw lines including header, or null if nothing loaded
+let existingNames = new Set();
+
+function setLoadStatus(text, count) {
+  document.getElementById('load-status').innerHTML = text;
+}
+
+function ingestCSVText(text, sourceLabel) {
+  const lines = text.split('\n').map(l => l.replace(/\r$/, '')).filter(l => l.trim());
+  if (lines.length < 1) { alert('That file looks empty.'); return; }
+  existingLines = lines;
+  existingNames = new Set();
+  const headers = parseCSVRow(lines[0]);
+  const nameIdx = headers.indexOf('name');
+  for (let i = 1; i < lines.length; i++) {
+    const vals = parseCSVRow(lines[i]);
+    const n = (vals[nameIdx] || '').trim();
+    if (n) existingNames.add(n.toLowerCase());
+  }
+  setLoadStatus(`Loaded <span>${sourceLabel}</span> — <span>${existingLines.length - 1}</span> existing rows.`);
+  checkDuplicateName();
+}
+
+async function fetchExisting() {
+  try {
+    const res = await fetch('../data/items.csv');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    ingestCSVText(text, '../data/items.csv');
+  } catch (err) {
+    setLoadStatus(`Could not fetch ../data/items.csv (${err.message}). Serve this over HTTP, or use "Choose File…" instead.`);
+  }
+}
+
+function onFilePicked(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => ingestCSVText(reader.result, file.name);
+  reader.readAsText(file);
+}
+
+// =============================================================================
+// Session items (new rows being authored)
+// =============================================================================
+let items = [];       // array of item objects
+let editingIndex = -1; // -1 = adding new, otherwise index in `items` being replaced
+let selectedProperties = new Set();
+let variants = []; // { label, rarity, cost }
+
+function saveDraft() {
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify(items)); } catch (e) {}
+}
+function loadDraft() {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (raw) items = JSON.parse(raw) || [];
+  } catch (e) { items = []; }
+}
+
+function renderPropertyChips() {
+  const wrap = document.getElementById('property-chips');
+  wrap.innerHTML = '';
+  PROPERTY_OPTIONS.forEach(p => {
+    const chip = document.createElement('div');
+    chip.className = 'chip' + (selectedProperties.has(p) ? ' on' : '');
+    chip.textContent = p;
+    chip.onclick = () => {
+      if (selectedProperties.has(p)) selectedProperties.delete(p);
+      else selectedProperties.add(p);
+      renderPropertyChips();
+    };
+    wrap.appendChild(chip);
+  });
+}
+
+function addVariant() {
+  const label = document.getElementById('variant-label').value.trim();
+  if (!label) return;
+  const rarity = document.getElementById('variant-rarity').value;
+  const cost = document.getElementById('variant-cost').value.trim();
+  variants.push({ label, rarity, cost });
+  document.getElementById('variant-label').value = '';
+  document.getElementById('variant-rarity').value = '';
+  document.getElementById('variant-cost').value = '';
+  renderVariantList();
+}
+
+function removeVariant(i) {
+  variants.splice(i, 1);
+  renderVariantList();
+}
+
+function formatVariantSpec(v) {
+  const parenParts = [];
+  if (v.rarity) parenParts.push(v.rarity);
+  if (v.cost) parenParts.push(v.cost);
+  return parenParts.length ? `${v.label} (${parenParts.join(', ')})` : v.label;
+}
+
+function renderVariantList() {
+  const list = document.getElementById('variant-list');
+  list.innerHTML = '';
+  variants.forEach((v, i) => {
+    const li = document.createElement('li');
+    const span = document.createElement('span');
+    span.textContent = formatVariantSpec(v);
+    const btn = document.createElement('button');
+    btn.className = 'small danger';
+    btn.textContent = '×';
+    btn.onclick = () => removeVariant(i);
+    li.appendChild(span);
+    li.appendChild(btn);
+    list.appendChild(li);
+  });
+}
+
+function toggleContainerFields() {
+  document.getElementById('container-fields').style.display =
+    document.getElementById('f-container').checked ? 'flex' : 'none';
+}
+
+function checkDuplicateName() {
+  const name = document.getElementById('f-name').value.trim().toLowerCase();
+  const inSession = items.some((it, i) => i !== editingIndex && it.name.toLowerCase() === name);
+  const inFile = existingNames.has(name);
+  document.getElementById('dup-warning').style.display = (name && (inSession || inFile)) ? 'block' : 'none';
+}
+document.getElementById('f-name').addEventListener('input', checkDuplicateName);
+
+function splitList(str, sep) {
+  return str.split(sep).map(s => s.trim()).filter(Boolean);
+}
+
+function readFormAsItem() {
+  const extraProps = document.getElementById('f-property-extra').value;
+  const props = [...selectedProperties, ...splitList(extraProps, ',')];
+  return {
+    name: document.getElementById('f-name').value.trim(),
+    rarity: document.getElementById('f-rarity').value,
+    description: document.getElementById('f-desc').value.trim(),
+    cost: document.getElementById('f-cost').value.trim(),
+    tags: splitList(document.getElementById('f-tags').value, /[,|]/).join('|'),
+    damage: document.getElementById('f-damage').value.trim(),
+    damageType: document.getElementById('f-damageType').value,
+    attunement: document.getElementById('f-attunement').checked,
+    stackSize: document.getElementById('f-stackSize').value.trim(),
+    image: document.getElementById('f-image').value.trim(),
+    shape: grid.map(row => row.join('')).join('|'),
+    container: document.getElementById('f-container').checked,
+    containerRows: document.getElementById('f-containerRows').value.trim(),
+    containerCols: document.getElementById('f-containerCols').value.trim(),
+    properties: props.join('; '),
+    mastery: document.getElementById('f-mastery').value,
+    source: document.getElementById('f-source').value.trim(),
+    variants: variants.map(formatVariantSpec).join('; '),
+  };
+}
+
+function writeItemToForm(item) {
+  document.getElementById('f-name').value = item.name;
+  document.getElementById('f-rarity').value = item.rarity || 'common';
+  document.getElementById('f-desc').value = item.description || '';
+  document.getElementById('f-cost').value = item.cost || '';
+  document.getElementById('f-tags').value = (item.tags || '').split('|').filter(Boolean).join(', ');
+  document.getElementById('f-damage').value = item.damage || '';
+  document.getElementById('f-damageType').value = item.damageType || '';
+  document.getElementById('f-attunement').checked = !!item.attunement;
+  document.getElementById('f-stackSize').value = item.stackSize || '';
+  document.getElementById('f-image').value = item.image || '';
+  document.getElementById('f-container').checked = !!item.container;
+  toggleContainerFields();
+  document.getElementById('f-containerRows').value = item.containerRows || '';
+  document.getElementById('f-containerCols').value = item.containerCols || '';
+  document.getElementById('f-mastery').value = item.mastery || '';
+  document.getElementById('f-source').value = item.source || '';
+
+  selectedProperties = new Set();
+  const knownSet = new Set(PROPERTY_OPTIONS);
+  const extras = [];
+  (item.properties || '').split(';').map(s => s.trim()).filter(Boolean).forEach(p => {
+    if (knownSet.has(p)) selectedProperties.add(p);
+    else extras.push(p);
+  });
+  document.getElementById('f-property-extra').value = extras.join(', ');
+  renderPropertyChips();
+
+  variants = (item.variants || '').split(';').map(s => s.trim()).filter(Boolean).map(spec => {
+    const m = spec.match(/^(.+?)(?:\s*\(([^)]*)\))?$/);
+    if (!m) return null;
+    const out = { label: m[1].trim(), rarity: '', cost: '' };
+    if (m[2]) {
+      m[2].split(',').map(s => s.trim()).filter(Boolean).forEach(tok => {
+        const norm = tok.toLowerCase().replace(/\s+/g, '_');
+        if (RARITY_ORDER.includes(norm)) out.rarity = norm;
+        else out.cost = tok;
+      });
+    }
+    return out;
+  }).filter(Boolean);
+  renderVariantList();
+
+  const shapeRows = (item.shape || '1').split('|').map(row => row.split('').map(c => parseInt(c, 10) || 0));
+  rows = shapeRows.length;
+  cols = shapeRows[0].length;
+  grid = shapeRows;
+  document.getElementById('inp-rows').value = rows;
+  document.getElementById('inp-cols').value = cols;
+  renderShape();
+
+  checkDuplicateName();
+}
+
+function resetForm() {
+  editingIndex = -1;
+  document.querySelectorAll('.col-form input[type=text], .col-form textarea, .col-form input[type=number]').forEach(el => el.value = '');
+  document.getElementById('f-rarity').value = 'common';
+  document.getElementById('f-damageType').value = '';
+  document.getElementById('f-mastery').value = '';
+  document.getElementById('f-attunement').checked = false;
+  document.getElementById('f-container').checked = false;
+  toggleContainerFields();
+  selectedProperties = new Set();
+  renderPropertyChips();
+  variants = [];
+  renderVariantList();
+  rows = 1; cols = 1;
+  grid = makeGrid(1, 1);
+  document.getElementById('inp-rows').value = 1;
+  document.getElementById('inp-cols').value = 1;
+  renderShape();
+  document.getElementById('dup-warning').style.display = 'none';
+  const addBtn = document.querySelector('.col-form button.primary');
+  if (addBtn) addBtn.textContent = 'Add Item to List';
+}
+
+function submitItem() {
+  const item = readFormAsItem();
+  if (!item.name) { alert('Name is required.'); return; }
+  if (editingIndex >= 0) items[editingIndex] = item;
+  else items.push(item);
+  editingIndex = -1;
+  saveDraft();
+  resetForm();
+  renderItemTable();
+  renderCSVPreview();
+}
+
+function editItem(i) {
+  editingIndex = i;
+  writeItemToForm(items[i]);
+  const addBtn = document.querySelector('.col-form button.primary');
+  if (addBtn) addBtn.textContent = 'Save Changes';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function removeItem(i) {
+  items.splice(i, 1);
+  if (editingIndex === i) resetForm();
+  saveDraft();
+  renderItemTable();
+  renderCSVPreview();
+}
+
+function clearAllItems() {
+  if (items.length && !confirm(`Remove all ${items.length} items from this session? This cannot be undone.`)) return;
+  items = [];
+  editingIndex = -1;
+  saveDraft();
+  resetForm();
+  renderItemTable();
+  renderCSVPreview();
+}
+
+function itemWeight(item) {
+  const shape = (item.shape || '1').split('|');
+  const filled = shape.reduce((sum, row) => sum + row.split('').filter(c => c === '1').length, 0);
+  return filled;
+}
+
+function renderItemTable() {
+  const tbody = document.getElementById('item-tbody');
+  document.getElementById('item-count').textContent = items.length;
+  tbody.innerHTML = '';
+  if (!items.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="6">No items added yet.</td></tr>';
+    return;
+  }
+  items.forEach((item, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${item.name}</td>
+      <td>${item.rarity}</td>
+      <td>${item.cost || '—'}</td>
+      <td>${itemWeight(item)}</td>
+      <td>${item.source || '—'}</td>
+    `;
+    const td = document.createElement('td');
+    td.className = 'actions';
+    const editBtn = document.createElement('button');
+    editBtn.className = 'small';
+    editBtn.textContent = 'Edit';
+    editBtn.onclick = () => editItem(i);
+    const delBtn = document.createElement('button');
+    delBtn.className = 'small danger';
+    delBtn.textContent = 'Remove';
+    delBtn.style.marginLeft = '4px';
+    delBtn.onclick = () => removeItem(i);
+    td.appendChild(editBtn);
+    td.appendChild(delBtn);
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+  });
+}
+
+function renderCSVPreview() {
+  const block = document.getElementById('output-csv');
+  if (!items.length) { block.textContent = '(none yet)'; return; }
+  block.textContent = items.map(itemToCSVRow).join('\n');
+}
+
+async function copyNewRowsOnly() {
+  if (!items.length) { alert('No items added yet.'); return; }
+  const text = items.map(itemToCSVRow).join('\n');
+  await navigator.clipboard.writeText(text);
+  flashToolbarButton('Copy New Rows', 'Copied!');
+}
+
+function downloadFullCSV() {
+  const header = existingLines ? existingLines[0] : CSV_HEADER;
+  const existingBody = existingLines ? existingLines.slice(1) : [];
+  const newBody = items.map(itemToCSVRow);
+  const text = [header, ...existingBody, ...newBody].join('\n') + '\n';
+  const blob = new Blob([text], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'items.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function flashToolbarButton(label, tempLabel) {
+  const btn = [...document.querySelectorAll('.toolbar button')].find(b => b.textContent === label);
+  if (!btn) return;
+  const orig = btn.textContent;
+  btn.textContent = tempLabel;
+  setTimeout(() => btn.textContent = orig, 1200);
+}
+
+// =============================================================================
+// Shape editor grid — adapted from tools/shape-editor.html
+// =============================================================================
+let rows = 1, cols = 1;
+let grid = [];
+let painting = null;
+
+function makeGrid(r, c, prev) {
+  const g = [];
+  for (let i = 0; i < r; i++) {
+    g.push([]);
+    for (let j = 0; j < c; j++)
+      g[i].push(prev && prev[i] && prev[i][j] !== undefined ? prev[i][j] : 0);
+  }
+  return g;
+}
+
+function resizeShape() {
+  const r = Math.max(1, Math.min(20, parseInt(document.getElementById('inp-rows').value) || 1));
+  const c = Math.max(1, Math.min(20, parseInt(document.getElementById('inp-cols').value) || 1));
+  rows = r; cols = c;
+  grid = makeGrid(r, c, grid);
+  renderShape();
+}
+
+function clearShape() {
+  grid = makeGrid(rows, cols);
+  renderShape();
+}
+
+function trimShape() {
+  let top = rows, bot = -1, left = cols, right = -1;
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++)
+      if (grid[r][c]) {
+        top = Math.min(top, r); bot = Math.max(bot, r);
+        left = Math.min(left, c); right = Math.max(right, c);
+      }
+  if (bot === -1) return;
+  const g = [];
+  for (let r = top; r <= bot; r++) g.push(grid[r].slice(left, right + 1));
+  rows = bot - top + 1; cols = right - left + 1;
+  document.getElementById('inp-rows').value = rows;
+  document.getElementById('inp-cols').value = cols;
+  grid = g;
+  renderShape();
+}
+
+function rotateCW(g) {
+  const r = g.length, c = g[0].length;
+  const out = [];
+  for (let j = 0; j < c; j++) {
+    out.push([]);
+    for (let i = r - 1; i >= 0; i--) out[j].push(g[i][j]);
+  }
+  return out;
+}
+
+function applyPaint(r, c) {
+  if (painting === null) return false;
+  const ghostRow = r >= rows;
+  const ghostCol = c >= cols;
+
+  if (ghostRow || ghostCol) {
+    if (ghostRow) { grid.push(new Array(cols).fill(0)); rows++; document.getElementById('inp-rows').value = rows; }
+    if (ghostCol) { grid.forEach(row => row.push(0)); cols++; document.getElementById('inp-cols').value = cols; }
+    grid[r][c] = painting ?? 1;
+    renderShape();
+    return true;
+  }
+
+  grid[r][c] = painting;
+
+  let expanded = false;
+  if (painting === 1 && r === rows - 1) {
+    grid.push(new Array(cols).fill(0)); rows++;
+    document.getElementById('inp-rows').value = rows;
+    expanded = true;
+  }
+  if (painting === 1 && c === cols - 1) {
+    grid.forEach(row => row.push(0)); cols++;
+    document.getElementById('inp-cols').value = cols;
+    expanded = true;
+  }
+  if (expanded) { renderShape(); return true; }
+  return false;
+}
+
+function renderGrid() {
+  const wrap = document.getElementById('grid-wrap');
+  wrap.innerHTML = '';
+  for (let r = 0; r < rows; r++) {
+    const rowEl = document.createElement('div');
+    rowEl.className = 'grid-row';
+    for (let c = 0; c < cols; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell' + (grid[r][c] ? ' on' : '');
+      cell.dataset.r = r; cell.dataset.c = c;
+      rowEl.appendChild(cell);
+    }
+    const gr = document.createElement('div');
+    gr.className = 'cell ghost';
+    gr.dataset.r = r; gr.dataset.c = cols;
+    rowEl.appendChild(gr);
+    wrap.appendChild(rowEl);
+  }
+  const ghostRow = document.createElement('div');
+  ghostRow.className = 'grid-row';
+  for (let c = 0; c <= cols; c++) {
+    const cell = document.createElement('div');
+    cell.className = 'cell ghost';
+    cell.dataset.r = rows; cell.dataset.c = c;
+    ghostRow.appendChild(cell);
+  }
+  wrap.appendChild(ghostRow);
+}
+
+function initShapeEvents() {
+  const wrap = document.getElementById('grid-wrap');
+  wrap.addEventListener('pointerdown', e => {
+    const cell = e.target.closest('.cell');
+    if (!cell) return;
+    e.preventDefault();
+    const r = +cell.dataset.r, c = +cell.dataset.c;
+    const curVal = (r < rows && c < cols) ? grid[r][c] : 0;
+    painting = curVal ? 0 : 1;
+    if (!applyPaint(r, c)) updateShapeDisplay();
+  });
+  document.addEventListener('pointermove', e => {
+    if (painting === null) return;
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const cell = el && el.closest('#grid-wrap .cell');
+    if (!cell) return;
+    const r = +cell.dataset.r, c = +cell.dataset.c;
+    if (!applyPaint(r, c)) updateShapeDisplay();
+  });
+  document.addEventListener('pointerup', () => { painting = null; });
+}
+
+function updateShapeDisplay() {
+  document.querySelectorAll('#grid-wrap .cell:not(.ghost)').forEach(cell => {
+    cell.classList.toggle('on', !!grid[+cell.dataset.r][+cell.dataset.c]);
+  });
+  renderShapeStats();
+  renderShapePreviews();
+}
+
+function renderShapePreviews() {
+  const wrap = document.getElementById('previews');
+  wrap.innerHTML = '';
+  let g = grid.map(r => [...r]);
+  for (let rot = 0; rot < 4; rot++) {
+    const box = document.createElement('div');
+    box.className = 'preview-box';
+    const label = document.createElement('div');
+    label.className = 'preview-label';
+    label.textContent = rot === 0 ? '0°' : rot * 90 + '°';
+    const miniGrid = document.createElement('div');
+    miniGrid.className = 'mini-grid';
+    for (const row of g) {
+      const rowEl = document.createElement('div');
+      rowEl.className = 'mini-row';
+      for (const v of row) {
+        const c = document.createElement('div');
+        c.className = 'mini-cell' + (v ? ' on' : '');
+        rowEl.appendChild(c);
+      }
+      miniGrid.appendChild(rowEl);
+    }
+    box.appendChild(label);
+    box.appendChild(miniGrid);
+    wrap.appendChild(box);
+    g = rotateCW(g);
+  }
+}
+
+function renderShapeStats() {
+  const filled = grid.flat().reduce((a, v) => a + v, 0);
+  document.getElementById('stat-cells').textContent = filled;
+  document.getElementById('stat-weight').textContent = filled;
+}
+
+function renderShape() {
+  renderGrid();
+  renderShapeStats();
+  renderShapePreviews();
+}
+
+// =============================================================================
+// Init
+// =============================================================================
+grid = makeGrid(rows, cols);
+loadDraft();
+renderShape();
+initShapeEvents();
+renderPropertyChips();
+renderVariantList();
+renderItemTable();
+renderCSVPreview();
+</script>
+</body>
+</html>
