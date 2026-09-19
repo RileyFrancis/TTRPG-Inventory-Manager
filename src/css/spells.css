@@ -96,11 +96,91 @@
   font-size: 11px;
   color: var(--text-dim);
 }
+/* Rendered from Markdown (spells.js's renderSpellDesc) — the block-level rules
+   below mirror class-features.css's .feature-desc, the app's other Markdown
+   card body, sized off this card's own 12px instead of that one's 11.5px. */
 .spell-desc {
   margin: 8px 0 0;
   font-size: 12px;
   line-height: 1.5;
   color: var(--text);
+  overflow-wrap: break-word;
+}
+
+.spell-desc > :first-child { margin-top: 0; }
+.spell-desc > :last-child { margin-bottom: 0; }
+
+.spell-desc p { margin: 0 0 0.6em; }
+
+.spell-desc h1,
+.spell-desc h2,
+.spell-desc h3,
+.spell-desc h4,
+.spell-desc h5,
+.spell-desc h6 {
+  margin: 0.9em 0 0.3em;
+  font-family: var(--font-display);
+  font-size: 1em;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+
+.spell-desc ul,
+.spell-desc ol { margin: 0 0 0.6em; padding-left: 1.35em; }
+.spell-desc li { margin-bottom: 0.15em; }
+.spell-desc li > ul,
+.spell-desc li > ol { margin: 0.15em 0 0; }
+
+.spell-desc blockquote {
+  margin: 0 0 0.6em;
+  padding: 0.1em 0 0.1em 0.8em;
+  border-left: 2px solid var(--accent-soft);
+  color: var(--text-dim);
+  font-style: italic;
+}
+.spell-desc blockquote > :last-child { margin-bottom: 0; }
+
+.spell-desc code {
+  padding: 0.05em 0.3em;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.92em;
+  background: var(--field);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+.spell-desc pre {
+  margin: 0 0 0.6em;
+  padding: 7px 9px;
+  background: var(--field);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow-x: auto;
+}
+.spell-desc pre code { padding: 0; background: none; border: none; }
+
+.spell-desc a { color: var(--accent); text-decoration: underline; }
+.spell-desc a:hover { text-decoration: none; }
+
+.spell-desc strong, .spell-desc b { font-weight: 700; }
+.spell-desc em, .spell-desc i { font-style: italic; }
+
+.spell-desc table {
+  width: 100%;
+  margin: 0 0 0.6em;
+  border-collapse: collapse;
+  font-size: 0.95em;
+}
+.spell-desc th,
+.spell-desc td {
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+.spell-desc th {
+  background: var(--field);
+  font-weight: 700;
+  color: var(--text-dim);
 }
 
 .spell-note {

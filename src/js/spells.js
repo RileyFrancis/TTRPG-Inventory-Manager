@@ -548,6 +548,22 @@ function spellLevelHeading(level) {
   return h;
 }
 
+// Parsed descriptions are cached by their raw Markdown string, same reasoning
+// as class-features.js's featureDescCache — data/spells.json never changes at
+// runtime, so the parse + sanitize only needs to happen once per spell.
+const spellDescCache = new Map();
+
+function renderSpellDesc(el, src) {
+  const key = String(src ?? '');
+  let tpl = spellDescCache.get(key);
+  if (!tpl) {
+    tpl = document.createElement('template');
+    renderMarkdownInto(tpl.content, key);
+    spellDescCache.set(key, tpl);
+  }
+  el.appendChild(tpl.content.cloneNode(true));
+}
+
 function spellCard(spell) {
   const card = document.createElement('article');
   card.className = 'spell-card';
@@ -575,9 +591,13 @@ function spellCard(spell) {
     meta.appendChild(span);
   });
 
-  const desc = document.createElement('p');
+  // A `<div>`, not a `<p>`: the description is Markdown and comes back
+  // block-level, same as class-features.js's feature-desc. `renderSpellDesc`
+  // is the only way markup may be built from this string — markdown.js is the
+  // one sanctioned path app-wide, sanitizer included, no exceptions per file.
+  const desc = document.createElement('div');
   desc.className = 'spell-desc';
-  desc.textContent = spell.description;
+  renderSpellDesc(desc, spell.description);
 
   card.append(head, meta, desc);
   return card;

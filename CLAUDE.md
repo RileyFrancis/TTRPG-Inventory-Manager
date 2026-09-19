@@ -243,6 +243,10 @@ deliberate simplification. Per-character on/off via `character.spellsEnabled`
 array) is what the player actually picked, toggled from the **Available
 Spells** panel (`#spellbook-list`, a whole-card click) — which lives in the
 sidebar's Spells tab (see *The sidebar's tabs*), not beside the sheet.
+A spell's `description` is Markdown too, same as class features/species
+traits — `spellCard()` renders it through `renderMarkdownInto`, cached by raw
+string the same way `class-features.js`'s `featureDescCache` is, since
+`data/spells.json` never changes at runtime.
 
 - **The panel's pool is wider than the character's own classes**
   (`spellbookAvailableSpells()`) — a spell tagged with one of the character's

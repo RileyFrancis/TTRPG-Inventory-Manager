@@ -22,12 +22,15 @@ data/
   _item_dtypes.csv      Reference: the allowed values for each items.csv column
   classes.json          The classes the app knows, and the features each grants
   species.json          The species the app knows, and the traits each grants
+  spell-slots.json      Spell slots each class grants, indexed by that class's level
+  spells.json           Every spell the app knows, each tagged with its classes
 img/                    Image assets — the icon set and the paper texture
 functions/
   firebase-env.js       Cloudflare Pages Function: serves the Firebase keys on a
                         deploy, from the host's environment variables
 tools/
   shape-editor.html     Standalone helper for drawing item shapes
+  spell-editor.html     Standalone helper for authoring data/spells.json entries
 ```
 
 ## Load order is behavior
@@ -211,6 +214,17 @@ class nests its subclasses (`{ id, name, source?, features: [...] }`); the
 character's one free-text `subclass` field is matched against them and a match
 folds that subclass's features into the Class Features list. `source` is a
 short book label shown as a caption above the cards.
+
+`data/spells.json` is `{ id, name, level, school, castingTime, range, components,
+duration, classes: [...], description }` per spell — `description` is Markdown
+too, same rules as `classes.json`/`species.json`, but always a single string
+here rather than an array. `classes` names entries in `data/spell-slots.json`'s
+own class list, matched by name the same case-insensitive way `class-features.js`
+matches a character's `classLevels`. `tools/spell-editor.html` is a form for
+adding or editing entries in this file without hand-writing JSON, with a live
+preview rendered through the real `markdown.js`; it writes the file directly via
+the File System Access API when the browser supports picking a file to save in
+place, and falls back to a download otherwise.
 
 The character sheet's written sections (Backstory, Appearance) are Markdown, and
 **raw HTML in them is allowed on purpose**. `src/js/markdown.js` is the only

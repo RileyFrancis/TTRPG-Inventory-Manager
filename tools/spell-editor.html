@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Spell Editor</title>
+<script src="../src/js/markdown.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: monospace;
+    background: #1a1a2e;
+    color: #e0e0e0;
+    display: flex;
+    gap: 24px;
+    padding: 24px;
+    min-height: 100vh;
+    align-items: flex-start;
+  }
+
+  h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 2px; color: #888; margin-bottom: 12px; }
+  h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #666; margin: 14px 0 6px; }
+  h3:first-child { margin-top: 0; }
+
+  button {
+    background: #2a2a3e;
+    border: 1px solid #555;
+    color: #ccc;
+    padding: 6px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: monospace;
+    font-size: 13px;
+    transition: background 0.1s;
+  }
+  button:hover { background: #3a3a5e; color: #fff; }
+  button.primary { border-color: #7c6fcd; color: #b4acf0; }
+  button.primary:hover { background: #3a3060; }
+  button.danger { border-color: #7c3535; color: #f08080; }
+  button.danger:hover { background: #3a1515; }
+  button:disabled { opacity: 0.4; cursor: default; }
+  button:disabled:hover { background: #2a2a3e; color: #ccc; }
+
+  input[type=text], input[type=number], textarea, select {
+    width: 100%;
+    background: #2a2a3e;
+    border: 1px solid #444;
+    color: #e0e0e0;
+    padding: 6px 8px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 13px;
+  }
+  textarea { resize: vertical; min-height: 90px; line-height: 1.4; }
+
+  label.field { display: block; margin-bottom: 10px; }
+  label.field span { display: block; color: #aaa; font-size: 11px; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .field-row { display: flex; gap: 10px; }
+  .field-row > label.field { flex: 1; }
+
+  /* Columns */
+  .col { display: flex; flex-direction: column; gap: 4px; }
+  .col-list   { width: 260px; }
+  .col-form   { width: 380px; }
+  .col-preview{ flex: 1; min-width: 320px; }
+
+  /* Left: list */
+  #status { font-size: 11px; color: #888; margin-bottom: 10px; line-height: 1.5; }
+  #status.ok   { color: #a0d0a0; }
+  #status.warn { color: #e0c080; }
+  .toolbar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  #search { margin-bottom: 8px; }
+  #spell-list-box { display: flex; flex-direction: column; gap: 2px; max-height: 70vh; overflow-y: auto; }
+  .spell-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 8px; border-radius: 4px; border: 1px solid transparent;
+    cursor: pointer; font-size: 12px; gap: 6px;
+  }
+  .spell-row:hover { background: #24243a; }
+  .spell-row.active { background: #2f2a52; border-color: #7c6fcd; }
+  .spell-row .lvl { color: #888; font-size: 10px; width: 34px; flex-shrink: 0; }
+  .spell-row .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .spell-row .rm { color: #a05050; flex-shrink: 0; }
+  .spell-row .rm:hover { color: #f08080; }
+  .empty-note { color: #666; font-size: 12px; padding: 8px; }
+
+  /* Preview card — mirrors src/css/spells.css's .spell-card, tool-local palette */
+  .preview-card {
+    background: #22223a;
+    border: 1px solid #3a3a5e;
+    border-radius: 6px;
+    padding: 12px 14px;
+  }
+  .preview-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .preview-name { font-size: 15px; font-weight: 700; color: #f0eafc; }
+  .preview-school { font-size: 11px; font-style: italic; color: #999; }
+  .preview-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; font-size: 11px; color: #999; }
+  .preview-desc { margin: 10px 0 0; font-size: 12px; line-height: 1.5; color: #ddd; overflow-wrap: break-word; }
+  .preview-desc > :first-child { margin-top: 0; }
+  .preview-desc > :last-child { margin-bottom: 0; }
+  .preview-desc p { margin: 0 0 0.6em; }
+  .preview-desc h1, .preview-desc h2, .preview-desc h3,
+  .preview-desc h4, .preview-desc h5, .preview-desc h6 {
+    margin: 0.9em 0 0.3em; font-size: 1em; font-weight: 700;
+    letter-spacing: 0.04em; color: #b4acf0;
+  }
+  .preview-desc ul, .preview-desc ol { margin: 0 0 0.6em; padding-left: 1.35em; }
+  .preview-desc li { margin-bottom: 0.15em; }
+  .preview-desc blockquote {
+    margin: 0 0 0.6em; padding: 0.1em 0 0.1em 0.8em;
+    border-left: 2px solid #5a5080; color: #aaa; font-style: italic;
+  }
+  .preview-desc code {
+    padding: 0.05em 0.3em; font-size: 0.92em;
+    background: #1a1a2e; border: 1px solid #444; border-radius: 3px;
+  }
+  .preview-desc pre {
+    margin: 0 0 0.6em; padding: 7px 9px;
+    background: #1a1a2e; border: 1px solid #444; border-radius: 4px; overflow-x: auto;
+  }
+  .preview-desc pre code { padding: 0; background: none; border: none; }
+  .preview-desc a { color: #b4acf0; }
+  .preview-desc table { width: 100%; margin: 0 0 0.6em; border-collapse: collapse; font-size: 0.95em; }
+  .preview-desc th, .preview-desc td { padding: 3px 6px; border: 1px solid #444; text-align: left; }
+  .preview-desc th { background: #1a1a2e; color: #999; }
+
+  .output-block {
+    background: #0f0f1a;
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 14px;
+    font-size: 12px;
+    white-space: pre-wrap;
+    overflow-x: auto;
+    color: #7090a0;
+    max-height: 220px;
+    overflow-y: auto;
+  }
+  .out-label { font-size: 11px; color: #555; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px; }
+</style>
+</head>
+<body>
+
+<div class="col col-list">
+  <h2>Spell Editor</h2>
+  <div id="status">Loading data/spells.json…</div>
+  <div class="toolbar">
+    <button id="btn-open" class="primary">Open spells.json</button>
+    <button id="btn-save" class="primary">Save</button>
+    <button id="btn-new">New Spell</button>
+  </div>
+  <input type="text" id="search" placeholder="Search name / class…">
+  <div id="spell-list-box"></div>
+</div>
+
+<div class="col col-form">
+  <h2>Edit</h2>
+
+  <label class="field"><span>Name</span>
+    <input type="text" id="f-name" placeholder="Fire Bolt">
+  </label>
+
+  <div class="field-row">
+    <label class="field"><span>ID</span>
+      <input type="text" id="f-id" placeholder="fire-bolt">
+    </label>
+    <label class="field" style="max-width:120px"><span>Level</span>
+      <select id="f-level"></select>
+    </label>
+  </div>
+
+  <div class="field-row">
+    <label class="field"><span>School</span>
+      <input type="text" id="f-school" list="dl-school" placeholder="Evocation">
+    </label>
+    <label class="field"><span>Classes (comma-separated)</span>
+      <input type="text" id="f-classes" list="dl-classes" placeholder="Wizard, Warlock">
+    </label>
+  </div>
+
+  <div class="field-row">
+    <label class="field"><span>Casting Time</span>
+      <input type="text" id="f-casting-time" list="dl-casting-time" placeholder="1 action">
+    </label>
+    <label class="field"><span>Range</span>
+      <input type="text" id="f-range" list="dl-range" placeholder="120 feet">
+    </label>
+  </div>
+
+  <div class="field-row">
+    <label class="field"><span>Components</span>
+      <input type="text" id="f-components" list="dl-components" placeholder="V, S">
+    </label>
+    <label class="field"><span>Duration</span>
+      <input type="text" id="f-duration" list="dl-duration" placeholder="Instantaneous">
+    </label>
+  </div>
+
+  <label class="field"><span>Description (Markdown)</span>
+    <textarea id="f-description" placeholder="A mote of fire streaks toward a creature..."></textarea>
+  </label>
+
+  <div class="toolbar">
+    <button id="btn-save-entry" class="primary">Save Spell to List</button>
+    <button id="btn-clear">Clear</button>
+  </div>
+
+  <datalist id="dl-school">
+    <option value="Abjuration"><option value="Conjuration"><option value="Divination">
+    <option value="Enchantment"><option value="Evocation"><option value="Illusion">
+    <option value="Necromancy"><option value="Transmutation">
+  </datalist>
+  <datalist id="dl-casting-time">
+    <option value="1 action"><option value="1 bonus action"><option value="1 reaction">
+    <option value="1 minute"><option value="10 minutes"><option value="1 hour">
+    <option value="8 hours"><option value="12 hours"><option value="24 hours">
+  </datalist>
+  <datalist id="dl-range">
+    <option value="Self"><option value="Touch"><option value="5 feet"><option value="10 feet">
+    <option value="15 feet"><option value="30 feet"><option value="60 feet"><option value="90 feet">
+    <option value="120 feet"><option value="150 feet"><option value="300 feet"><option value="500 feet">
+    <option value="1 mile"><option value="Sight"><option value="Unlimited">
+  </datalist>
+  <datalist id="dl-components">
+    <option value="V"><option value="S"><option value="M">
+    <option value="V, S"><option value="V, M"><option value="S, M"><option value="V, S, M">
+  </datalist>
+  <datalist id="dl-duration">
+    <option value="Instantaneous"><option value="1 round"><option value="1 minute">
+    <option value="10 minutes"><option value="1 hour"><option value="8 hours">
+    <option value="24 hours"><option value="7 days"><option value="Until dispelled">
+    <option value="Concentration, up to 1 minute"><option value="Concentration, up to 10 minutes">
+    <option value="Concentration, up to 1 hour"><option value="Concentration, up to 8 hours">
+  </datalist>
+  <datalist id="dl-classes"></datalist>
+</div>
+
+<div class="col col-preview">
+  <h3>Live preview</h3>
+  <div class="preview-card">
+    <div class="preview-head">
+      <span class="preview-name" id="pv-name">Spell Name</span>
+      <span class="preview-school" id="pv-school"></span>
+    </div>
+    <div class="preview-meta" id="pv-meta"></div>
+    <div class="preview-desc" id="pv-desc"></div>
+  </div>
+
+  <h3>JSON (this entry)</h3>
+  <div class="output-block" id="output-entry"></div>
+</div>
+
+<script>
+'use strict';
+
+// =============================================================================
+// STATE
+// =============================================================================
+let fileHandle = null;       // FileSystemFileHandle, when the File System Access API picked a real file
+let commentLines = [
+  "A small sample spell list, read by src/js/spells.js. `level` is 0 for a",
+  "cantrip. `classes` names whichever classes in data/spell-slots.json can",
+  "cast it — matched by name the same case-insensitive way class-features.js",
+  "matches a character's classLevels. `description` is Markdown, same rules",
+  "as data/classes.json, but always a single string here (never an array).",
+  "",
+  "tools/spell-editor.html is a standalone form for adding/editing entries",
+  "in this file without hand-writing JSON — see CLAUDE.md § Spells."
+];
+let workingSpells = [];      // the in-memory list this tool reads/writes
+let editingId = null;        // id of the entry currently loaded in the form, or null for a fresh one
+let idFollowsName = true;    // whether the ID field still auto-derives from Name
+
+const SUPPORTS_FS_ACCESS = 'showOpenFilePicker' in window;
+
+// =============================================================================
+// SCHEMA HELPERS — mirrors src/js/spells.js's sanitizeSpellList exactly
+// =============================================================================
+function slugify(name) {
+  return String(name).trim().toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function levelLabel(n) {
+  if (n === 0) return 'Cantrip';
+  const suffix = n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th';
+  return `${n}${suffix} Level`;
+}
+
+function sanitizeEntry(raw) {
+  const id = String(raw.id ?? '').trim();
+  const name = String(raw.name ?? '').trim();
+  const level = Math.max(0, Math.min(9, parseInt(raw.level, 10) || 0));
+  const classes = String(raw.classes ?? '').split(',').map(c => c.trim()).filter(Boolean);
+  return {
+    id, name, level,
+    school: String(raw.school ?? '').trim(),
+    castingTime: String(raw.castingTime ?? '').trim(),
+    range: String(raw.range ?? '').trim(),
+    components: String(raw.components ?? '').trim(),
+    duration: String(raw.duration ?? '').trim(),
+    classes,
+    description: String(raw.description ?? ''),
+  };
+}
+
+function entryErrors(e) {
+  const errs = [];
+  if (!e.id) errs.push('ID is required.');
+  if (!e.name) errs.push('Name is required.');
+  if (!e.classes.length) errs.push('At least one class is required.');
+  return errs;
+}
+
+// =============================================================================
+// LOADING
+// =============================================================================
+const levelSelect = document.getElementById('f-level');
+for (let i = 0; i <= 9; i++) {
+  const opt = document.createElement('option');
+  opt.value = i;
+  opt.textContent = levelLabel(i);
+  levelSelect.appendChild(opt);
+}
+
+function setStatus(text, kind) {
+  const el = document.getElementById('status');
+  el.textContent = text;
+  el.className = kind || '';
+}
+
+async function loadViaFetch() {
+  try {
+    const res = await fetch('../data/spells.json');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    workingSpells = Array.isArray(data.spells) ? data.spells.map(sanitizeEntry) : [];
+    if (Array.isArray(data._comment)) commentLines = data._comment;
+    setStatus(`Loaded ${workingSpells.length} spells via fetch (read-only — Save will download a new file; use "Open spells.json" to save in place).`, 'warn');
+  } catch (e) {
+    workingSpells = [];
+    setStatus('Could not auto-load data/spells.json (serve this page over http, or use "Open spells.json"). Starting empty.', 'warn');
+  }
+  renderList();
+  renderClassDatalist();
+}
+
+async function openFile() {
+  if (!SUPPORTS_FS_ACCESS) {
+    alert('Your browser doesn\'t support picking a file to save in place (Chrome or Edge do). Falling back to fetch + download.');
+    return loadViaFetch();
+  }
+  try {
+    const [handle] = await window.showOpenFilePicker({
+      types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
+    });
+    const file = await handle.getFile();
+    const data = JSON.parse(await file.text());
+    fileHandle = handle;
+    workingSpells = Array.isArray(data.spells) ? data.spells.map(sanitizeEntry) : [];
+    if (Array.isArray(data._comment)) commentLines = data._comment;
+    setStatus(`Loaded ${workingSpells.length} spells from ${file.name} — Save writes back to this file.`, 'ok');
+    renderList();
+    renderClassDatalist();
+  } catch (e) {
+    if (e.name !== 'AbortError') setStatus('Failed to open file: ' + e.message, 'warn');
+  }
+}
+
+async function saveFile() {
+  const payload = { _comment: commentLines, spells: workingSpells };
+  const text = JSON.stringify(payload, null, 2) + '\n';
+
+  if (fileHandle) {
+    try {
+      const writable = await fileHandle.createWritable();
+      await writable.write(text);
+      await writable.close();
+      setStatus(`Saved ${workingSpells.length} spells to the open file.`, 'ok');
+      return;
+    } catch (e) {
+      setStatus('Failed to save: ' + e.message, 'warn');
+      return;
+    }
+  }
+
+  // No writable handle — fall back to a download, same as items.csv's export.
+  const blob = new Blob([text], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'spells.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  setStatus(`Downloaded spells.json (${workingSpells.length} spells) — move it into data/ to replace the existing file.`, 'warn');
+}
+
+document.getElementById('btn-open').addEventListener('click', openFile);
+document.getElementById('btn-save').addEventListener('click', saveFile);
+
+// =============================================================================
+// LIST
+// =============================================================================
+function renderList() {
+  const box = document.getElementById('spell-list-box');
+  const query = document.getElementById('search').value.trim().toLowerCase();
+  box.textContent = '';
+
+  const rows = workingSpells
+    .filter(s => !query || s.name.toLowerCase().includes(query) || s.classes.some(c => c.toLowerCase().includes(query)))
+    .slice()
+    .sort((a, b) => a.level - b.level || a.name.localeCompare(b.name));
+
+  if (!rows.length) {
+    const note = document.createElement('div');
+    note.className = 'empty-note';
+    note.textContent = workingSpells.length ? 'No spells match.' : 'No spells loaded yet.';
+    box.appendChild(note);
+    return;
+  }
+
+  rows.forEach(s => {
+    const row = document.createElement('div');
+    row.className = 'spell-row' + (s.id === editingId ? ' active' : '');
+
+    const lvl = document.createElement('span');
+    lvl.className = 'lvl';
+    lvl.textContent = s.level === 0 ? 'Cantrip' : `Lv ${s.level}`;
+
+    const nm = document.createElement('span');
+    nm.className = 'nm';
+    nm.textContent = s.name;
+    nm.title = s.classes.join(', ');
+
+    const rm = document.createElement('span');
+    rm.className = 'rm';
+    rm.textContent = '✕';
+    rm.title = 'Remove';
+    rm.addEventListener('click', ev => {
+      ev.stopPropagation();
+      if (!confirm(`Remove "${s.name}" from the list?`)) return;
+      workingSpells = workingSpells.filter(x => x.id !== s.id);
+      if (editingId === s.id) clearForm();
+      renderList();
+    });
+
+    row.append(lvl, nm, rm);
+    row.addEventListener('click', () => loadIntoForm(s));
+    box.appendChild(row);
+  });
+}
+
+document.getElementById('search').addEventListener('input', renderList);
+
+function renderClassDatalist() {
+  const names = new Set(['Wizard', 'Cleric', 'Warlock', 'Bard', 'Druid', 'Paladin', 'Ranger', 'Sorcerer']);
+  workingSpells.forEach(s => s.classes.forEach(c => names.add(c)));
+  const dl = document.getElementById('dl-classes');
+  dl.textContent = '';
+  [...names].sort((a, b) => a.localeCompare(b)).forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    dl.appendChild(opt);
+  });
+}
+
+// =============================================================================
+// FORM
+// =============================================================================
+function loadIntoForm(s) {
+  editingId = s.id;
+  idFollowsName = false; // an existing id must not silently change under an edited name
+  document.getElementById('f-name').value = s.name;
+  document.getElementById('f-id').value = s.id;
+  document.getElementById('f-level').value = s.level;
+  document.getElementById('f-school').value = s.school;
+  document.getElementById('f-classes').value = s.classes.join(', ');
+  document.getElementById('f-casting-time').value = s.castingTime;
+  document.getElementById('f-range').value = s.range;
+  document.getElementById('f-components').value = s.components;
+  document.getElementById('f-duration').value = s.duration;
+  document.getElementById('f-description').value = s.description;
+  renderList();
+  updatePreview();
+}
+
+function clearForm() {
+  editingId = null;
+  idFollowsName = true;
+  ['f-name', 'f-id', 'f-school', 'f-classes', 'f-casting-time', 'f-range', 'f-components', 'f-duration', 'f-description']
+    .forEach(id => { document.getElementById(id).value = ''; });
+  document.getElementById('f-level').value = 0;
+  renderList();
+  updatePreview();
+}
+
+document.getElementById('btn-new').addEventListener('click', clearForm);
+document.getElementById('btn-clear').addEventListener('click', clearForm);
+
+document.getElementById('f-name').addEventListener('input', e => {
+  if (idFollowsName) document.getElementById('f-id').value = slugify(e.target.value);
+  updatePreview();
+});
+document.getElementById('f-id').addEventListener('input', () => { idFollowsName = false; updatePreview(); });
+['f-level', 'f-school', 'f-classes', 'f-casting-time', 'f-range', 'f-components', 'f-duration', 'f-description']
+  .forEach(id => document.getElementById(id).addEventListener('input', updatePreview));
+
+function formEntry() {
+  return sanitizeEntry({
+    id: document.getElementById('f-id').value,
+    name: document.getElementById('f-name').value,
+    level: document.getElementById('f-level').value,
+    school: document.getElementById('f-school').value,
+    classes: document.getElementById('f-classes').value,
+    castingTime: document.getElementById('f-casting-time').value,
+    range: document.getElementById('f-range').value,
+    components: document.getElementById('f-components').value,
+    duration: document.getElementById('f-duration').value,
+    description: document.getElementById('f-description').value,
+  });
+}
+
+document.getElementById('btn-save-entry').addEventListener('click', () => {
+  const entry = formEntry();
+  const errs = entryErrors(entry);
+  if (errs.length) { alert(errs.join('\n')); return; }
+
+  const existingAt = workingSpells.findIndex(s => s.id === entry.id);
+  if (existingAt !== -1 && entry.id !== editingId) {
+    if (!confirm(`A spell with id "${entry.id}" already exists ("${workingSpells[existingAt].name}"). Overwrite it?`)) return;
+  }
+
+  if (editingId !== null) {
+    const at = workingSpells.findIndex(s => s.id === editingId);
+    if (at !== -1 && editingId !== entry.id) workingSpells.splice(at, 1);
+  }
+  const at = workingSpells.findIndex(s => s.id === entry.id);
+  if (at !== -1) workingSpells[at] = entry; else workingSpells.push(entry);
+
+  editingId = entry.id;
+  idFollowsName = false;
+  renderList();
+  renderClassDatalist();
+  setStatus(`"${entry.name}" saved to the working list (${workingSpells.length} total) — click Save to write the file.`, 'ok');
+});
+
+// =============================================================================
+// PREVIEW
+// =============================================================================
+function updatePreview() {
+  const e = formEntry();
+  document.getElementById('pv-name').textContent = e.name || 'Spell Name';
+  document.getElementById('pv-school').textContent = e.school;
+
+  const meta = document.getElementById('pv-meta');
+  meta.textContent = '';
+  [e.castingTime, e.range, e.components, e.duration].filter(Boolean).forEach(text => {
+    const span = document.createElement('span');
+    span.textContent = text;
+    meta.appendChild(span);
+  });
+
+  const desc = document.getElementById('pv-desc');
+  desc.textContent = '';
+  renderMarkdownInto(desc, e.description);
+
+  document.getElementById('output-entry').textContent = JSON.stringify(e, null, 2);
+}
+
+// =============================================================================
+// INIT
+// =============================================================================
+clearForm();
+loadViaFetch();
+</script>
+</body>
+</html>
