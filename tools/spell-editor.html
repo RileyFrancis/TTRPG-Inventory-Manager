@@ -58,6 +58,45 @@
   .field-row { display: flex; gap: 10px; }
   .field-row > label.field { flex: 1; }
 
+  .table-tool {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 8px 0 14px;
+    padding: 8px 10px;
+    background: #202035;
+    border: 1px solid #333;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #aaa;
+  }
+  .table-tool-label { text-transform: uppercase; letter-spacing: 0.5px; font-size: 11px; color: #888; }
+  .table-tool label { display: flex; align-items: center; gap: 5px; }
+  .table-tool input[type=number] { width: 48px; padding: 3px 5px; }
+  .table-tool label.tt-check { gap: 4px; }
+  .table-tool input[type=checkbox] { width: auto; }
+
+  .checkbox-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    padding: 8px;
+    background: #202035;
+    border: 1px solid #444;
+    border-radius: 4px;
+    max-height: 110px;
+    overflow-y: auto;
+  }
+  .class-check { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #ddd; white-space: nowrap; }
+  .class-check input { width: auto; }
+
+  .add-class-row { display: flex; gap: 6px; margin-top: 6px; }
+  .add-class-row input { flex: 1; }
+
+  .inline-check { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #ccc; margin: -4px 0 10px; }
+  .inline-check input { width: auto; }
+
   /* Columns */
   .col { display: flex; flex-direction: column; gap: 4px; }
   .col-list   { width: 260px; }
@@ -173,8 +212,12 @@
     <label class="field"><span>School</span>
       <input type="text" id="f-school" list="dl-school" placeholder="Evocation">
     </label>
-    <label class="field"><span>Classes (comma-separated)</span>
-      <input type="text" id="f-classes" list="dl-classes" placeholder="Wizard, Warlock">
+    <label class="field"><span>Classes</span>
+      <div class="checkbox-grid" id="f-classes-box"></div>
+      <div class="add-class-row">
+        <input type="text" id="f-classes-new" placeholder="Add a class…">
+        <button type="button" id="btn-add-class">+ Add</button>
+      </div>
     </label>
   </div>
 
@@ -186,6 +229,7 @@
       <input type="text" id="f-range" list="dl-range" placeholder="120 feet">
     </label>
   </div>
+  <label class="inline-check"><input type="checkbox" id="f-ritual"> Ritual (adds " (ritual)" to Casting Time)</label>
 
   <div class="field-row">
     <label class="field"><span>Components</span>
@@ -195,10 +239,22 @@
       <input type="text" id="f-duration" list="dl-duration" placeholder="Instantaneous">
     </label>
   </div>
+  <label class="inline-check"><input type="checkbox" id="f-concentration"> Concentration (prefixes Duration with "Concentration, up to")</label>
 
   <label class="field"><span>Description (Markdown)</span>
     <textarea id="f-description" placeholder="A mote of fire streaks toward a creature..."></textarea>
   </label>
+
+  <!-- markdown.js does not parse `| a | b |` pipe syntax (see CLAUDE.md § The
+       written sections) — a hand-written `<table>` is the documented escape
+       hatch, so this inserts raw HTML rather than markdown table syntax. -->
+  <div class="table-tool">
+    <span class="table-tool-label">Table</span>
+    <label>Rows <input type="number" id="tt-rows" value="2" min="1" max="20"></label>
+    <label>Cols <input type="number" id="tt-cols" value="2" min="1" max="10"></label>
+    <label class="tt-check"><input type="checkbox" id="tt-header" checked> Header row</label>
+    <button id="btn-insert-table">Insert Table</button>
+  </div>
 
   <div class="toolbar">
     <button id="btn-save-entry" class="primary">Save Spell to List</button>
@@ -229,10 +285,7 @@
     <option value="Instantaneous"><option value="1 round"><option value="1 minute">
     <option value="10 minutes"><option value="1 hour"><option value="8 hours">
     <option value="24 hours"><option value="7 days"><option value="Until dispelled">
-    <option value="Concentration, up to 1 minute"><option value="Concentration, up to 10 minutes">
-    <option value="Concentration, up to 1 hour"><option value="Concentration, up to 8 hours">
   </datalist>
-  <datalist id="dl-classes"></datalist>
 </div>
 
 <div class="col col-preview">
@@ -288,11 +341,47 @@ function levelLabel(n) {
   return `${n}${suffix} Level`;
 }
 
+// Ritual and concentration aren't their own fields in src/js/spells.js's schema
+// (see sanitizeSpellList) — they're text baked into castingTime/duration, the
+// same way the sample data already writes "Concentration, up to 1 minute" as
+// one string. These checkboxes are a tool-side convenience over that existing
+// convention, not a schema change: the text fields always hold the BASE value,
+// and the checkbox adds/removes the suffix/prefix at save and load time.
+const RITUAL_SUFFIX = ' (ritual)';
+const RITUAL_RE = /\s*\(ritual\)\s*$/i;
+const CONCENTRATION_RE = /^\s*concentration\s*,?\s*(?:up to\s*)?/i;
+
+function stripRitual(castingTime) {
+  const base = String(castingTime ?? '');
+  const m = RITUAL_RE.exec(base);
+  return m ? { base: base.slice(0, m.index).trim(), ritual: true } : { base: base.trim(), ritual: false };
+}
+
+// Idempotent against a base that already carries the marker, so a stray paste
+// (or a datalist pick) can't double it up.
+function applyRitual(base, ritual) {
+  const stripped = stripRitual(base).base;
+  return ritual ? stripped + RITUAL_SUFFIX : stripped;
+}
+
+function stripConcentration(duration) {
+  const base = String(duration ?? '');
+  const m = CONCENTRATION_RE.exec(base);
+  return m ? { base: base.slice(m[0].length).trim(), concentration: true } : { base: base.trim(), concentration: false };
+}
+
+function applyConcentration(base, concentration) {
+  const stripped = stripConcentration(base).base;
+  return concentration ? `Concentration, up to ${stripped}` : stripped;
+}
+
 function sanitizeEntry(raw) {
   const id = String(raw.id ?? '').trim();
   const name = String(raw.name ?? '').trim();
   const level = Math.max(0, Math.min(9, parseInt(raw.level, 10) || 0));
-  const classes = String(raw.classes ?? '').split(',').map(c => c.trim()).filter(Boolean);
+  const classes = Array.isArray(raw.classes)
+    ? raw.classes.map(c => String(c).trim()).filter(Boolean)
+    : String(raw.classes ?? '').split(',').map(c => c.trim()).filter(Boolean);
   return {
     id, name, level,
     school: String(raw.school ?? '').trim(),
@@ -342,8 +431,8 @@ async function loadViaFetch() {
     workingSpells = [];
     setStatus('Could not auto-load data/spells.json (serve this page over http, or use "Open spells.json"). Starting empty.', 'warn');
   }
+  registerLoadedClasses();
   renderList();
-  renderClassDatalist();
 }
 
 async function openFile() {
@@ -361,8 +450,8 @@ async function openFile() {
     workingSpells = Array.isArray(data.spells) ? data.spells.map(sanitizeEntry) : [];
     if (Array.isArray(data._comment)) commentLines = data._comment;
     setStatus(`Loaded ${workingSpells.length} spells from ${file.name} — Save writes back to this file.`, 'ok');
+    registerLoadedClasses();
     renderList();
-    renderClassDatalist();
   } catch (e) {
     if (e.name !== 'AbortError') setStatus('Failed to open file: ' + e.message, 'warn');
   }
@@ -453,17 +542,58 @@ function renderList() {
 
 document.getElementById('search').addEventListener('input', renderList);
 
-function renderClassDatalist() {
-  const names = new Set(['Wizard', 'Cleric', 'Warlock', 'Bard', 'Druid', 'Paladin', 'Ranger', 'Sorcerer']);
-  workingSpells.forEach(s => s.classes.forEach(c => names.add(c)));
-  const dl = document.getElementById('dl-classes');
-  dl.textContent = '';
-  [...names].sort((a, b) => a.localeCompare(b)).forEach(name => {
-    const opt = document.createElement('option');
-    opt.value = name;
-    dl.appendChild(opt);
+// Every class this tool knows of — the app's own base 8 plus whatever shows up
+// in the loaded file, extended live by "+ Add" or by loading a spell tagged
+// with a class not yet in the set (a homebrew class name, say).
+let knownClasses = new Set(['Wizard', 'Cleric', 'Warlock', 'Bard', 'Druid', 'Paladin', 'Ranger', 'Sorcerer']);
+
+function classCheckboxValues() {
+  return Array.from(document.querySelectorAll('#f-classes-box input:checked')).map(i => i.value);
+}
+
+// Rebuilds the grid from `knownClasses`. With no explicit list, it preserves
+// whatever's currently checked (e.g. after "+ Add") rather than clearing it.
+function renderClassCheckboxes(checkedNames) {
+  const checked = new Set(checkedNames ?? classCheckboxValues());
+  const box = document.getElementById('f-classes-box');
+  box.textContent = '';
+  [...knownClasses].sort((a, b) => a.localeCompare(b)).forEach(name => {
+    const label = document.createElement('label');
+    label.className = 'class-check';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.value = name;
+    input.checked = checked.has(name);
+    input.addEventListener('change', updatePreview);
+    label.append(input, document.createTextNode(name));
+    box.appendChild(label);
   });
 }
+
+function setCheckedClasses(names) {
+  names.forEach(n => { if (n) knownClasses.add(n); });
+  renderClassCheckboxes(names);
+}
+
+function registerLoadedClasses() {
+  workingSpells.forEach(s => s.classes.forEach(c => knownClasses.add(c)));
+  renderClassCheckboxes([]);
+}
+
+document.getElementById('btn-add-class').addEventListener('click', () => {
+  const input = document.getElementById('f-classes-new');
+  const name = input.value.trim();
+  if (!name) return;
+  const checked = classCheckboxValues();
+  knownClasses.add(name);
+  renderClassCheckboxes([...checked, name]);
+  input.value = '';
+  input.focus();
+  updatePreview();
+});
+document.getElementById('f-classes-new').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); document.getElementById('btn-add-class').click(); }
+});
 
 // =============================================================================
 // FORM
@@ -475,11 +605,18 @@ function loadIntoForm(s) {
   document.getElementById('f-id').value = s.id;
   document.getElementById('f-level').value = s.level;
   document.getElementById('f-school').value = s.school;
-  document.getElementById('f-classes').value = s.classes.join(', ');
-  document.getElementById('f-casting-time').value = s.castingTime;
+  setCheckedClasses(s.classes);
+
+  const rit = stripRitual(s.castingTime);
+  document.getElementById('f-casting-time').value = rit.base;
+  document.getElementById('f-ritual').checked = rit.ritual;
   document.getElementById('f-range').value = s.range;
+
   document.getElementById('f-components').value = s.components;
-  document.getElementById('f-duration').value = s.duration;
+  const conc = stripConcentration(s.duration);
+  document.getElementById('f-duration').value = conc.base;
+  document.getElementById('f-concentration').checked = conc.concentration;
+
   document.getElementById('f-description').value = s.description;
   renderList();
   updatePreview();
@@ -488,9 +625,12 @@ function loadIntoForm(s) {
 function clearForm() {
   editingId = null;
   idFollowsName = true;
-  ['f-name', 'f-id', 'f-school', 'f-classes', 'f-casting-time', 'f-range', 'f-components', 'f-duration', 'f-description']
+  ['f-name', 'f-id', 'f-school', 'f-casting-time', 'f-range', 'f-components', 'f-duration', 'f-description']
     .forEach(id => { document.getElementById(id).value = ''; });
   document.getElementById('f-level').value = 0;
+  document.getElementById('f-ritual').checked = false;
+  document.getElementById('f-concentration').checked = false;
+  setCheckedClasses([]);
   renderList();
   updatePreview();
 }
@@ -503,8 +643,49 @@ document.getElementById('f-name').addEventListener('input', e => {
   updatePreview();
 });
 document.getElementById('f-id').addEventListener('input', () => { idFollowsName = false; updatePreview(); });
-['f-level', 'f-school', 'f-classes', 'f-casting-time', 'f-range', 'f-components', 'f-duration', 'f-description']
+['f-level', 'f-school', 'f-casting-time', 'f-range', 'f-components', 'f-duration', 'f-description']
   .forEach(id => document.getElementById(id).addEventListener('input', updatePreview));
+['f-ritual', 'f-concentration']
+  .forEach(id => document.getElementById(id).addEventListener('change', updatePreview));
+
+// =============================================================================
+// TABLE TOOL — inserts a hand-written <table>, not `| a | b |` pipe syntax:
+// markdown.js deliberately doesn't parse pipe tables (see CLAUDE.md § The
+// written sections), so raw HTML is the only markup that actually renders.
+// =============================================================================
+function buildTableHTML(rows, cols, header) {
+  const cell = (tag) => `<${tag}></${tag}>`;
+  const lines = [];
+  if (header) lines.push('<tr>' + Array.from({ length: cols }, () => cell('th')).join('') + '</tr>');
+  for (let r = 0; r < rows; r++) {
+    lines.push('<tr>' + Array.from({ length: cols }, () => cell('td')).join('') + '</tr>');
+  }
+  return '<table>\n' + lines.join('\n') + '\n</table>';
+}
+
+// Replaces the current selection (or inserts at the cursor) rather than
+// appending — a table belongs wherever the writer's caret already is.
+function insertAtCursor(textarea, text) {
+  const { selectionStart: start, selectionEnd: end, value } = textarea;
+  textarea.value = value.slice(0, start) + text + value.slice(end);
+  const pos = start + text.length;
+  textarea.focus();
+  textarea.setSelectionRange(pos, pos);
+}
+
+document.getElementById('btn-insert-table').addEventListener('click', () => {
+  const rows = Math.max(1, Math.min(20, parseInt(document.getElementById('tt-rows').value, 10) || 1));
+  const cols = Math.max(1, Math.min(10, parseInt(document.getElementById('tt-cols').value, 10) || 1));
+  const header = document.getElementById('tt-header').checked;
+  const textarea = document.getElementById('f-description');
+  const before = textarea.value.slice(0, textarea.selectionStart);
+  const after = textarea.value.slice(textarea.selectionEnd);
+  const needsBlankLineBefore = before.trim().length > 0 && !/\n\n$/.test(before);
+  const needsBlankLineAfter = after.trim().length > 0 && !/^\n\n/.test(after);
+  insertAtCursor(textarea,
+    (needsBlankLineBefore ? '\n\n' : '') + buildTableHTML(rows, cols, header) + (needsBlankLineAfter ? '\n\n' : '\n'));
+  updatePreview();
+});
 
 function formEntry() {
   return sanitizeEntry({
@@ -512,11 +693,11 @@ function formEntry() {
     name: document.getElementById('f-name').value,
     level: document.getElementById('f-level').value,
     school: document.getElementById('f-school').value,
-    classes: document.getElementById('f-classes').value,
-    castingTime: document.getElementById('f-casting-time').value,
+    classes: classCheckboxValues(),
+    castingTime: applyRitual(document.getElementById('f-casting-time').value, document.getElementById('f-ritual').checked),
     range: document.getElementById('f-range').value,
     components: document.getElementById('f-components').value,
-    duration: document.getElementById('f-duration').value,
+    duration: applyConcentration(document.getElementById('f-duration').value, document.getElementById('f-concentration').checked),
     description: document.getElementById('f-description').value,
   });
 }
@@ -541,7 +722,6 @@ document.getElementById('btn-save-entry').addEventListener('click', () => {
   editingId = entry.id;
   idFollowsName = false;
   renderList();
-  renderClassDatalist();
   setStatus(`"${entry.name}" saved to the working list (${workingSpells.length} total) — click Save to write the file.`, 'ok');
 });
 
