@@ -979,6 +979,18 @@ function editItem(i) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+// Same as editItem, but leaves editingIndex at -1 so the next "Add Item to
+// List" pushes a new row instead of overwriting this one — a starting point
+// for a near-duplicate (an item's other variant, a +1/+2 pair, etc.).
+function duplicateItem(i) {
+  editingIndex = -1;
+  writeItemToForm(items[i]);
+  const addBtn = document.querySelector('.col-form button.primary');
+  if (addBtn) addBtn.textContent = 'Add Item to List';
+  document.getElementById('f-name').focus();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 function removeItem(i) {
   items.splice(i, 1);
   if (editingIndex === i) resetForm();
@@ -1026,12 +1038,18 @@ function renderItemTable() {
     editBtn.className = 'small';
     editBtn.textContent = 'Edit';
     editBtn.onclick = () => editItem(i);
+    const dupBtn = document.createElement('button');
+    dupBtn.className = 'small';
+    dupBtn.textContent = 'Duplicate';
+    dupBtn.style.marginLeft = '4px';
+    dupBtn.onclick = () => duplicateItem(i);
     const delBtn = document.createElement('button');
     delBtn.className = 'small danger';
     delBtn.textContent = 'Remove';
     delBtn.style.marginLeft = '4px';
     delBtn.onclick = () => removeItem(i);
     td.appendChild(editBtn);
+    td.appendChild(dupBtn);
     td.appendChild(delBtn);
     tr.appendChild(td);
     tbody.appendChild(tr);
