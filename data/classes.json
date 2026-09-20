@@ -46,7 +46,9 @@
           "level": 3,
           "name": "Barbarian Subclass",
           "description": "You gain a Barbarian subclass of your choice. A subclass is a specialization that grants you features at certain Barbarian levels.",
-          "unlocks": ["subclass"]
+          "unlocks": [
+            "subclass"
+          ]
         },
         {
           "id": "barbarian-primal-knowledge",
@@ -212,31 +214,46 @@
               "id": "barbarian-path-of-the-wild-heart-animal-speaker",
               "level": 3,
               "name": "Animal Speaker",
-              "description": ""
+              "description": "You've formed a supernatural bond with the animal world. You can cast Speak with Animals and Beast Sense, but only in their Ritual versions, and Wisdom is your spellcasting ability for both spells."
             },
             {
               "id": "barbarian-path-of-the-wild-heart-rage-of-the-wilds",
               "level": 3,
               "name": "Rage of the Wilds",
-              "description": ""
+              "description": [
+                "Your Rage draws on the primal strength of animals. Each time you activate your Rage, choose one of the following benefits to have for its duration.",
+                "**Bear.** While raging, you have Resistance to every damage type except Force, Necrotic, Psychic, and Radiant.",
+                "**Eagle.** The Bonus Action you use to activate your Rage can also include the Disengage and Dash actions, and while your Rage continues you can take a Bonus Action to use both of those actions again.",
+                "**Wolf.** While raging, your allies have Advantage on attack rolls against any enemy of yours that is within 5 feet of you."
+              ]
             },
             {
               "id": "barbarian-path-of-the-wild-heart-aspect-of-the-wilds",
               "level": 6,
               "name": "Aspect of the Wilds",
-              "description": ""
+              "description": [
+                "You take on a lasting animal trait, chosen from the options below. You can swap your choice whenever you finish a Long Rest.",
+                "**Owl.** You gain Darkvision out to a range of 60 feet, or that range extends by 60 feet if you already have Darkvision.",
+                "**Panther.** You gain a Climb Speed equal to your Speed.",
+                "**Salmon.** You gain a Swim Speed equal to your Speed."
+              ]
             },
             {
               "id": "barbarian-path-of-the-wild-heart-nature-speaker",
               "level": 10,
               "name": "Nature Speaker",
-              "description": ""
+              "description": "You can cast Commune with Nature, but only in its Ritual version, and Wisdom is your spellcasting ability for it."
             },
             {
               "id": "barbarian-path-of-the-wild-heart-power-of-the-wilds",
               "level": 14,
               "name": "Power of the Wilds",
-              "description": ""
+              "description": [
+                "Your Rage now also taps a second primal aspect. Each time you activate your Rage, choose one of the following options as well, alongside your choice for Rage of the Wilds.",
+                "**Falcon.** While raging and not wearing armor, you have a Fly Speed equal to your Speed.",
+                "**Lion.** While raging, enemies within 5 feet of you have Disadvantage on attack rolls against any target other than you or another Barbarian who has this same option active.",
+                "**Ram.** While raging, a Large or smaller creature you hit with a melee attack can be given the Prone condition."
+              ]
             }
           ]
         },
@@ -249,25 +266,29 @@
               "id": "barbarian-path-of-the-world-tree-vitality-of-the-tree",
               "level": 3,
               "name": "Vitality of the Tree",
-              "description": ""
+              "description": [
+                "Your Rage channels the World Tree's own life force, granting the following benefits.",
+                "**Vitality Surge.** When you activate your Rage, you gain Temporary Hit Points equal to your Barbarian level.",
+                "**Life-Giving Force.** At the start of each of your turns while raging, you can choose another creature within 10 feet of yourself to gain Temporary Hit Points. Roll a number of d6s equal to your Rage damage bonus and add them together to find the amount. Any of these Temporary Hit Points still remaining when your Rage ends are lost."
+              ]
             },
             {
               "id": "barbarian-path-of-the-world-tree-branches-of-the-tree",
               "level": 6,
               "name": "Branches of the Tree",
-              "description": ""
+              "description": "While your Rage is active, you can use your Reaction when a creature you can see starts its turn within 30 feet of you to conjure spectral roots and branches of the World Tree around it. The target must succeed on a Strength saving throw (DC 8 plus your Strength modifier and Proficiency Bonus) or be teleported into an unoccupied space you can see within 5 feet of yourself, or otherwise to the nearest unoccupied space you can see. If the target is teleported this way, you can also reduce its Speed to 0 until the end of the current turn."
             },
             {
               "id": "barbarian-path-of-the-world-tree-battering-roots",
               "level": 10,
               "name": "Battering Roots",
-              "description": ""
+              "description": "On your turn, tendrils of the World Tree extend your reach with any Melee weapon that has the Heavy or Versatile property by 10 feet. When you hit with such a weapon on your turn, you can invoke the Push or Topple mastery property together with a different mastery property you're already using with that weapon."
             },
             {
               "id": "barbarian-path-of-the-world-tree-travel-along-the-tree",
               "level": 14,
               "name": "Travel along the Tree",
-              "description": ""
+              "description": "When you activate your Rage, and again as a Bonus Action at any later point while it continues, you can slip through the World Tree's branches to teleport up to 60 feet to an unoccupied space you can see. Once during each Rage, you can extend that teleport's range to 150 feet; when you do, you can bring along up to six willing creatures who are within 10 feet of you, each arriving in an unoccupied space of your choice within 10 feet of your destination space."
             }
           ]
         },
@@ -280,31 +301,42 @@
               "id": "barbarian-path-of-the-zealot-divine-fury",
               "level": 3,
               "name": "Divine Fury",
-              "description": ""
+              "description": "Divine power channels through your attacks. On each of your turns while raging, the first creature you hit with a weapon or an Unarmed Strike takes extra damage equal to 1d6 plus half your Barbarian level, rounded down. Each time you deal this damage, you choose whether it is Necrotic or Radiant."
             },
             {
               "id": "barbarian-path-of-the-zealot-warrior-of-the-gods",
               "level": 3,
               "name": "Warrior of the Gods",
-              "description": ""
+              "description": [
+                "A god or pantheon sustains you in battle through a pool of four d12s. As a Bonus Action, you can expend any number of dice from this pool, roll them, and regain a number of Hit Points equal to the total rolled.",
+                "Your pool regains all of its expended dice when you finish a Long Rest, and its maximum size grows by one die when you reach Barbarian level 6 (five dice), level 12 (six dice), and level 17 (seven dice)."
+              ]
             },
             {
               "id": "barbarian-path-of-the-zealot-fanatical-focus",
               "level": 6,
               "name": "Fanatical Focus",
-              "description": ""
+              "description": "Once during each active Rage, if you fail a saving throw, you can reroll it with a bonus equal to your Rage damage bonus. You must use the new result."
             },
             {
               "id": "barbarian-path-of-the-zealot-zealous-presence",
               "level": 10,
               "name": "Zealous Presence",
-              "description": ""
+              "description": [
+                "As a Bonus Action, you loose a battle cry charged with divine energy. Up to ten other creatures you choose within 60 feet of you gain Advantage on attack rolls and saving throws until the start of your next turn.",
+                "Once you use this feature, you can't use it again until you finish a Long Rest, unless you expend a use of your Rage (no action required) to restore its use."
+              ]
             },
             {
               "id": "barbarian-path-of-the-zealot-rage-of-the-gods",
               "level": 14,
               "name": "Rage of the Gods",
-              "description": ""
+              "description": [
+                "When you activate your Rage, you can also take on the form of a divine warrior. The form lasts for 1 minute or until you drop to 0 Hit Points. Once you use this feature, you can't do so again until you finish a Long Rest. While in this form, you gain the following benefits.",
+                "**Flight.** You have a Fly Speed equal to your Speed and can hover.",
+                "**Resistance.** You have Resistance to Necrotic, Psychic, and Radiant damage.",
+                "**Revivification.** When a creature within 30 feet of you would drop to 0 Hit Points, you can use your Reaction and expend a use of your Rage to instead set that creature's Hit Points to a number equal to your Barbarian level."
+              ]
             }
           ]
         }
@@ -352,7 +384,9 @@
           "level": 3,
           "name": "Bard Subclass",
           "description": "You gain a Bard subclass of your choice. A subclass is a specialization that grants you features at certain Bard levels.",
-          "unlocks": ["subclass"]
+          "unlocks": [
+            "subclass"
+          ]
         },
         {
           "id": "bard-asi-4",
@@ -474,25 +508,29 @@
               "id": "bard-college-of-dance-dazzling-footwork",
               "level": 3,
               "name": "Dazzling Footwork",
-              "description": ""
+              "description": [
+                "While you aren't wearing armor or wielding a Shield, your Armor Class equals 10 + your Dexterity modifier + your Charisma modifier, and you have Advantage on Charisma (Performance) checks you make to dance.",
+                "Your Unarmed Strikes use Dexterity instead of Strength for their attack and damage rolls, and on a hit you can deal Bludgeoning damage equal to a roll of your Bardic Inspiration die plus your Dexterity modifier instead of the strike's normal damage.",
+                "Whenever you expend a use of your Bardic Inspiration as part of an action, a Bonus Action, or a Reaction, you can make one Unarmed Strike as part of that same action, Bonus Action, or Reaction."
+              ]
             },
             {
               "id": "bard-college-of-dance-inspiring-movement",
               "level": 6,
               "name": "Inspiring Movement",
-              "description": ""
+              "description": "When a creature you can see ends its turn within 5 feet of you, you can use your Reaction and expend one use of Bardic Inspiration to move up to half your Speed without provoking Opportunity Attacks. When you do, choose one ally within 30 feet of you; that ally can also move up to half their Speed using their own Reaction, likewise without provoking Opportunity Attacks."
             },
             {
               "id": "bard-college-of-dance-tandem-footwork",
               "level": 6,
               "name": "Tandem Footwork",
-              "description": ""
+              "description": "When you roll Initiative, you can expend one use of Bardic Inspiration, provided you aren't Incapacitated, and roll the die. You and each ally within 30 feet of you who can see or hear you add the number rolled to your Initiative scores."
             },
             {
               "id": "bard-college-of-dance-leading-evasion",
               "level": 14,
               "name": "Leading Evasion",
-              "description": ""
+              "description": "Provided you aren't Incapacitated, whenever you are subjected to an effect that lets you make a Dexterity saving throw to take only half damage, you instead take no damage on a success and only half damage on a failure. Any creature within 5 feet of you gains this same benefit against that effect."
             }
           ]
         },
@@ -505,25 +543,31 @@
               "id": "bard-college-of-glamour-beguiling-magic",
               "level": 3,
               "name": "Beguiling Magic",
-              "description": ""
+              "description": [
+                "You always have the Charm Person and Mirror Image spells prepared, and having them prepared doesn't count against the number of spells you can have prepared.",
+                "Immediately after you cast an Enchantment or Illusion spell using a spell slot, you can force one creature you can see within 60 feet of you to make a Wisdom saving throw against your spell save DC. On a failed save, the creature has the Charmed or Frightened condition (your choice) for 1 minute. The creature repeats the save at the end of each of its turns, ending the effect on itself on a success."
+              ]
             },
             {
               "id": "bard-college-of-glamour-mantle-of-inspiration",
               "level": 3,
               "name": "Mantle of Inspiration",
-              "description": ""
+              "description": "As a Bonus Action, you can expend one use of your Bardic Inspiration and roll the die. Choose a number of creatures you can see within 60 feet of you, up to a number equal to your Charisma modifier (minimum of one); each of them gains Temporary Hit Points equal to twice the number rolled. Any creature that gains Temporary Hit Points this way can immediately use its Reaction to move up to its Speed without provoking Opportunity Attacks."
             },
             {
               "id": "bard-college-of-glamour-mantle-of-majesty",
               "level": 6,
               "name": "Mantle of Majesty",
-              "description": ""
+              "description": [
+                "You always have the Command spell prepared, and you can cast it as a Bonus Action without expending a spell slot. When you cast it this way, you take on a fey, otherworldly presence for 1 minute, or until your concentration on that presence ends as though you were concentrating on a spell.",
+                "While the presence lasts, you can cast Command again as a Bonus Action on your turn without expending a spell slot, and any creature already Charmed by you automatically fails its saving throw against these castings of Command. Once you use this feature, you can't do so again until you finish a Long Rest, unless you expend a spell slot of 3rd level or higher to use it again."
+              ]
             },
             {
               "id": "bard-college-of-glamour-unbreakable-majesty",
               "level": 14,
               "name": "Unbreakable Majesty",
-              "description": ""
+              "description": "As a Bonus Action, you can assume a magically majestic presence for 1 minute or until you have the Incapacitated condition. For that duration, the first time on a creature's turn that it hits you with an attack roll, that creature must succeed on a Charisma saving throw against your spell save DC or the attack instead misses you. Once you use this feature, you can't use it again until you finish a Short or Long Rest."
             }
           ]
         },
@@ -536,25 +580,25 @@
               "id": "bard-college-of-valor-combat-inspiration",
               "level": 3,
               "name": "Combat Inspiration",
-              "description": ""
+              "description": "A creature that has one of your Bardic Inspiration dice can use it for more than turning a failure into a success. Immediately after that creature hits a target with an attack roll, it can roll the die and add the number rolled to the damage dealt. Alternatively, when the creature is hit by an attack roll, it can use its Reaction to roll the die and add the number rolled to its Armor Class against that attack, potentially causing the attack to miss."
             },
             {
               "id": "bard-college-of-valor-martial-training",
               "level": 3,
               "name": "Martial Training",
-              "description": ""
+              "description": "You gain proficiency with Martial weapons, Medium armor, and Shields. You can also use a Simple or Martial weapon you are holding as a Spellcasting Focus for your Bard spells."
             },
             {
               "id": "bard-college-of-valor-extra-attack",
               "level": 6,
               "name": "Extra Attack",
-              "description": ""
+              "description": "You can attack twice, instead of once, whenever you take the Attack action on your turn. In addition, you can replace one of those attacks with the casting of one of your cantrips that has a casting time of an action."
             },
             {
               "id": "bard-college-of-valor-battle-magic",
               "level": 14,
               "name": "Battle Magic",
-              "description": ""
+              "description": "Immediately after you cast a spell with a casting time of an action, you can make one weapon attack as a Bonus Action."
             }
           ]
         }
@@ -600,7 +644,9 @@
           "level": 3,
           "name": "Cleric Subclass",
           "description": "You gain a Cleric subclass of your choice. A subclass is a specialization that grants you features at certain Cleric levels.",
-          "unlocks": ["subclass"]
+          "unlocks": [
+            "subclass"
+          ]
         },
         {
           "id": "cleric-asi-4",
@@ -727,31 +773,37 @@
               "id": "cleric-light-domain-light-domain-spells",
               "level": 3,
               "name": "Light Domain Spells",
-              "description": ""
+              "description": [
+                "The following spells are always prepared for you and don't count against your prepared total, each becoming available at the Cleric level shown.",
+                "**Level 3.** Burning Hands, Faerie Fire, Scorching Ray, See Invisibility",
+                "**Level 5.** Daylight, Fireball",
+                "**Level 7.** Arcane Eye, Wall of Fire",
+                "**Level 9.** Flame Strike, Scrying"
+              ]
             },
             {
               "id": "cleric-light-domain-radiance-of-the-dawn",
               "level": 3,
               "name": "Radiance of the Dawn",
-              "description": ""
+              "description": "As a Magic action, you expend one use of Channel Divinity and unleash sunlight in a 30-foot Emanation, ending any magical darkness in the area. Each hostile creature in the Emanation must make a Constitution saving throw, taking 2d10 plus your Cleric level Radiant damage on a failure, or half as much damage on a success."
             },
             {
               "id": "cleric-light-domain-warding-flare",
               "level": 3,
               "name": "Warding Flare",
-              "description": ""
+              "description": "When a creature you can see within 30 feet of you makes an attack roll, you can take a Reaction and expend one use of Warding Flare to sear the air with light, giving that roll Disadvantage. You have a number of uses equal to your Wisdom modifier (minimum of one), and you regain all expended uses when you finish a Long Rest."
             },
             {
               "id": "cleric-light-domain-improved-warding-flare",
               "level": 6,
               "name": "Improved Warding Flare",
-              "description": ""
+              "description": "Warding Flare now also recharges on a Short Rest, and whenever you use it, the creature whose attack you hindered gains 2d6 plus your Wisdom modifier Temporary Hit Points."
             },
             {
               "id": "cleric-light-domain-corona-of-light",
               "level": 17,
               "name": "Corona of Light",
-              "description": ""
+              "description": "As a Magic action, you expend one use of this feature to radiate Bright Light in a 60-foot radius and Dim Light for an additional 30 feet beyond that, lasting for 1 minute or until you dismiss it (no action required). While a creature is in that Bright Light, it has Disadvantage on saving throws against your Radiance of the Dawn and against any spell of yours that deals Fire or Radiant damage. You have a number of uses equal to your Wisdom modifier (minimum of one), and you regain all expended uses when you finish a Long Rest."
             }
           ]
         },
@@ -764,31 +816,40 @@
               "id": "cleric-trickery-domain-trickery-domain-spells",
               "level": 3,
               "name": "Trickery Domain Spells",
-              "description": ""
+              "description": [
+                "The following spells are always prepared for you and don't count against your prepared total, each becoming available at the Cleric level shown.",
+                "**Level 3.** Charm Person, Disguise Self, Invisibility, Pass without Trace",
+                "**Level 5.** Hypnotic Pattern, Nondetection",
+                "**Level 7.** Confusion, Dimension Door",
+                "**Level 9.** Dominate Person, Modify Memory"
+              ]
             },
             {
               "id": "cleric-trickery-domain-blessing-of-the-trickster",
               "level": 3,
               "name": "Blessing of the Trickster",
-              "description": ""
+              "description": "As a Magic action, you grant yourself or a willing creature within 30 feet of you Advantage on Dexterity (Stealth) checks. This benefit lasts until you finish a Long Rest or use this feature again."
             },
             {
               "id": "cleric-trickery-domain-invoke-duplicity",
               "level": 3,
               "name": "Invoke Duplicity",
-              "description": ""
+              "description": [
+                "As a Bonus Action, you expend one use of Channel Divinity to create a perfect illusory duplicate of yourself in an unoccupied space you can see within 30 feet of you. The illusion is intangible, occupies no space, and copies your expressions and gestures; it lasts for 1 minute, until you dismiss it (no action required), or until you gain the Incapacitated condition. As a Bonus Action, you can move the illusion up to 30 feet to an unoccupied space you can see, provided the new space is within 120 feet of you.",
+                "While the illusion exists, you can cast your spells as though you occupied its space, though you must still rely on your own senses. Whenever you and the illusion are both within 5 feet of the same creature that can see the illusion, you have Advantage on attack rolls against that creature."
+              ]
             },
             {
               "id": "cleric-trickery-domain-tricksters-transposition",
               "level": 6,
               "name": "Trickster's Transposition",
-              "description": ""
+              "description": "Whenever you take the Bonus Action to create or move the illusion from Invoke Duplicity, you can instead teleport, swapping places with the illusion."
             },
             {
               "id": "cleric-trickery-domain-improved-duplicity",
               "level": 17,
               "name": "Improved Duplicity",
-              "description": ""
+              "description": "Attack rolls made by you and your allies against a creature within 5 feet of your Invoke Duplicity illusion now also gain Advantage. In addition, when the illusion ends, you or a creature of your choice within 5 feet of it regains Hit Points equal to your Cleric level."
             }
           ]
         },
@@ -801,31 +862,37 @@
               "id": "cleric-war-domain-war-domain-spells",
               "level": 3,
               "name": "War Domain Spells",
-              "description": ""
+              "description": [
+                "The following spells are always prepared for you and don't count against your prepared total, each becoming available at the Cleric level shown.",
+                "**Level 3.** Guiding Bolt, Magic Weapon, Shield of Faith, Spiritual Weapon",
+                "**Level 5.** Crusader's Mantle, Spirit Guardians",
+                "**Level 7.** Fire Shield, Freedom of Movement",
+                "**Level 9.** Hold Monster, Steel Wind Strike"
+              ]
             },
             {
               "id": "cleric-war-domain-guided-strike",
               "level": 3,
               "name": "Guided Strike",
-              "description": ""
+              "description": "When you or a creature within 30 feet of you misses with an attack roll, you can expend one use of Channel Divinity to grant that roll a +10 bonus, potentially turning it into a hit. Using this feature to help someone other than yourself requires you to take a Reaction."
             },
             {
               "id": "cleric-war-domain-war-priest",
               "level": 3,
               "name": "War Priest",
-              "description": ""
+              "description": "As a Bonus Action, you can make one attack with a weapon or an Unarmed Strike. You can take this Bonus Action a number of times equal to your Wisdom modifier (minimum of one), and you regain all expended uses when you finish a Short or Long Rest."
             },
             {
               "id": "cleric-war-domain-war-gods-blessing",
               "level": 6,
               "name": "War God's Blessing",
-              "description": ""
+              "description": "You can expend one use of Channel Divinity to cast Shield of Faith or Spiritual Weapon without using a spell slot. A spell cast this way doesn't require Concentration; instead it lasts for 1 minute, ending early if you cast that spell again, if you gain the Incapacitated condition, or if you die."
             },
             {
               "id": "cleric-war-domain-avatar-of-battle",
               "level": 17,
               "name": "Avatar of Battle",
-              "description": ""
+              "description": "You gain Resistance to Bludgeoning, Piercing, and Slashing damage."
             }
           ]
         }
@@ -887,7 +954,9 @@
           "level": 3,
           "name": "Druid Subclass",
           "description": "You gain a Druid subclass of your choice. A subclass is a specialization that grants you features at certain Druid levels.",
-          "unlocks": ["subclass"]
+          "unlocks": [
+            "subclass"
+          ]
         },
         {
           "id": "druid-asi-4",
@@ -1022,31 +1091,47 @@
               "id": "druid-circle-of-the-moon-circle-of-the-moon-spells",
               "level": 3,
               "name": "Circle of the Moon Spells",
-              "description": ""
+              "description": [
+                "You forge a bond with lunar magic. You always have Cure Wounds, Moonbeam, and Starry Wisp prepared, joined by Conjure Animals at Druid level 5, Fount of Moonlight at level 7, and Mass Cure Wounds at level 9. None of these spells count against your prepared total.",
+                "While transformed by Wild Shape, you can cast any of these spells that don't require Material components with a cost or that are consumed, replacing their Verbal and Somatic components with sounds and movements your current form can make."
+              ]
             },
             {
               "id": "druid-circle-of-the-moon-circle-forms",
               "level": 3,
               "name": "Circle Forms",
-              "description": ""
+              "description": [
+                "Your Wild Shape grows fiercer. Instead of the Challenge Rating your Druid level would normally allow, you can transform into a Beast with a Challenge Rating as high as your Druid level divided by 3, rounded down (minimum of 1).",
+                "Whenever you transform, your Armor Class becomes 13 plus your Wisdom modifier if that total is higher than the Beast form's own AC, and you gain temporary Hit Points equal to three times your Druid level."
+              ]
             },
             {
               "id": "druid-circle-of-the-moon-improved-circle-forms",
               "level": 6,
               "name": "Improved Circle Forms",
-              "description": ""
+              "description": [
+                "Your Circle Forms grow stronger in two ways, both of which apply whenever you're transformed by Wild Shape.",
+                "**Lunar Radiance.** Each time an attack from your Wild Shape form hits, you can have it deal Radiant damage instead of its normal damage type.",
+                "**Increased Toughness.** You add your Wisdom modifier to Constitution saving throws."
+              ]
             },
             {
               "id": "druid-circle-of-the-moon-moonlight-step",
               "level": 10,
               "name": "Moonlight Step",
-              "description": ""
+              "description": [
+                "As a Bonus Action, you flicker through a wash of moonlight, teleporting up to 30 feet to an unoccupied space you can see. You then have Advantage on the next attack roll you make before the end of the current turn.",
+                "You can use this feature a number of times equal to your Wisdom modifier (minimum of once), and you regain all expended uses when you finish a Long Rest."
+              ]
             },
             {
               "id": "druid-circle-of-the-moon-lunar-form",
               "level": 14,
               "name": "Lunar Form",
-              "description": ""
+              "description": [
+                "Your Lunar Radiance sharpens. Once on each of your turns when an attack from your Wild Shape form deals damage you've changed to Radiant with Lunar Radiance and the attack hits, you deal an extra 2d10 Radiant damage.",
+                "In addition, when you use Moonlight Step, you can bring one willing creature within 10 feet of you along for the teleport, moving it to an unoccupied space within 10 feet of your destination."
+              ]
             }
           ]
         },
@@ -1059,31 +1144,37 @@
               "id": "druid-circle-of-the-sea-circle-of-the-sea-spells",
               "level": 3,
               "name": "Circle of the Sea Spells",
-              "description": ""
+              "description": "You forge a bond with the ocean's fury. You always have Fog Cloud, Gust of Wind, Ray of Frost, Shatter, and Thunderwave prepared, joined by Lightning Bolt and Water Breathing at Druid level 5, Control Water and Ice Storm at level 7, and Conjure Elemental and Hold Monster at level 9. None of these spells count against your prepared total."
             },
             {
               "id": "druid-circle-of-the-sea-wrath-of-the-sea",
               "level": 3,
               "name": "Wrath of the Sea",
-              "description": ""
+              "description": [
+                "As a Bonus Action, you expend a use of Wild Shape and wreathe yourself in stinging spray and churning water, filling a 5-foot Emanation originating from you. The Emanation lasts for 10 minutes, until you dismiss it (no action required), until you're Incapacitated, or until you use this feature again.",
+                "While the Emanation persists, you can take a Bonus Action on your turn to lash out with it: choose one creature within the Emanation. That creature makes a Constitution saving throw, taking Cold damage equal to a number of d6s equal to your Wisdom modifier (minimum of one die) on a failed save, and if it's Large or smaller, it's also pushed up to 15 feet away from you. On a success, the creature takes no damage and isn't pushed."
+              ]
             },
             {
               "id": "druid-circle-of-the-sea-aquatic-affinity",
               "level": 6,
               "name": "Aquatic Affinity",
-              "description": ""
+              "description": "Your Wrath of the Sea Emanation widens to a 10-foot radius, and you gain a Swim Speed equal to your Speed."
             },
             {
               "id": "druid-circle-of-the-sea-stormborn",
               "level": 10,
               "name": "Stormborn",
-              "description": ""
+              "description": "While your Wrath of the Sea Emanation is active, you have a Fly Speed equal to your Speed, and you have Resistance to Cold, Lightning, and Thunder damage."
             },
             {
               "id": "druid-circle-of-the-sea-oceanic-gift",
               "level": 14,
               "name": "Oceanic Gift",
-              "description": ""
+              "description": [
+                "When you activate Wrath of the Sea, you can center its Emanation on a willing creature you can see within 60 feet of you instead of yourself. That creature gains all the benefits of the Emanation, using your spell save DC and Wisdom modifier for them.",
+                "Alternatively, you can expend two uses of Wild Shape to center the Emanation on both yourself and one other willing creature within 60 feet of you at the same time."
+              ]
             }
           ]
         },
@@ -1096,31 +1187,49 @@
               "id": "druid-circle-of-the-stars-star-map",
               "level": 3,
               "name": "Star Map",
-              "description": ""
+              "description": [
+                "You craft a Tiny object charting the heavens — a scroll, a tattoo, or a similar token — that serves as a Spellcasting Focus for your Druid spells. While you're holding or wearing it, you always have the Guidance and Guiding Bolt spells prepared, and you can cast Guiding Bolt through it without expending a spell slot. You can cast it this way a number of times equal to your Wisdom modifier (minimum of once), and you regain all expended uses when you finish a Long Rest.",
+                "If your Star Map is lost or destroyed, you can create a replacement with an hour-long ceremony, which you can perform during a Short or Long Rest."
+              ]
             },
             {
               "id": "druid-circle-of-the-stars-starry-form",
               "level": 3,
               "name": "Starry Form",
-              "description": ""
+              "description": [
+                "As a Bonus Action, you can expend a use of Wild Shape to cloak yourself in starlight instead of shapeshifting. For 10 minutes, glowing lines connect your joints like a star chart, shedding Bright Light in a 10-foot radius and Dim Light for an additional 10 feet. The form ends early if you're Incapacitated, if you dismiss it (no action required), or if you use this feature again. While in this form, you keep your own game statistics.",
+                "When you assume the form, choose one of the following constellations; its benefit lasts until the form ends.",
+                "**Archer.** When you assume this form, and again as a Bonus Action on later turns while it lasts, you loose a mote of light at one creature you can see within 60 feet, making a ranged spell attack. On a hit, the target takes 1d8 plus your Wisdom modifier Radiant damage.",
+                "**Chalice.** Whenever you cast a spell using a spell slot that restores Hit Points to a creature, you or one other creature within 30 feet of you regains additional Hit Points equal to 1d8 plus your Wisdom modifier.",
+                "**Dragon.** Whenever you make an Intelligence check, a Wisdom check, or a Constitution saving throw to maintain Concentration, you can treat a roll of 9 or lower on the d20 as a 10."
+              ]
             },
             {
               "id": "druid-circle-of-the-stars-cosmic-omen",
               "level": 6,
               "name": "Cosmic Omen",
-              "description": ""
+              "description": [
+                "When you finish a Long Rest, roll 1d20 to divine the omen guiding you until your next Long Rest: an even roll means your omen is Weal, and an odd roll means it's Woe.",
+                "As a Reaction when a creature you can see within 30 feet of you makes an attack roll, an ability check, or a saving throw, you can roll 1d6 and apply it to that roll's total — adding it if your omen is Weal, or subtracting it if your omen is Woe.",
+                "You can use this feature a number of times equal to your Wisdom modifier (minimum of once), and you regain all expended uses when you finish a Long Rest."
+              ]
             },
             {
               "id": "druid-circle-of-the-stars-twinkling-constellations",
               "level": 10,
               "name": "Twinkling Constellations",
-              "description": ""
+              "description": [
+                "Your constellations shine brighter, and you can change which one lights your Starry Form at the start of each of your turns without needing to reactivate the form.",
+                "**Archer.** The Radiant damage of your ranged spell attack increases to 2d8 plus your Wisdom modifier.",
+                "**Chalice.** The extra Hit Points regained increase to 2d8 plus your Wisdom modifier.",
+                "**Dragon.** You also gain a Fly Speed of 20 feet, and you can hover."
+              ]
             },
             {
               "id": "druid-circle-of-the-stars-full-of-stars",
               "level": 14,
               "name": "Full of Stars",
-              "description": ""
+              "description": "While in your Starry Form, your body thins into scattered points of starlight, giving you Resistance to Bludgeoning, Piercing, and Slashing damage."
             }
           ]
         }
@@ -1166,7 +1275,9 @@
           "level": 3,
           "name": "Fighter Subclass",
           "description": "You gain a Fighter subclass of your choice. A subclass is a specialization that grants you features at certain Fighter levels.",
-          "unlocks": ["subclass"]
+          "unlocks": [
+            "subclass"
+          ]
         },
         {
           "id": "fighter-asi-4",
@@ -1330,37 +1441,61 @@
               "id": "fighter-battle-master-combat-superiority",
               "level": 3,
               "name": "Combat Superiority",
-              "description": ""
+              "description": [
+                "You learn maneuvers that let you do something special when the moment calls for it, each one fueled by a Superiority Die. You know three maneuvers of your choice, and you learn additional ones as you gain levels in this class. Whenever you reach a new Fighter level, you can also swap one maneuver you know for a different one.",
+                "You have four Superiority Dice, each a d8. A die is spent when a maneuver calls for it, and you regain all of your spent dice when you finish a Short or Long Rest. You gain one more Superiority Die at Fighter levels 7 and 15. When a maneuver requires the target to make a saving throw, the DC equals 8 plus your Proficiency Bonus plus your Strength or Dexterity modifier, whichever you choose.",
+                "Your maneuver options are as follows. Unless a maneuver says otherwise, using one doesn't require an action beyond the attack or reaction that triggers it.",
+                "**Ambush.** When you make a Dexterity (Stealth) check or an Initiative roll, you can expend a Superiority Die and add it to the roll.",
+                "**Bait and Switch.** On your turn, if you're within 5 feet of a willing creature that isn't Incapacitated, you can expend a Superiority Die and trade places with it (at least 5 feet of your movement, no Opportunity Attack provoked). Roll the die: until the start of your next turn, either you or that creature gains a bonus to AC equal to the roll.",
+                "**Commander's Strike.** When you take the Attack action, you can forgo one of your attacks and expend a Superiority Die to direct a willing ally within 30 feet who can see or hear you. That ally can use its Reaction to make one weapon attack, adding the die to the damage roll on a hit.",
+                "**Commanding Presence.** When you make a Charisma (Intimidation, Performance, or Persuasion) check, you can expend a Superiority Die and add it to the check.",
+                "**Disarming Attack.** When you hit a creature with a weapon attack, you can expend a Superiority Die to add it to the damage roll. The target must then succeed on a Strength saving throw or drop one item of your choice that it's holding.",
+                "**Distracting Strike.** When you hit a creature with a weapon attack, you can expend a Superiority Die to add it to the damage roll. Until the start of your next turn, the next attack roll against that target by a creature other than you has Advantage.",
+                "**Evasive Footwork.** As a Bonus Action, you can expend a Superiority Die and take the Disengage action. Roll the die and add it to your AC until the start of your next turn.",
+                "**Feinting Attack.** As a Bonus Action, you can expend a Superiority Die to feint against a creature within 5 feet of you. You have Advantage on your next attack roll against that creature this turn, and if it hits, add the die to the damage roll.",
+                "**Goading Attack.** When you hit a creature with a weapon attack, you can expend a Superiority Die to add it to the damage roll. The target must then succeed on a Wisdom saving throw or have Disadvantage on attack rolls against creatures other than you until the end of your next turn.",
+                "**Lunging Attack.** As a Bonus Action, you can expend a Superiority Die and take the Dash action. If you move at least 5 feet in a straight line right before hitting with a melee attack as part of the Attack action this turn, you can add the die to that attack's damage roll.",
+                "**Maneuvering Attack.** When you hit a creature with an attack, you can expend a Superiority Die to add it to the damage roll, then choose a willing creature who can see or hear you. That creature can use its Reaction to move up to half its Speed without provoking an Opportunity Attack from the target of your attack.",
+                "**Menacing Attack.** When you hit a creature with a weapon attack, you can expend a Superiority Die to add it to the damage roll. The target must then succeed on a Wisdom saving throw or gain the Frightened condition until the end of your next turn.",
+                "**Parry.** When another creature's melee attack damages you, you can take a Reaction and expend a Superiority Die to reduce that damage by the roll plus your Strength or Dexterity modifier, your choice.",
+                "**Precision Attack.** When you miss with an attack roll, you can expend a Superiority Die and add the roll to the attack roll, possibly turning it into a hit.",
+                "**Pushing Attack.** When you hit a Large or smaller creature with a weapon or Unarmed Strike attack, you can expend a Superiority Die to add it to the damage roll. The target must then succeed on a Strength saving throw or be pushed up to 15 feet away from you.",
+                "**Rally.** As a Bonus Action, you can expend a Superiority Die to bolster an ally within 30 feet who can see or hear you. That ally gains Temporary Hit Points equal to the die roll plus half your Fighter level, rounded down.",
+                "**Riposte.** When a creature misses you with a melee attack, you can take a Reaction and expend a Superiority Die to make a melee attack against it. If you hit, add the die to the damage roll.",
+                "**Sweeping Attack.** When you hit a creature with a melee weapon or Unarmed Strike attack, you can expend a Superiority Die and choose a second creature within 5 feet of the first and within your reach. If your attack roll would also hit that second creature, it takes damage equal to the die roll, of the same type as the original attack.",
+                "**Tactical Assessment.** When you make an Intelligence (History or Investigation) check or a Wisdom (Insight) check, you can expend a Superiority Die and add it to the check.",
+                "**Trip Attack.** When you hit a Large or smaller creature with a weapon or Unarmed Strike attack, you can expend a Superiority Die to add it to the damage roll. The target must then succeed on a Strength saving throw or be knocked Prone."
+              ]
             },
             {
               "id": "fighter-battle-master-student-of-war",
               "level": 3,
               "name": "Student of War",
-              "description": ""
+              "description": "You gain proficiency with one type of artisan's tools of your choice, along with proficiency in one skill of your choice from the Fighter class's list of skill options."
             },
             {
               "id": "fighter-battle-master-know-your-enemy",
               "level": 7,
               "name": "Know Your Enemy",
-              "description": ""
+              "description": "As a Bonus Action, you can size up a creature you can see within 30 feet of you, learning whether it has any damage Vulnerabilities, Resistances, or Immunities, and which ones if so. You can use this feature once, regaining its use when you finish a Long Rest, or you can restore it immediately by expending one Superiority Die."
             },
             {
               "id": "fighter-battle-master-improved-combat-superiority",
               "level": 10,
               "name": "Improved Combat Superiority",
-              "description": ""
+              "description": "Your Superiority Dice each grow from a d8 to a d10."
             },
             {
               "id": "fighter-battle-master-relentless",
               "level": 15,
               "name": "Relentless",
-              "description": ""
+              "description": "Once on each of your turns when you use a maneuver, you can roll 1d8 and use that result to fuel it instead of expending a Superiority Die."
             },
             {
               "id": "fighter-battle-master-improved-combat-superiority-d12",
               "level": 18,
               "name": "Improved Combat Superiority (d12)",
-              "description": ""
+              "description": "Your Superiority Dice each grow from a d10 to a d12."
             }
           ]
         },
@@ -1373,37 +1508,43 @@
               "id": "fighter-eldritch-knight-spellcasting",
               "level": 3,
               "name": "Spellcasting",
-              "description": ""
+              "description": [
+                "You learn to cast spells drawn from the Wizard spell list, with no restriction to a particular school of magic. Intelligence is your spellcasting ability for these spells, and you can use an Arcane Focus as a spellcasting focus.",
+                "You know two Wizard cantrips of your choice, learning a third at 10th level; whenever you gain a Fighter level, you can also swap one cantrip you know for a different one. Separately, you prepare a number of 1st-level or higher Wizard spells equal to your Intelligence modifier plus half your Fighter level (rounded down), with a minimum of one spell, and you can change your prepared spells after finishing a Long Rest. Casting one of these prepared spells uses a spell slot, and you regain all expended spell slots when you finish a Long Rest."
+              ]
             },
             {
               "id": "fighter-eldritch-knight-war-bond",
               "level": 3,
               "name": "War Bond",
-              "description": ""
+              "description": [
+                "Through a ritual taking 1 hour, which can be performed during a Short Rest, you forge a magical bond with a weapon. You can be bonded to up to two weapons at once; forming a bond with a third breaks your bond with one of the other two.",
+                "While a weapon is bonded to you, you can't be disarmed of it unless you're Incapacitated, and you can call it to your hand as a Bonus Action if it's on the same plane of existence as you. You can summon only one bonded weapon this way at a time."
+              ]
             },
             {
               "id": "fighter-eldritch-knight-war-magic",
               "level": 7,
               "name": "War Magic",
-              "description": ""
+              "description": "When you take the Attack action on your turn, you can replace one of your attacks with the casting of a cantrip from your spell list that has a casting time of an action."
             },
             {
               "id": "fighter-eldritch-knight-eldritch-strike",
               "level": 10,
               "name": "Eldritch Strike",
-              "description": ""
+              "description": "When you hit a creature with a weapon attack, that creature has Disadvantage on the next saving throw it makes against a spell you cast before the end of your next turn."
             },
             {
               "id": "fighter-eldritch-knight-arcane-charge",
               "level": 15,
               "name": "Arcane Charge",
-              "description": ""
+              "description": "Whenever you use Action Surge, you can also teleport up to 30 feet to an unoccupied space you can see, either before or after the extra action."
             },
             {
               "id": "fighter-eldritch-knight-improved-war-magic",
               "level": 18,
               "name": "Improved War Magic",
-              "description": ""
+              "description": "When you take the Attack action on your turn, you can now replace two of your attacks with the casting of a 1st- or 2nd-level Wizard spell that has a casting time of an action."
             }
           ]
         },
@@ -1416,31 +1557,39 @@
               "id": "fighter-psi-warrior-psionic-power",
               "level": 3,
               "name": "Psionic Power",
-              "description": ""
+              "description": [
+                "Your latent psionics fuel a pool of Psionic Energy Dice, each currently a d6. You have a number of these dice equal to twice your Proficiency Bonus, and their size grows as you gain Fighter levels: d8 at 5th level, d10 at 11th level, and d12 at 17th level. You regain all expended Psionic Energy Dice when you finish a Long Rest, and as a Bonus Action you can regain a single expended die, though you can't do so again until you finish a Short or Long Rest.",
+                "As a Reaction when you or a creature within 30 feet of you takes damage, you can expend one Psionic Energy Die to lessen it, rolling the die and reducing the damage by the number rolled plus your Intelligence modifier.",
+                "Once on each of your turns when you hit a creature with a weapon attack, you can expend one Psionic Energy Die to charge the weapon with psionic force, rolling the die and dealing that much extra Force damage, plus your Intelligence modifier.",
+                "As a Magic action, you can telekinetically seize a Large or smaller object or a willing creature you can see within 30 feet of you and move it up to 30 feet to a point you can see; a Tiny object can instead fly directly to or from your hand. Once you use this action, you can't use it again until you finish a Short or Long Rest, unless you expend a Psionic Energy Die to restore its use immediately."
+              ]
             },
             {
               "id": "fighter-psi-warrior-telekinetic-adept",
               "level": 7,
               "name": "Telekinetic Adept",
-              "description": ""
+              "description": [
+                "As a Bonus Action, you can expend one Psionic Energy Die to sheathe yourself in psionic force, gaining a Flying Speed equal to twice your Speed until the end of the turn. Once you use this feature, you can't use it again until you finish a Short or Long Rest, unless you expend a Psionic Energy Die to restore its use immediately.",
+                "In addition, whenever your Psionic Strike deals damage to a creature, you can force it to make a Strength saving throw against a DC equal to 8 plus your Proficiency Bonus plus your Intelligence modifier. On a failed save, you choose to either knock the creature Prone or move it up to 10 feet in a direction of your choice."
+              ]
             },
             {
               "id": "fighter-psi-warrior-guarded-mind",
               "level": 10,
               "name": "Guarded Mind",
-              "description": ""
+              "description": "You have Resistance to Psychic damage. In addition, at the start of each of your turns, if you are Charmed or Frightened, you can expend one Psionic Energy Die, with no action required, to end that condition on yourself."
             },
             {
               "id": "fighter-psi-warrior-bulwark-of-force",
               "level": 15,
               "name": "Bulwark of Force",
-              "description": ""
+              "description": "As a Bonus Action, you can expend one Psionic Energy Die to raise a shimmering field of psionic force around yourself, granting Half Cover to yourself and to a number of other creatures within 30 feet of you equal to your Intelligence modifier (minimum of one). The field lasts for 1 minute or until you're Incapacitated. Once you use this feature, you can't use it again until you finish a Long Rest, unless you expend a Psionic Energy Die to restore its use immediately."
             },
             {
               "id": "fighter-psi-warrior-telekinetic-master",
               "level": 18,
               "name": "Telekinetic Master",
-              "description": ""
+              "description": "You can cast the Telekinesis spell, using Intelligence as your spellcasting ability, without expending a spell slot and without needing any material components. While you're concentrating on the spell cast this way, you can make one weapon attack as a Bonus Action on each of your turns. Once you use this feature, you can't use it again until you finish a Long Rest, unless you expend a Psionic Energy Die to restore its use immediately."
             }
           ]
         }
@@ -1486,7 +1635,9 @@
           "level": 3,
           "name": "Monk Subclass",
           "description": "You gain a Monk subclass of your choice. A subclass is a specialization that grants you features at certain Monk levels.",
-          "unlocks": ["subclass"]
+          "unlocks": [
+            "subclass"
+          ]
         },
         {
           "id": "monk-deflect-attacks",
@@ -1656,37 +1807,47 @@
               "id": "monk-warrior-of-mercy-hand-of-harm",
               "level": 3,
               "name": "Hand of Harm",
-              "description": ""
+              "description": "Once on each of your turns, when one of your Unarmed Strikes deals damage, you can spend 1 Focus Point to add extra Necrotic damage to that hit equal to a roll of your Martial Arts die plus your Wisdom modifier."
             },
             {
               "id": "monk-warrior-of-mercy-hand-of-healing",
               "level": 3,
               "name": "Hand of Healing",
-              "description": ""
+              "description": "As a Magic action, you can spend 1 Focus Point and touch a creature to restore Hit Points to it equal to a roll of your Martial Arts die plus your Wisdom modifier. When you use Flurry of Blows, you can replace one of its Unarmed Strikes with this healing touch at no Focus Point cost."
             },
             {
               "id": "monk-warrior-of-mercy-implements-of-mercy",
               "level": 3,
               "name": "Implements of Mercy",
-              "description": ""
+              "description": "You gain proficiency in the Insight and Medicine skills, along with proficiency with the Herbalism Kit."
             },
             {
               "id": "monk-warrior-of-mercy-physicians-touch",
               "level": 6,
               "name": "Physician's Touch",
-              "description": ""
+              "description": [
+                "Hand of Harm and Hand of Healing both gain an additional effect.",
+                "**Hand of Harm.** A creature damaged by this feature can also be left with the Poisoned condition until the end of your next turn.",
+                "**Hand of Healing.** A creature restored by this feature can also have one of the following conditions removed from it: Blinded, Deafened, Paralyzed, Poisoned, or Stunned."
+              ]
             },
             {
               "id": "monk-warrior-of-mercy-flurry-of-healing-and-harm",
               "level": 11,
               "name": "Flurry of Healing and Harm",
-              "description": ""
+              "description": [
+                "A number of times per Long Rest equal to your Wisdom modifier (minimum of once), you can use Hand of Healing and Hand of Harm without spending Focus Points.",
+                "During a Flurry of Blows you use this way, you can replace any number of its Unarmed Strikes with Hand of Healing, and you can still apply Hand of Harm's extra damage to one of the strikes that hits, all without spending Focus Points; Hand of Harm's once-per-turn limit still applies."
+              ]
             },
             {
               "id": "monk-warrior-of-mercy-hand-of-ultimate-mercy",
               "level": 17,
               "name": "Hand of Ultimate Mercy",
-              "description": ""
+              "description": [
+                "Once per Long Rest, as a Magic action, you can spend 5 Focus Points and touch the corpse of a creature that died within the last 24 hours.",
+                "That creature returns to life with Hit Points equal to 4d10 plus your Wisdom modifier, and it loses the Blinded, Deafened, Paralyzed, Poisoned, and Stunned conditions."
+              ]
             }
           ]
         },
@@ -1699,25 +1860,33 @@
               "id": "monk-warrior-of-shadow-shadow-arts",
               "level": 3,
               "name": "Shadow Arts",
-              "description": ""
+              "description": [
+                "You draw on the power of the Shadowfell, gaining the following benefits.",
+                "**Darkness.** You can spend 1 Focus Point to cast Darkness without needing any spell components, and you can see normally through the area it creates. While the spell lasts, you can shift its area to a point within 60 feet of yourself at the start of each of your turns.",
+                "**Darkvision.** You gain Darkvision out to a range of 60 feet, or the range of your existing Darkvision increases by 60 feet.",
+                "**Shadowy Figments.** You learn the Minor Illusion spell, which you cast using Wisdom as your spellcasting ability."
+              ]
             },
             {
               "id": "monk-warrior-of-shadow-shadow-step",
               "level": 6,
               "name": "Shadow Step",
-              "description": ""
+              "description": "While you are entirely within Dim Light or Darkness, you can take a Bonus Action to teleport up to 60 feet to an unoccupied space you can see that is also in Dim Light or Darkness. You have Advantage on the next melee attack roll you make before the end of the turn."
             },
             {
               "id": "monk-warrior-of-shadow-improved-shadow-step",
               "level": 11,
               "name": "Improved Shadow Step",
-              "description": ""
+              "description": "When you use Shadow Step, you can spend 1 Focus Point so that neither your start nor end point needs to be in Dim Light or Darkness, and you can make an Unarmed Strike immediately after you teleport as part of the same Bonus Action."
             },
             {
               "id": "monk-warrior-of-shadow-cloak-of-shadows",
               "level": 17,
               "name": "Cloak of Shadows",
-              "description": ""
+              "description": [
+                "While you are entirely within Dim Light or Darkness, you can take a Magic action and spend 3 Focus Points to wrap yourself in shadow for 1 minute, until you gain the Incapacitated condition, or until you end a turn in Bright Light.",
+                "While shrouded this way, you have the Invisible condition, you can move through other creatures' spaces as if they were Difficult Terrain (if you end your turn inside one, you are shunted back to the last unoccupied space you occupied), and you can use Flurry of Blows without spending Focus Points."
+              ]
             }
           ]
         },
@@ -1730,25 +1899,33 @@
               "id": "monk-warrior-of-the-elements-elemental-attunement",
               "level": 3,
               "name": "Elemental Attunement",
-              "description": ""
+              "description": [
+                "You learn the Elementalism cantrip, using Wisdom as your spellcasting ability for it.",
+                "At the start of your turn, you can spend 1 Focus Point to call up elemental energy that lasts for 10 minutes or until you have the Incapacitated condition. While it lasts, your Unarmed Strikes have 10 extra feet of reach, and you can have them deal Acid, Cold, Fire, Lightning, or Thunder damage (your choice) instead of their normal damage type. A creature hit by such a strike must succeed on a Strength saving throw or be moved up to 10 feet toward or away from you, your choice."
+              ]
             },
             {
               "id": "monk-warrior-of-the-elements-elemental-burst",
               "level": 6,
               "name": "Elemental Burst",
-              "description": ""
+              "description": "As a Magic action, you can spend 2 Focus Points to erupt elemental energy in a 20-foot-radius Sphere centered on a point you can see within 120 feet of yourself. Each creature in the Sphere must make a Dexterity saving throw, taking damage of your choice of Acid, Cold, Fire, Lightning, or Thunder equal to three rolls of your Martial Arts die on a failure, or half as much damage on a success."
             },
             {
               "id": "monk-warrior-of-the-elements-stride-of-the-elements",
               "level": 11,
               "name": "Stride of the Elements",
-              "description": ""
+              "description": "While your Elemental Attunement is active, you gain a Fly Speed and a Swim Speed, each equal to your Speed."
             },
             {
               "id": "monk-warrior-of-the-elements-elemental-epitome",
               "level": 17,
               "name": "Elemental Epitome",
-              "description": ""
+              "description": [
+                "While your Elemental Attunement is active, you gain the following benefits.",
+                "**Damage Resistance.** At the start of each of your turns, you choose one of Acid, Cold, Fire, Lightning, or Thunder and have Resistance to that damage type until the start of your next turn.",
+                "**Destructive Stride.** When you use Step of the Wind, your Speed increases by 20 feet until the end of the turn, and each creature you come within 5 feet of during that movement takes damage of the type you chose for your Elemental Attunement, equal to a roll of your Martial Arts die; no creature can be damaged this way more than once per turn.",
+                "**Empowered Strikes.** Once on each of your turns when you hit a creature with an Unarmed Strike, you can deal extra damage to it equal to a roll of your Martial Arts die."
+              ]
             }
           ]
         }
@@ -1810,7 +1987,9 @@
           "level": 3,
           "name": "Paladin Subclass",
           "description": "You gain a Paladin subclass of your choice. A subclass is a specialization that grants you features at certain Paladin levels.",
-          "unlocks": ["subclass"]
+          "unlocks": [
+            "subclass"
+          ]
         },
         {
           "id": "paladin-asi-4",
@@ -1954,31 +2133,47 @@
               "id": "paladin-oath-of-the-ancients-oath-of-the-ancients-spells",
               "level": 3,
               "name": "Oath of the Ancients Spells",
-              "description": ""
+              "description": [
+                "The following spells are always prepared for you and don't count against your prepared total, each becoming available at the Paladin level shown.",
+                "**Level 3.** Ensnaring Strike, Speak with Animals",
+                "**Level 5.** Misty Step, Moonbeam",
+                "**Level 9.** Plant Growth, Protection from Energy",
+                "**Level 13.** Ice Storm, Stoneskin",
+                "**Level 17.** Commune with Nature, Tree Stride"
+              ]
             },
             {
               "id": "paladin-oath-of-the-ancients-natures-wrath",
               "level": 3,
               "name": "Nature's Wrath",
-              "description": ""
+              "description": [
+                "As a Magic action, you can expend one use of Channel Divinity to call up grasping spectral vines around your enemies, targeting any number of creatures you can see within 15 feet of you.",
+                "Each target must succeed on a Strength saving throw or have the Restrained condition for 1 minute, repeating the save at the end of each of its turns to break free early."
+              ]
             },
             {
               "id": "paladin-oath-of-the-ancients-aura-of-warding",
               "level": 7,
               "name": "Aura of Warding",
-              "description": ""
+              "description": "While you don't have the Incapacitated condition, you and your allies within your Aura of Protection have Resistance to Necrotic, Psychic, and Radiant damage."
             },
             {
               "id": "paladin-oath-of-the-ancients-undying-sentinel",
               "level": 15,
               "name": "Undying Sentinel",
-              "description": ""
+              "description": [
+                "When damage would reduce you to 0 Hit Points but not kill you outright, you can instead drop to 1 Hit Point and regain Hit Points equal to three times your Paladin level. Once you use this feature, you can't do so again until you finish a Long Rest.",
+                "You also stop aging visibly and can no longer be aged by magic."
+              ]
             },
             {
               "id": "paladin-oath-of-the-ancients-elder-champion",
               "level": 20,
               "name": "Elder Champion",
-              "description": ""
+              "description": [
+                "As a Bonus Action, you can imbue your Aura of Protection with primal might for 1 minute or until you end the effect early. Once you use this feature, you can't do so again until you finish a Long Rest, unless you expend a level 5 spell slot to use it again.",
+                "For the duration, you regain 10 Hit Points at the start of each of your turns, you can cast any Paladin spell that normally has a casting time of an action by using a Bonus Action instead, and enemies within the aura have Disadvantage on saving throws against your Paladin spells and Channel Divinity options."
+              ]
             }
           ]
         },
@@ -1991,37 +2186,53 @@
               "id": "paladin-oath-of-glory-oath-of-glory-spells",
               "level": 3,
               "name": "Oath of Glory Spells",
-              "description": ""
+              "description": [
+                "The following spells are always prepared for you and don't count against your prepared total, each becoming available at the Paladin level shown.",
+                "**Level 3.** Guiding Bolt, Heroism",
+                "**Level 5.** Enhance Ability, Magic Weapon",
+                "**Level 9.** Haste, Protection from Energy",
+                "**Level 13.** Compulsion, Freedom of Movement",
+                "**Level 17.** Legend Lore, Yolande's Regal Presence"
+              ]
             },
             {
               "id": "paladin-oath-of-glory-inspiring-smite",
               "level": 3,
               "name": "Inspiring Smite",
-              "description": ""
+              "description": "Immediately after you cast Divine Smite, you can expend one use of Channel Divinity to turn your triumph into Temporary Hit Points, dividing a pool equal to 2d8 plus your Paladin level among any creatures you choose within 30 feet of you, including yourself."
             },
             {
               "id": "paladin-oath-of-glory-peerless-athlete",
               "level": 3,
               "name": "Peerless Athlete",
-              "description": ""
+              "description": [
+                "As a Bonus Action, you can expend one use of Channel Divinity to call on legendary vigor.",
+                "For 1 hour, you have Advantage on Strength (Athletics) and Dexterity (Acrobatics) checks, and the distance of your Long Jumps and High Jumps increases by 10 feet."
+              ]
             },
             {
               "id": "paladin-oath-of-glory-aura-of-alacrity",
               "level": 7,
               "name": "Aura of Alacrity",
-              "description": ""
+              "description": "Your Speed increases by 10 feet, and whenever an ally enters your Aura of Protection for the first time on a turn or starts its turn there, that ally's Speed increases by 10 feet until the end of its next turn."
             },
             {
               "id": "paladin-oath-of-glory-glorious-defense",
               "level": 15,
               "name": "Glorious Defense",
-              "description": ""
+              "description": [
+                "When an attack roll hits you or another creature you can see within 10 feet of you, you can take a Reaction to grant the target a bonus to AC against that attack equal to your Charisma modifier (minimum +1), potentially turning the hit into a miss. If the attack misses because of this bonus, you can make one weapon attack against the attacker as part of the same Reaction, provided the attacker is within your weapon's range.",
+                "You can use this feature a number of times equal to your Charisma modifier (minimum of one), and you regain all expended uses when you finish a Long Rest."
+              ]
             },
             {
               "id": "paladin-oath-of-glory-living-legend",
               "level": 20,
               "name": "Living Legend",
-              "description": ""
+              "description": [
+                "As a Bonus Action, you gain the benefits below for 10 minutes. Once you use this feature, you can't do so again until you finish a Long Rest, unless you expend a level 5 spell slot to use it again.",
+                "For the duration, you have Advantage on Charisma checks, once on each of your turns you can turn a missed weapon attack into a hit, and whenever you fail a saving throw you can use your Reaction to reroll it, using the new result."
+              ]
             }
           ]
         },
@@ -2034,31 +2245,44 @@
               "id": "paladin-oath-of-vengeance-oath-of-vengeance-spells",
               "level": 3,
               "name": "Oath of Vengeance Spells",
-              "description": ""
+              "description": [
+                "The following spells are always prepared for you and don't count against your prepared total, each becoming available at the Paladin level shown.",
+                "**Level 3.** Bane, Hunter's Mark",
+                "**Level 5.** Hold Person, Misty Step",
+                "**Level 9.** Haste, Protection from Energy",
+                "**Level 13.** Banishment, Dimension Door",
+                "**Level 17.** Hold Monster, Scrying"
+              ]
             },
             {
               "id": "paladin-oath-of-vengeance-vow-of-enmity",
               "level": 3,
               "name": "Vow of Enmity",
-              "description": ""
+              "description": [
+                "When you take the Attack action, you can expend one use of Channel Divinity to swear a vow of enmity against one creature you can see within 30 feet of you, gaining Advantage on attack rolls against it for 1 minute or until you use this feature again.",
+                "If the target drops to 0 Hit Points before the vow ends, you can transfer it to a different creature within 30 feet of you, requiring no action."
+              ]
             },
             {
               "id": "paladin-oath-of-vengeance-relentless-avenger",
               "level": 7,
               "name": "Relentless Avenger",
-              "description": ""
+              "description": "When you hit a creature with an Opportunity Attack, you can reduce that creature's Speed to 0 until the end of the current turn, then immediately move up to half your Speed as part of the same Reaction, without provoking Opportunity Attacks."
             },
             {
               "id": "paladin-oath-of-vengeance-soul-of-vengeance",
               "level": 15,
               "name": "Soul of Vengeance",
-              "description": ""
+              "description": "Immediately after the creature bound by your Vow of Enmity hits or misses with an attack roll, you can use your Reaction to make one melee attack against it, provided it is within reach of your attack."
             },
             {
               "id": "paladin-oath-of-vengeance-avenging-angel",
               "level": 20,
               "name": "Avenging Angel",
-              "description": ""
+              "description": [
+                "As a Bonus Action, you can take on an avenging, angelic form for 10 minutes. Once you use this feature, you can't do so again until you finish a Long Rest, unless you expend a level 5 spell slot to use it again.",
+                "For the duration, spectral wings grant you a Flying Speed of 60 feet and let you hover, and you radiate menace throughout your Aura of Protection: the first time an enemy enters the aura or starts its turn there during a battle, it must succeed on a Wisdom saving throw or have the Frightened condition for 1 minute or until it takes damage, and attack rolls against a creature Frightened this way have Advantage."
+              ]
             }
           ]
         }
@@ -2113,7 +2337,9 @@
           "level": 3,
           "name": "Ranger Subclass",
           "description": "You gain a Ranger subclass of your choice. A subclass is a specialization that grants you features at certain Ranger levels.",
-          "unlocks": ["subclass"]
+          "unlocks": [
+            "subclass"
+          ]
         },
         {
           "id": "ranger-asi-4",
@@ -2261,25 +2487,32 @@
               "id": "ranger-beast-master-primal-companion",
               "level": 3,
               "name": "Primal Companion",
-              "description": ""
+              "description": [
+                "You magically call forth a Primal Beast, a nature spirit that takes the form of a beast of the land, the sea, or the sky (your choice); its game statistics are given separately and scale with your Ranger level rather than needing a stat block of its own. The beast is friendly to you and your companions and obeys your commands.",
+                "In combat, the beast acts on your turn. It can move and use its Reaction on its own, but the only action it takes without direction is Dodge. Spend a Bonus Action to command it into any action its stat block allows, or forgo one of your own attacks when you take the Attack action to have it make its Beast's Strike alongside you.",
+                "If the beast dies, you can restore it within the following hour by using a Magic action to touch its body and expend a spell slot of any level; it revives after 1 minute with all its Hit Points restored. Whenever you finish a Long Rest, you may instead summon a beast of a different form."
+              ]
             },
             {
               "id": "ranger-beast-master-exceptional-training",
               "level": 7,
               "name": "Exceptional Training",
-              "description": ""
+              "description": [
+                "Commanding your beast becomes more versatile: the Bonus Action you spend to direct it can now also send it into the Dash, Disengage, Dodge, or Help action, in addition to the options it already had.",
+                "In addition, whenever the beast hits with an attack and deals damage, you can have that damage become Force damage instead of its normal type, letting it get past many creatures' resistances and immunities."
+              ]
             },
             {
               "id": "ranger-beast-master-bestial-fury",
               "level": 11,
               "name": "Bestial Fury",
-              "description": ""
+              "description": "When you command your Primal Beast to take the Attack action, it can attack twice instead of once, or use its Multiattack action if its stat block has one."
             },
             {
               "id": "ranger-beast-master-share-spells",
               "level": 15,
               "name": "Share Spells",
-              "description": ""
+              "description": "Whenever you cast a spell that targets only yourself, you can also apply its effect to your Primal Beast if the beast is within 30 feet of you when you cast it."
             }
           ]
         },
@@ -2292,37 +2525,46 @@
               "id": "ranger-fey-wanderer-dreadful-strikes",
               "level": 3,
               "name": "Dreadful Strikes",
-              "description": ""
+              "description": [
+                "You can lace your weapon strikes with unsettling magic drawn from the Feywild. Once on each of your turns when you hit a creature with a weapon, you can deal an extra 1d4 Psychic damage to it.",
+                "This extra damage increases to 1d6 once you reach 11th level."
+              ]
             },
             {
               "id": "ranger-fey-wanderer-fey-wanderer-spells",
               "level": 3,
               "name": "Fey Wanderer Spells",
-              "description": ""
+              "description": "You always have certain spells prepared once you reach the Ranger levels shown in the Fey Wanderer Spells table, and they don't count against the number of spells you can prepare. You gain Charm Person at 3rd level, Misty Step at 5th, Summon Fey at 9th, Dimension Door at 13th, and Mislead at 17th."
             },
             {
               "id": "ranger-fey-wanderer-otherworldly-glamour",
               "level": 3,
               "name": "Otherworldly Glamour",
-              "description": ""
+              "description": "A fey grace settles over you. Whenever you make a Charisma check, you add your Wisdom modifier to the roll, to a minimum bonus of +1. You also gain proficiency in one skill of your choice from Deception, Performance, or Persuasion."
             },
             {
               "id": "ranger-fey-wanderer-beguiling-twist",
               "level": 7,
               "name": "Beguiling Twist",
-              "description": ""
+              "description": [
+                "You have Advantage on saving throws against being Charmed or Frightened.",
+                "Whenever you or a creature you can see within 120 feet of you succeeds on such a save, you can use your Reaction to turn the attempt back on its source: force a different creature you can see within 120 feet to make a Wisdom saving throw against your spell save DC. On a failed save, that creature is Charmed or Frightened by you (your choice) for 1 minute, repeating the save at the end of each of its turns to end the effect early."
+              ]
             },
             {
               "id": "ranger-fey-wanderer-fey-reinforcements",
               "level": 11,
               "name": "Fey Reinforcements",
-              "description": ""
+              "description": "You no longer need a Material component to cast Summon Fey, and you can cast it once without expending a spell slot. You regain the ability to cast it this way when you finish a Long Rest."
             },
             {
               "id": "ranger-fey-wanderer-misty-wanderer",
               "level": 15,
               "name": "Misty Wanderer",
-              "description": ""
+              "description": [
+                "You can cast Misty Step without expending a spell slot a number of times equal to your Wisdom modifier (minimum once), regaining all expended uses when you finish a Long Rest.",
+                "Whenever you cast Misty Step, you can bring one willing creature you can see within 5 feet of you along with you to the destination space."
+              ]
             }
           ]
         },
@@ -2335,37 +2577,42 @@
               "id": "ranger-gloom-stalker-dread-ambusher",
               "level": 3,
               "name": "Dread Ambusher",
-              "description": ""
+              "description": [
+                "You've mastered the opening strike of an ambush, gaining three benefits.",
+                "**Ambusher's Leap.** At the start of your first turn of each combat, your Speed increases by 10 feet until the end of that turn.",
+                "**Dreadful Strike.** Once on each of your turns when you hit a creature with a weapon, you can deal an extra 2d6 Psychic damage to it. You can use this a number of times equal to your Wisdom modifier (minimum once), regaining all expended uses when you finish a Long Rest.",
+                "**Initiative Bonus.** You can add your Wisdom modifier to your Initiative rolls."
+              ]
             },
             {
               "id": "ranger-gloom-stalker-gloom-stalker-spells",
               "level": 3,
               "name": "Gloom Stalker Spells",
-              "description": ""
+              "description": "You always have certain spells prepared once you reach the Ranger levels shown in the Gloom Stalker Spells table, and they don't count against the number of spells you can prepare. You gain Disguise Self at 3rd level, Rope Trick at 5th, Fear at 9th, Greater Invisibility at 13th, and Seeming at 17th."
             },
             {
               "id": "ranger-gloom-stalker-umbral-sight",
               "level": 3,
               "name": "Umbral Sight",
-              "description": ""
+              "description": "You gain Darkvision out to a range of 60 feet; if you already have Darkvision, its range instead increases by 30 feet. While you're in Darkness, you have the benefit of the Invisible condition against any creature relying on Darkvision to see you there."
             },
             {
               "id": "ranger-gloom-stalker-iron-mind",
               "level": 7,
               "name": "Iron Mind",
-              "description": ""
+              "description": "Your will hardens against attempts to bend it. You gain proficiency in Wisdom saving throws. If you already have that proficiency, you instead gain proficiency in Intelligence or Charisma saving throws (your choice)."
             },
             {
               "id": "ranger-gloom-stalker-stalkers-flurry",
               "level": 11,
               "name": "Stalker's Flurry",
-              "description": ""
+              "description": "Once on each of your turns, immediately after you miss with a weapon attack, you can make another weapon attack as part of the same action."
             },
             {
               "id": "ranger-gloom-stalker-shadowy-dodge",
               "level": 15,
               "name": "Shadowy Dodge",
-              "description": ""
+              "description": "Whenever a creature makes an attack roll against you without Advantage, you can use your Reaction, before knowing whether the attack hits, to impose Disadvantage on that roll."
             }
           ]
         }
@@ -2414,7 +2661,9 @@
           "level": 3,
           "name": "Rogue Subclass",
           "description": "You gain a Rogue subclass of your choice. A subclass is a specialization that grants you features at certain Rogue levels.",
-          "unlocks": ["subclass"]
+          "unlocks": [
+            "subclass"
+          ]
         },
         {
           "id": "rogue-steady-aim",
@@ -2586,31 +2835,43 @@
               "id": "rogue-arcane-trickster-spellcasting",
               "level": 3,
               "name": "Spellcasting",
-              "description": ""
+              "description": [
+                "You augment your roguish talents with magic drawn from the wizard spell list, using Intelligence as your spellcasting ability for these spells. You can use an Arcane Focus as a spellcasting focus for them.",
+                "**Cantrips.** You learn three cantrips of your choice from the wizard spell list, one of which must be Mage Hand. Whenever you gain a Rogue level, you can replace one of these cantrips with a different one from the wizard spell list.",
+                "**Spell Slots.** You gain spell slots for casting spells of 1st through 4th level, following the progression for this feature; you regain all expended slots when you finish a Long Rest.",
+                "**Spells Known.** At 3rd level, you learn three 1st-level spells of your choice from the wizard spell list, with no restriction to a particular school of magic. The number of spells you know grows as you gain Rogue levels, and whenever you gain a level in this class, you can replace one spell you know with another wizard spell of a level you can cast."
+              ]
             },
             {
               "id": "rogue-arcane-trickster-mage-hand-legerdemain",
               "level": 3,
               "name": "Mage Hand Legerdemain",
-              "description": ""
+              "description": [
+                "The mage hand cantrip you learn through Spellcasting becomes especially deft in your hands: you can cast it as a Bonus Action instead of an action and without a verbal component, and you can make its spectral hand invisible.",
+                "While using the Bonus Action from Cunning Action to control the hand, you can also make a Dexterity (Sleight of Hand) check, or have the hand take the Utilize action on an object it touches — including using a set of thieves' tools to disarm a trap or pick a lock — without you needing to be within reach of that object yourself."
+              ]
             },
             {
               "id": "rogue-arcane-trickster-magical-ambush",
               "level": 9,
               "name": "Magical Ambush",
-              "description": ""
+              "description": "If you have the Invisible condition when you cast a spell against a creature, that creature has Disadvantage on any saving throw it makes against the spell on the same turn."
             },
             {
               "id": "rogue-arcane-trickster-versatile-trickster",
               "level": 13,
               "name": "Versatile Trickster",
-              "description": ""
+              "description": "When you use the Trip option of Cunning Strike, you can also apply its effect to a second creature within 5 feet of your mage hand, without spending an additional Cunning Strike die to do so."
             },
             {
               "id": "rogue-arcane-trickster-spell-thief",
               "level": 17,
               "name": "Spell Thief",
-              "description": ""
+              "description": [
+                "When a creature casts a spell that targets you or includes you in its area of effect, you can use your Reaction to force that creature to make an Intelligence saving throw against your spell save DC.",
+                "On a failed save, the spell has no effect on you, and if the spell is 1st level or higher and of a level you can cast, you steal the knowledge of it: for the next 8 hours, you have that spell prepared through this feature, and the creature that cast it can't cast that spell again until those 8 hours have passed.",
+                "Once you use this feature, you can't do so again until you finish a Long Rest."
+              ]
             }
           ]
         },
@@ -2623,31 +2884,37 @@
               "id": "rogue-assassin-assassinate",
               "level": 3,
               "name": "Assassinate",
-              "description": ""
+              "description": [
+                "You have Advantage on Initiative rolls.",
+                "In addition, during the first round of combat you have Advantage on attack rolls against any creature that hasn't taken a turn yet. If you hit such a creature with your Sneak Attack, the target takes extra damage, of the same type as the attack's damage, equal to your Rogue level."
+              ]
             },
             {
               "id": "rogue-assassin-assassins-tools",
               "level": 3,
               "name": "Assassin's Tools",
-              "description": ""
+              "description": "You gain proficiency with the Disguise Kit and the Poisoner's Kit, and you gain one of each if you don't already own them."
             },
             {
               "id": "rogue-assassin-infiltration-expertise",
               "level": 9,
               "name": "Infiltration Expertise",
-              "description": ""
+              "description": [
+                "**Masterful Mimicry.** After spending at least 1 hour studying a creature's speech, handwriting, or both, you can convincingly imitate what you studied.",
+                "**Roving Aim.** When you use the Rogue's Steady Aim feature, your Speed is no longer reduced to 0."
+              ]
             },
             {
               "id": "rogue-assassin-envenom-weapons",
               "level": 13,
               "name": "Envenom Weapons",
-              "description": ""
+              "description": "When you use the Poison option of Cunning Strike, the target also takes 2d6 Poison damage whenever it fails the saving throw — including any saving throw it repeats at the end of its turns while affected — and this extra damage ignores Resistance to Poison damage."
             },
             {
               "id": "rogue-assassin-death-strike",
               "level": 17,
               "name": "Death Strike",
-              "description": ""
+              "description": "When you hit a creature with your Sneak Attack during the first round of combat, that creature must succeed on a Constitution saving throw (DC 8 plus your Dexterity modifier and Proficiency Bonus) or the damage of your attack is doubled against it."
             }
           ]
         },
@@ -2660,31 +2927,39 @@
               "id": "rogue-soulknife-psionic-power",
               "level": 3,
               "name": "Psionic Power",
-              "description": ""
+              "description": [
+                "You manifest a wellspring of psionic power as a pool of Psionic Energy Dice, starting as d6s. You have a number of these dice equal to twice your Proficiency Bonus, and their size increases as you gain Rogue levels: to a d8 at 5th level, a d10 at 11th level, and a d12 at 17th level. You regain one expended die when you finish a Short Rest and all of them when you finish a Long Rest.",
+                "**Psi-Bolstered Knack.** When you fail an ability check using a skill or tool with which you're proficient, you can roll one Psionic Energy Die and add the number rolled to the check; the die is expended only if doing so turns the check into a success.",
+                "**Psychic Whispers.** As a Magic action, choose a number of creatures you can see, up to a number equal to your Proficiency Bonus, and roll one Psionic Energy Die. For that many hours, you and the chosen creatures can speak telepathically with each other whenever you're within 1 mile of one another, and any of you can end your own connection early with no action required. The first time you use this feature after a Long Rest, you don't expend the die; each additional use before your next Long Rest expends one."
+              ]
             },
             {
               "id": "rogue-soulknife-psychic-blades",
               "level": 3,
               "name": "Psychic Blades",
-              "description": ""
+              "description": "As part of the Attack action or as an Opportunity Attack, you can manifest a blade of psychic energy in an empty hand and attack with it in place of a weapon. It is a Simple Melee weapon with the Finesse and Thrown properties (range 60/120 feet) and the Vex mastery property, dealing 1d6 Psychic damage plus your ability modifier on a hit; it vanishes the instant it hits or misses, leaving no physical mark. If your other hand is free, you can manifest and attack with a second blade as a Bonus Action on the same turn, dealing 1d4 Psychic damage plus your ability modifier on a hit."
             },
             {
               "id": "rogue-soulknife-soul-blades",
               "level": 9,
               "name": "Soul Blades",
-              "description": ""
+              "description": [
+                "Your Psychic Blades grow more potent, fueled by your Psionic Energy Dice.",
+                "**Homing Strikes.** When an attack roll you make with a Psychic Blade misses, you can roll one Psionic Energy Die and add the result to the roll; if this turns the miss into a hit, the die is expended, and otherwise it isn't.",
+                "**Psychic Teleportation.** As a Bonus Action, you manifest a Psychic Blade, then expend and roll one Psionic Energy Die and hurl the blade at an unoccupied space you can see, up to a number of feet away equal to 10 times the number rolled. You then teleport into that space, and the blade disappears."
+              ]
             },
             {
               "id": "rogue-soulknife-psychic-veil",
               "level": 13,
               "name": "Psychic Veil",
-              "description": ""
+              "description": "As a Magic action, you weave your psionic power into a veil around yourself, gaining the Invisible condition for 1 hour or until you end the effect (no action required). The invisibility ends immediately if you deal damage to a creature or force a creature to make a saving throw. Once you use this feature, you can't do so again until you finish a Long Rest, unless you expend one Psionic Energy Die to use it again."
             },
             {
               "id": "rogue-soulknife-rend-mind",
               "level": 17,
               "name": "Rend Mind",
-              "description": ""
+              "description": "When you deal Sneak Attack damage with a Psychic Blade, you can force the target to make a Wisdom saving throw (DC 8 plus your Dexterity modifier and Proficiency Bonus). On a failed save, the target has the Stunned condition for 1 minute, repeating the saving throw at the end of each of its turns to end the effect early. Once you use this feature, you can't do so again until you finish a Long Rest, unless you expend three Psionic Energy Dice to use it again."
             }
           ]
         }
@@ -2738,7 +3013,9 @@
           "level": 3,
           "name": "Sorcerer Subclass",
           "description": "You gain a Sorcerer subclass of your choice. A subclass is a specialization that grants you features at certain Sorcerer levels.",
-          "unlocks": ["subclass"]
+          "unlocks": [
+            "subclass"
+          ]
         },
         {
           "id": "sorcerer-asi-4",
@@ -2866,37 +3143,53 @@
               "id": "sorcerer-aberrant-sorcery-psionic-spells",
               "level": 3,
               "name": "Psionic Spells",
-              "description": ""
+              "description": [
+                "The following spells are always prepared for you and don't count against your total, each becoming available at the Sorcerer level shown.",
+                "**Level 3.** Arms of Hadar, Calm Emotions, Detect Thoughts, Dissonant Whispers, Mind Sliver",
+                "**Level 5.** Hunger of Hadar, Sending",
+                "**Level 7.** Evard's Black Tentacles, Summon Aberration",
+                "**Level 9.** Rary's Telepathic Bond, Telekinesis"
+              ]
             },
             {
               "id": "sorcerer-aberrant-sorcery-telepathic-speech",
               "level": 3,
               "name": "Telepathic Speech",
-              "description": ""
+              "description": "As a Bonus Action, you can open a telepathic link with one creature you can see within 30 feet of you. While the two of you remain within a number of miles of each other equal to your Charisma modifier (minimum 1), you can converse telepathically, though each of you must mentally use a language the other understands. The link lasts for a number of minutes equal to your Sorcerer level, or until you use this feature again to link with someone else."
             },
             {
               "id": "sorcerer-aberrant-sorcery-psionic-sorcery",
               "level": 6,
               "name": "Psionic Sorcery",
-              "description": ""
+              "description": "When you cast a spell you have prepared from Psionic Spells, you can pay for it with Sorcery Points equal to its level instead of a spell slot. A spell cast this way needs no Verbal or Somatic components, and it needs no Material components either, unless those components are consumed by the spell or carry a cost."
             },
             {
               "id": "sorcerer-aberrant-sorcery-psychic-defenses",
               "level": 6,
               "name": "Psychic Defenses",
-              "description": ""
+              "description": "You have Resistance to Psychic damage, and you have Advantage on saving throws made to resist or shake off being Charmed or Frightened."
             },
             {
               "id": "sorcerer-aberrant-sorcery-revelation-in-flesh",
               "level": 14,
               "name": "Revelation in Flesh",
-              "description": ""
+              "description": [
+                "As a Bonus Action, you can spend 1 or more Sorcery Points to twist your body with aberrant power for 10 minutes. For each point you spend, choose one of the benefits below; the chosen benefits last until the transformation ends.",
+                "**Aquatic Adaptation.** You gain a Swim Speed equal to twice your Speed and can breathe underwater.",
+                "**Glistening Flight.** You gain a Fly Speed equal to your Speed and can hover.",
+                "**See the Invisible.** You can see Invisible creatures within 60 feet of you that aren't behind Total Cover.",
+                "**Wormlike Movement.** Your body becomes pliable enough to squeeze through any gap at least 1 inch wide, and you can spend 5 feet of movement to slip free of a nonmagical restraint or the Grappled condition."
+              ]
             },
             {
               "id": "sorcerer-aberrant-sorcery-warping-implosion",
               "level": 18,
               "name": "Warping Implosion",
-              "description": ""
+              "description": [
+                "As a Magic Action, you teleport to an unoccupied space you can see within 120 feet of yourself, and the space you leave violently collapses inward. Every creature within 30 feet of that space must make a Strength saving throw against your spell save DC.",
+                "On a failed save, a creature takes 3d10 Force damage and is dragged to the nearest unoccupied space next to where you vanished; on a success, it takes half as much damage and isn't moved.",
+                "Once you use this feature, you can't do so again until you finish a Long Rest, unless you spend 5 Sorcery Points (no action required) to restore your use of it."
+              ]
             }
           ]
         },
@@ -2909,31 +3202,47 @@
               "id": "sorcerer-clockwork-sorcery-clockwork-spells",
               "level": 3,
               "name": "Clockwork Spells",
-              "description": ""
+              "description": [
+                "The following spells are always prepared for you and don't count against your total, each becoming available at the Sorcerer level shown.",
+                "**Level 3.** Aid, Alarm, Lesser Restoration, Protection from Evil and Good",
+                "**Level 5.** Dispel Magic, Protection from Energy",
+                "**Level 7.** Freedom of Movement, Summon Construct",
+                "**Level 9.** Greater Restoration, Wall of Force",
+                "In addition, whenever you cast a Sorcerer spell, your bond to cosmic order shows itself through some small, orderly manifestation of your choice, such as spectral cogwheels, a brassy sheen on your skin, or the faint ticking of an unseen clock."
+              ]
             },
             {
               "id": "sorcerer-clockwork-sorcery-restore-balance",
               "level": 3,
               "name": "Restore Balance",
-              "description": ""
+              "description": "As a Reaction, when a creature you can see within 60 feet of you is about to roll a d20 with Advantage or Disadvantage, you can cancel that Advantage or Disadvantage before the die is rolled. You can use this feature a number of times equal to your Charisma modifier (minimum once), and you regain all expended uses when you finish a Long Rest."
             },
             {
               "id": "sorcerer-clockwork-sorcery-bastion-of-law",
               "level": 6,
               "name": "Bastion of Law",
-              "description": ""
+              "description": "As a Magic Action, you can spend 1 to 5 Sorcery Points to raise a shimmering ward of order around yourself or another creature you can see within 30 feet of you. The ward grants a number of d8s equal to the Sorcery Points spent; whenever the warded creature takes damage, it can expend any number of those dice, roll them, and reduce the damage by the total rolled. The ward lasts until you finish a Long Rest or until you create a new one with this feature."
             },
             {
               "id": "sorcerer-clockwork-sorcery-trance-of-order",
               "level": 14,
               "name": "Trance of Order",
-              "description": ""
+              "description": [
+                "As a Bonus Action, you can enter a meditative trance for 1 minute, aligning your mind with the exacting calculations of Mechanus. While the trance lasts, attack rolls against you can never benefit from Advantage, and whenever you make a D20 Test, you can treat a roll of 9 or lower on the d20 as a 10.",
+                "Once you use this feature, you can't do so again until you finish a Long Rest, unless you spend 5 Sorcery Points (no action required) to restore your use of it."
+              ]
             },
             {
               "id": "sorcerer-clockwork-sorcery-clockwork-cavalcade",
               "level": 18,
               "name": "Clockwork Cavalcade",
-              "description": ""
+              "description": [
+                "As a Magic Action, you summon intangible, invulnerable spirits of order, shaped like modrons or other Constructs of your choosing, filling a 30-foot Cube originating from you. Before vanishing, the spirits produce any of the following effects you choose within the Cube.",
+                "**Heal.** The spirits restore up to 100 Hit Points, divided as you choose among any creatures in the Cube.",
+                "**Repair.** Any damaged objects entirely within the Cube are instantly mended.",
+                "**Dispel.** Every spell of 6th level or lower ends on any creatures and objects you choose in the Cube.",
+                "Once you use this feature, you can't do so again until you finish a Long Rest, unless you spend 7 Sorcery Points (no action required) to restore your use of it."
+              ]
             }
           ]
         },
@@ -2946,31 +3255,34 @@
               "id": "sorcerer-wild-magic-sorcery-wild-magic-surge",
               "level": 3,
               "name": "Wild Magic Surge",
-              "description": ""
+              "description": "Once on each of your turns, immediately after you cast a Sorcerer spell using a spell slot, you can roll a d20. On a roll of 20, you immediately roll on the Wild Magic Surge table and apply the result. If that result is itself a spell, it erupts too wildly for your Metamagic to shape it."
             },
             {
               "id": "sorcerer-wild-magic-sorcery-tides-of-chaos",
               "level": 3,
               "name": "Tides of Chaos",
-              "description": ""
+              "description": [
+                "Before making a D20 Test, you can call on chaotic magic to give yourself Advantage on the roll. Once you do, you can't use this feature again until you cast a Sorcerer spell using a spell slot or finish a Long Rest.",
+                "If you cast a Sorcerer spell using a spell slot before that Long Rest, doing so automatically triggers a roll on the Wild Magic Surge table."
+              ]
             },
             {
               "id": "sorcerer-wild-magic-sorcery-bend-luck",
               "level": 6,
               "name": "Bend Luck",
-              "description": ""
+              "description": "Immediately after another creature you can see rolls the d20 for a D20 Test, you can take a Reaction and spend 1 Sorcery Point to roll 1d4 and apply the result as a bonus or penalty, your choice, to that roll."
             },
             {
               "id": "sorcerer-wild-magic-sorcery-controlled-chaos",
               "level": 14,
               "name": "Controlled Chaos",
-              "description": ""
+              "description": "Whenever you roll on the Wild Magic Surge table, you roll twice and choose which of the two results applies."
             },
             {
               "id": "sorcerer-wild-magic-sorcery-tamed-surge",
               "level": 18,
               "name": "Tamed Surge",
-              "description": ""
+              "description": "Immediately after you cast a Sorcerer spell using a spell slot, you can forgo rolling on the Wild Magic Surge table and instead choose any effect on it other than the table's final entry; if the chosen effect calls for a roll, you still make it. Once you use this feature, you can't do so again until you finish a Long Rest."
             }
           ]
         }
@@ -3011,7 +3323,9 @@
           "level": 3,
           "name": "Warlock Subclass",
           "description": "You gain a Warlock subclass of your choice. A subclass is a specialization that grants you features at certain Warlock levels.",
-          "unlocks": ["subclass"]
+          "unlocks": [
+            "subclass"
+          ]
         },
         {
           "id": "warlock-asi-4",
@@ -3143,31 +3457,47 @@
               "id": "warlock-archfey-patron-archfey-spells",
               "level": 3,
               "name": "Archfey Spells",
-              "description": ""
+              "description": [
+                "The following spells are always prepared for you and don't count against your prepared total, each becoming available at the Warlock level shown.",
+                "**Level 3.** Calm Emotions, Faerie Fire, Misty Step, Phantasmal Force, Sleep",
+                "**Level 5.** Blink, Plant Growth",
+                "**Level 7.** Dominate Beast, Greater Invisibility",
+                "**Level 9.** Dominate Person, Seeming"
+              ]
             },
             {
               "id": "warlock-archfey-patron-steps-of-the-fey",
               "level": 3,
               "name": "Steps of the Fey",
-              "description": ""
+              "description": [
+                "You can cast Misty Step without expending a spell slot, drawing on a pool of free castings equal to your Charisma modifier (minimum of one). You regain all expended uses when you finish a Long Rest.",
+                "Whenever you cast Misty Step this way, choose one of the following effects: Refreshing Step grants you, or another creature you can see within 10 feet of your destination, 1d10 Temporary Hit Points; Taunting Step forces creatures within 5 feet of the space you left to succeed on a Wisdom saving throw against your spell save DC or have Disadvantage on attack rolls against anyone but you until the start of your next turn."
+              ]
             },
             {
               "id": "warlock-archfey-patron-misty-escape",
               "level": 6,
               "name": "Misty Escape",
-              "description": ""
+              "description": [
+                "When you take damage, you can cast Misty Step as a Reaction, without spending a Pact Magic spell slot or a use of Steps of the Fey.",
+                "Two more effects join the choices available when you teleport with Steps of the Fey: Disappearing Step turns you Invisible until the start of your next turn or until you make an attack roll, deal damage, or cast a spell, whichever comes first; Dreadful Step forces creatures within 5 feet of the space you left or the space you arrive in (your choice) to succeed on a Wisdom saving throw against your spell save DC or take 2d10 Psychic damage."
+              ]
             },
             {
               "id": "warlock-archfey-patron-beguiling-defenses",
               "level": 10,
               "name": "Beguiling Defenses",
-              "description": ""
+              "description": [
+                "You can't be Charmed.",
+                "When an attack roll hits you, you can take a Reaction to halve the damage you're about to take (rounded down) and force the attacker to make a Wisdom saving throw against your spell save DC. On a failed save, the attacker takes Psychic damage equal to the damage you took.",
+                "Once you use this Reaction, you can't do so again until you finish a Long Rest, unless you expend a Pact Magic spell slot to restore your use of it."
+              ]
             },
             {
               "id": "warlock-archfey-patron-bewitching-magic",
               "level": 14,
               "name": "Bewitching Magic",
-              "description": ""
+              "description": "Immediately after you cast an Enchantment or Illusion spell using a spell slot, you can also cast Misty Step as part of the same action, without expending an additional spell slot."
             }
           ]
         },
@@ -3180,31 +3510,41 @@
               "id": "warlock-celestial-patron-celestial-spells",
               "level": 3,
               "name": "Celestial Spells",
-              "description": ""
+              "description": [
+                "The following spells are always prepared for you and don't count against your prepared total, each becoming available at the Warlock level shown.",
+                "**Level 3.** Aid, Cure Wounds, Guiding Bolt, Lesser Restoration, Light, Sacred Flame",
+                "**Level 5.** Daylight, Revivify",
+                "**Level 7.** Guardian of Faith, Wall of Fire",
+                "**Level 9.** Greater Restoration, Summon Celestial"
+              ]
             },
             {
               "id": "warlock-celestial-patron-healing-light",
               "level": 3,
               "name": "Healing Light",
-              "description": ""
+              "description": "You gain a pool of d6s for channeling healing power, containing a number of dice equal to 1 plus your Warlock level. As a Bonus Action, you can spend dice from the pool, up to a number equal to your Charisma modifier (minimum of one die), rolling them and restoring that many Hit Points to yourself or to one creature you can see within 60 feet of you. The pool refills completely when you finish a Long Rest."
             },
             {
               "id": "warlock-celestial-patron-radiant-soul",
               "level": 6,
               "name": "Radiant Soul",
-              "description": ""
+              "description": "You have Resistance to Radiant damage. In addition, once per turn when a spell you cast deals Radiant or Fire damage, you can add your Charisma modifier to that damage against one target of the spell."
             },
             {
               "id": "warlock-celestial-patron-celestial-resilience",
               "level": 10,
               "name": "Celestial Resilience",
-              "description": ""
+              "description": "Whenever you use your Magical Cunning feature or finish a Short or Long Rest, you gain Temporary Hit Points equal to your Warlock level plus your Charisma modifier. At the same time, you can choose up to five creatures you can see; each of them gains Temporary Hit Points equal to half your Warlock level (rounded down) plus your Charisma modifier."
             },
             {
               "id": "warlock-celestial-patron-searing-vengeance",
               "level": 14,
               "name": "Searing Vengeance",
-              "description": ""
+              "description": [
+                "When you or an ally within 60 feet of you is about to make a Death Saving Throw, you can flare with radiant power to intervene. The dying creature regains Hit Points equal to half its Hit Point maximum and can immediately end the Prone condition on itself.",
+                "Creatures of your choice within 30 feet of that creature take Radiant damage equal to 2d8 plus your Charisma modifier and have the Blinded condition until the end of the current turn.",
+                "Once you use this feature, you can't do so again until you finish a Long Rest."
+              ]
             }
           ]
         },
@@ -3217,31 +3557,46 @@
               "id": "warlock-great-old-one-patron-great-old-one-spells",
               "level": 3,
               "name": "Great Old One Spells",
-              "description": ""
+              "description": [
+                "The following spells are always prepared for you and don't count against your prepared total, each becoming available at the Warlock level shown.",
+                "**Level 3.** Detect Thoughts, Dissonant Whispers, Phantasmal Force, Tasha's Hideous Laughter",
+                "**Level 5.** Clairvoyance, Hunger of Hadar",
+                "**Level 7.** Confusion, Summon Aberration",
+                "**Level 9.** Modify Memory, Telekinesis"
+              ]
             },
             {
               "id": "warlock-great-old-one-patron-awakened-mind",
               "level": 3,
               "name": "Awakened Mind",
-              "description": ""
+              "description": [
+                "As a Bonus Action, you can open a telepathic link with one creature you can see within 30 feet of you. You and that creature can communicate telepathically for a number of minutes equal to your Warlock level, and the link keeps working as you move apart, up to a number of miles between you equal to your Charisma modifier (minimum of 1 mile).",
+                "You can also change the damage type of any damaging Warlock spell you cast to Psychic, and you can cast your Enchantment and Illusion Warlock spells without Verbal or Somatic components."
+              ]
             },
             {
               "id": "warlock-great-old-one-patron-clairvoyant-combatant",
               "level": 6,
               "name": "Clairvoyant Combatant",
-              "description": ""
+              "description": "When you form a telepathic bond with a creature using Awakened Mind, you can force that creature to make a Wisdom saving throw against your spell save DC. On a failed save, the creature has Disadvantage on attack rolls against you and you have Advantage on attack rolls against it for as long as the bond lasts. Once you use this feature, you can't do so again until you finish a Short or Long Rest, unless you expend a Pact Magic spell slot to restore your use of it."
             },
             {
               "id": "warlock-great-old-one-patron-eldritch-hex",
               "level": 10,
               "name": "Eldritch Hex",
-              "description": ""
+              "description": [
+                "You always have the Hex spell prepared. When you cast it, the target also has Disadvantage on saving throws using the ability score you chose, for as long as the spell lasts.",
+                "You also gain Resistance to Psychic damage, and whenever a creature deals Psychic damage to you, that creature takes the same amount of Psychic damage in return. In addition, your thoughts can't be read by telepathy or any other means unless you allow it."
+              ]
             },
             {
               "id": "warlock-great-old-one-patron-create-thrall",
               "level": 14,
               "name": "Create Thrall",
-              "description": ""
+              "description": [
+                "When you cast Summon Aberration, you can choose to cast it without Concentration; if you do, the spell's duration becomes 1 minute.",
+                "The summoned aberration has Temporary Hit Points equal to your Warlock level plus your Charisma modifier. The first time each turn it hits a creature affected by your Hex spell, it deals extra Psychic damage to that creature equal to Hex's bonus damage."
+              ]
             }
           ]
         }
@@ -3285,7 +3640,9 @@
           "level": 3,
           "name": "Wizard Subclass",
           "description": "You gain a Wizard subclass of your choice. A subclass is a specialization that grants you features at certain Wizard levels.",
-          "unlocks": ["subclass"]
+          "unlocks": [
+            "subclass"
+          ]
         },
         {
           "id": "wizard-asi-4",
@@ -3389,31 +3746,40 @@
               "id": "wizard-abjurer-abjuration-savant",
               "level": 3,
               "name": "Abjuration Savant",
-              "description": ""
+              "description": [
+                "Whenever you gain access to a new level of Wizard spell slots, you can add two Abjuration spells of that level to your spellbook for free.",
+                "In addition, the time and gold you spend to copy an Abjuration spell into your spellbook is halved."
+              ]
             },
             {
               "id": "wizard-abjurer-arcane-ward",
               "level": 3,
               "name": "Arcane Ward",
-              "description": ""
+              "description": [
+                "When you cast an Abjuration spell using a spell slot, you can weave a strand of its magic into a protective ward around yourself that lasts until you finish a Long Rest. The ward's hit points equal twice your Wizard level plus your Intelligence modifier. Whenever you take damage, after any Resistance or Vulnerability of yours is applied, the ward absorbs that damage in your place, and only damage exceeding its remaining hit points reaches you.",
+                "Casting another Abjuration spell with a spell slot restores hit points to the ward equal to twice the level of the slot spent, even if the ward has already dropped to 0."
+              ]
             },
             {
               "id": "wizard-abjurer-projected-ward",
               "level": 6,
               "name": "Projected Ward",
-              "description": ""
+              "description": "When a creature you can see within 30 feet of you takes damage, you can use your Reaction to have your Arcane Ward absorb that damage in the creature's place. If this reduces the ward to 0 hit points, the creature takes whatever damage remains."
             },
             {
               "id": "wizard-abjurer-spell-breaker",
               "level": 10,
               "name": "Spell Breaker",
-              "description": ""
+              "description": [
+                "You always have Counterspell and Dispel Magic prepared, and neither counts against the number of spells you have prepared. You can cast Dispel Magic as a Bonus Action, and you add your Proficiency Bonus to the ability check it calls for.",
+                "Whenever you cast either spell using a spell slot and it fails to counter or dispel its target, the slot is not expended."
+              ]
             },
             {
               "id": "wizard-abjurer-spell-resistance",
               "level": 14,
               "name": "Spell Resistance",
-              "description": ""
+              "description": "You have Advantage on saving throws against spells, and you have Resistance to damage dealt by spells."
             }
           ]
         },
@@ -3426,31 +3792,34 @@
               "id": "wizard-diviner-divination-savant",
               "level": 3,
               "name": "Divination Savant",
-              "description": ""
+              "description": [
+                "Whenever you gain access to a new level of Wizard spell slots, you can add two Divination spells of that level to your spellbook for free.",
+                "In addition, the time and gold you spend to copy a Divination spell into your spellbook is halved."
+              ]
             },
             {
               "id": "wizard-diviner-portent",
               "level": 3,
               "name": "Portent",
-              "description": ""
+              "description": "Whenever you finish a Long Rest, roll two d20s and record the results; you keep them until you finish your next Long Rest. Before any attack roll, saving throw, or ability check is made by you or a creature you can see, you can spend one of these recorded numbers in place of the roll, doing so no more than once per turn. Each number is used up once spent."
             },
             {
               "id": "wizard-diviner-expert-divination",
               "level": 6,
               "name": "Expert Divination",
-              "description": ""
+              "description": "When you cast a Divination spell of level 2 or higher using a spell slot, you regain one expended spell slot. The regained slot must be a lower level than the spell you cast and can be no higher than level 5."
             },
             {
               "id": "wizard-diviner-the-third-eye",
               "level": 10,
               "name": "The Third Eye",
-              "description": ""
+              "description": "As a Bonus Action, you gain one benefit of your choice: Darkvision out to 120 feet (or an increase of 120 feet if you already have Darkvision), the ability to see invisible creatures and objects as though under the effect of the See Invisibility spell, or the ability to read and understand any language you can see written down. The benefit lasts until you finish a Short or Long Rest, and once you've used this feature you can't use it again until you finish a Short or Long Rest."
             },
             {
               "id": "wizard-diviner-greater-portent",
               "level": 14,
               "name": "Greater Portent",
-              "description": ""
+              "description": "You now roll three d20s for your Portent feature instead of two."
             }
           ]
         },
@@ -3463,31 +3832,40 @@
               "id": "wizard-illusionist-illusion-savant",
               "level": 3,
               "name": "Illusion Savant",
-              "description": ""
+              "description": [
+                "Whenever you gain access to a new level of Wizard spell slots, you can add two Illusion spells of that level to your spellbook for free.",
+                "In addition, the time and gold you spend to copy an Illusion spell into your spellbook is halved."
+              ]
             },
             {
               "id": "wizard-illusionist-improved-illusions",
               "level": 3,
               "name": "Improved Illusions",
-              "description": ""
+              "description": [
+                "You can cast Illusion spells without providing their Verbal components, and any Illusion spell you cast with a range of 10 feet or more has its range increased by 60 feet.",
+                "You always have the Minor Illusion cantrip prepared, and it doesn't count against the number of cantrips you know. You can cast it as a Bonus Action, and when you do, a single casting can create both a sound and an image."
+              ]
             },
             {
               "id": "wizard-illusionist-phantasmal-creatures",
               "level": 6,
               "name": "Phantasmal Creatures",
-              "description": ""
+              "description": [
+                "You always have the Summon Beast and Summon Fey spells prepared, and neither counts against the number of spells you have prepared. You can cast either spell as an Illusion spell instead of its normal school; the creature it summons appears spectral and translucent but otherwise functions normally.",
+                "You can cast Summon Beast or Summon Fey in this way once without expending a spell slot, though the summoned creature has only half its normal hit point maximum. Once you've done this with a given spell, you can't do so again with that spell until you finish a Long Rest, unless you expend a spell slot of level 2 or higher to restore your use of it."
+              ]
             },
             {
               "id": "wizard-illusionist-illusory-self",
               "level": 10,
               "name": "Illusory Self",
-              "description": ""
+              "description": "When a creature hits you with an attack, you can use your Reaction to interpose an illusory duplicate of yourself between you and the attacker, causing the attack to miss you instead; the duplicate then disappears. Once you use this feature, you can't use it again until you finish a Short or Long Rest, unless you expend a spell slot of level 2 or higher, requiring no action, to restore your use of it."
             },
             {
               "id": "wizard-illusionist-illusory-reality",
               "level": 14,
               "name": "Illusory Reality",
-              "description": ""
+              "description": "When you cast an Illusion spell of level 1 or higher using a spell slot, you can use a Bonus Action to make one inanimate, nonmagical object that's part of the illusion physically real. The object remains real for 1 minute or until the spell ends, whichever comes first, and it can't deal damage, impose conditions, or otherwise directly harm anyone."
             }
           ]
         }
