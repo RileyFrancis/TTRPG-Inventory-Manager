@@ -14,7 +14,18 @@
     "Rogue grant no slots here — Fighter's Eldritch Knight and Rogue's Arcane",
     "Trickster are subclass-only third-casters, and this table is keyed by",
     "class name, not subclass, so listing Fighter/Rogue here would wrongly",
-    "grant slots to every Fighter/Rogue."
+    "grant slots to every Fighter/Rogue.",
+    "",
+    "`multiclassSlotsByLevel` is the rules' own Multiclass Spellcaster table —",
+    "same nine-number shape, but indexed by a character's blended MULTICLASS",
+    "CASTER LEVEL, not any one class's own level: full-caster levels count in",
+    "full, half-caster levels (Paladin, Ranger, Artificer) count floored by 2,",
+    "and Eldritch Knight/Arcane Trickster levels count floored by 3, each",
+    "class's contribution floored BEFORE summing (see multiclassCasterLevel()",
+    "in src/js/spells.js). Numerically identical to the full-caster table above",
+    "— that identity is the rules' own shorthand, not a coincidence here.",
+    "Warlock's Pact Magic is never blended in; it stays its own pool, read off",
+    "the Warlock entry above at the Warlock's own level."
   ],
   "classes": [
     {
@@ -217,5 +228,27 @@
         "20": [4, 3, 3, 3, 3, 2, 2, 1, 1]
       }
     }
-  ]
+  ],
+  "multiclassSlotsByLevel": {
+    "1":  [2, 0, 0, 0, 0, 0, 0, 0, 0],
+    "2":  [3, 0, 0, 0, 0, 0, 0, 0, 0],
+    "3":  [4, 2, 0, 0, 0, 0, 0, 0, 0],
+    "4":  [4, 3, 0, 0, 0, 0, 0, 0, 0],
+    "5":  [4, 3, 2, 0, 0, 0, 0, 0, 0],
+    "6":  [4, 3, 3, 0, 0, 0, 0, 0, 0],
+    "7":  [4, 3, 3, 1, 0, 0, 0, 0, 0],
+    "8":  [4, 3, 3, 2, 0, 0, 0, 0, 0],
+    "9":  [4, 3, 3, 3, 1, 0, 0, 0, 0],
+    "10": [4, 3, 3, 3, 2, 0, 0, 0, 0],
+    "11": [4, 3, 3, 3, 2, 1, 0, 0, 0],
+    "12": [4, 3, 3, 3, 2, 1, 0, 0, 0],
+    "13": [4, 3, 3, 3, 2, 1, 1, 0, 0],
+    "14": [4, 3, 3, 3, 2, 1, 1, 0, 0],
+    "15": [4, 3, 3, 3, 2, 1, 1, 1, 0],
+    "16": [4, 3, 3, 3, 2, 1, 1, 1, 0],
+    "17": [4, 3, 3, 3, 2, 1, 1, 1, 1],
+    "18": [4, 3, 3, 3, 3, 1, 1, 1, 1],
+    "19": [4, 3, 3, 3, 3, 2, 1, 1, 1],
+    "20": [4, 3, 3, 3, 3, 2, 2, 1, 1]
+  }
 }

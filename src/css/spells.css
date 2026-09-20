@@ -26,6 +26,10 @@
   gap: 10px;
   margin-bottom: 20px;
 }
+/* Warlock Pact Magic is a separate pool from the rest of #spell-slots (see
+   pactMagicSlots() in spells.js) — its heading forces a line break in the
+   wrapping flex row instead of sitting inline with a slot tile. */
+.spell-slots .spellbook-group-heading { flex-basis: 100%; margin: 4px 0 -2px; }
 .spell-slot-tile {
   display: flex;
   flex-direction: column;

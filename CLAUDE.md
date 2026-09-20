@@ -236,9 +236,20 @@ written sections.
 
 Spells (`spells.js`) are a character's **third view**, not a sheet section,
 because "what can I cast now" differs from "what am I". Same two-registry
-shape (`data/spell-slots.json`, `data/spells.json`); combining multiple
-casting classes is a **plain sum**, not the rules' real multiclass table — a
-deliberate simplification. Per-character on/off via `character.spellsEnabled`
+shape (`data/spell-slots.json`, `data/spells.json`); the **Spell Slots**
+total follows the rules' own Multiclass Spellcaster table
+(`multiclassCasterLevel()`): full-caster levels count in full, half-caster
+levels (Paladin, Ranger, Artificer) and Eldritch Knight/Arcane Trickster
+levels count floored by 2 and 3 respectively — **each class's contribution
+floored before summing**, not the total floored once — and the blended level
+is looked up in `multiclassSlotsByLevel`, a table read off RAW `classLevels`
+(name+level+subclass), not the class-registry-filtered list the Known/
+Available sections use, since Eldritch Knight/Arcane Trickster contribute
+slots despite this app having no spell-list data under "Fighter"/"Rogue".
+**Warlock's Pact Magic is never blended into that total** — it is its own
+pool, read off the Warlock entry alone (`pactMagicSlots()`) and drawn as a
+separate line in `#spell-slots` only when another pool is also shown.
+Per-character on/off via `character.spellsEnabled`
 (default on). **Availability ≠ "on the list"**: `character.knownSpells` (an id
 array) is what the player actually picked, toggled from the **Available
 Spells** panel (`#spellbook-list`, a whole-card click) — which lives in the

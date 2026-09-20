@@ -12,11 +12,14 @@
 // class-features.js matches them; a class this app has no slot table for grants
 // no spells at all, the same way an unknown class shows no features.
 //
-// The per-class combination here is a SUM across the character's classes, not
-// the real multiclass spell-slot table the rules define (which blends caster
-// levels before consulting a single shared table) — a deliberate
-// simplification for a small, content-driven feature, not a claim to be exact
-// for a heavily multiclassed spellcaster.
+// Spell Slots totals follow the rules' own Multiclass Spellcaster table: full
+// caster levels (Bard/Cleric/Druid/Sorcerer/Wizard) count in full, half-caster
+// levels (Paladin/Ranger/Artificer) count floored by 2, and Eldritch
+// Knight/Arcane Trickster levels count floored by 3 — each class's
+// contribution floored BEFORE summing, per RAW — and the blended total is
+// looked up once in `multiclassSlotsByLevel` (see multiclassCasterLevel()).
+// Warlock's Pact Magic is never blended into that total; it is its own pool,
+// read off the Warlock entry alone and shown as a separate line.
 //
 // The whole sheet can be turned off per character (`character.spellsEnabled`,
 // default on), from Character Setup — see character-setup.js — for a
@@ -33,6 +36,7 @@
 // LOADING THE REGISTRIES
 // =============================================================================
 let DEFAULT_SPELL_SLOTS = [];
+let DEFAULT_MULTICLASS_SLOTS = {};
 let DEFAULT_SPELLS = [];
 
 function loadDefaultSpellSlots() {
@@ -43,9 +47,13 @@ function loadDefaultSpellSlots() {
     if (xhr.status !== 200) throw new Error(`HTTP ${xhr.status}`);
     const body = xhr.responseText.trim();
     if (body.startsWith('<')) throw new Error('not JSON'); // an unknown-path index page
-    DEFAULT_SPELL_SLOTS = sanitizeSpellSlotClasses(JSON.parse(body).classes);
+    const parsed = JSON.parse(body);
+    DEFAULT_SPELL_SLOTS = sanitizeSpellSlotClasses(parsed.classes);
+    DEFAULT_MULTICLASS_SLOTS = sanitizeSlotsByLevel(parsed.multiclassSlotsByLevel);
   } catch (e) {
-    DEFAULT_SPELL_SLOTS = []; // not fatal — the sheet is usable with no slot table known
+    // not fatal — the sheet is usable with no slot table known
+    DEFAULT_SPELL_SLOTS = [];
+    DEFAULT_MULTICLASS_SLOTS = {};
   }
 }
 
@@ -63,18 +71,25 @@ function loadDefaultSpells() {
   }
 }
 
+// Shared by a class's own `slotsByLevel` and the top-level
+// `multiclassSlotsByLevel` table — both are level → nine-number-array maps.
+function sanitizeSlotsByLevel(raw) {
+  const slotsByLevel = {};
+  Object.entries(raw ?? {}).forEach(([level, slots]) => {
+    const lvl = parseInt(level, 10);
+    if (!Number.isFinite(lvl) || lvl < 1 || lvl > 20) return;
+    if (!Array.isArray(slots)) return;
+    slotsByLevel[lvl] = Array.from({ length: 9 }, (_, i) => Math.max(0, parseInt(slots[i], 10) || 0));
+  });
+  return slotsByLevel;
+}
+
 function sanitizeSpellSlotClasses(raw) {
   if (!Array.isArray(raw)) return [];
   return raw.map(c => {
     const name = String(c?.name ?? '').trim();
     if (!name) return null;
-    const slotsByLevel = {};
-    Object.entries(c?.slotsByLevel ?? {}).forEach(([level, slots]) => {
-      const lvl = parseInt(level, 10);
-      if (!Number.isFinite(lvl) || lvl < 1 || lvl > 20) return;
-      if (!Array.isArray(slots)) return;
-      slotsByLevel[lvl] = Array.from({ length: 9 }, (_, i) => Math.max(0, parseInt(slots[i], 10) || 0));
-    });
+    const slotsByLevel = sanitizeSlotsByLevel(c?.slotsByLevel);
     return Object.keys(slotsByLevel).length ? { name, slotsByLevel } : null;
   }).filter(Boolean);
 }
@@ -150,17 +165,66 @@ function spellcastingEntriesOf(character) {
     });
 }
 
-// A simple elementwise sum across the character's spellcasting classes — see
-// the file header for why this is not the rules' own multiclass table.
-function combinedSpellSlots(entries) {
-  const totals = [0, 0, 0, 0, 0, 0, 0, 0, 0];
-  entries.forEach(e => e.slots.forEach((n, i) => { totals[i] += n; }));
-  return totals;
-}
-
 function classMatchesAny(className, names) {
   const key = className.trim().toLowerCase();
   return names.some(n => n.trim().toLowerCase() === key);
+}
+
+// The rules' own multiclass caster-level math (PHB "Spell Slots" under
+// Multiclassing) — read off RAW `classLevels` (name + level + subclass), not
+// `spellcastingEntriesOf()`'s filtered list, because Eldritch Knight/Arcane
+// Trickster contribute here despite this app having no spell-slot table (or
+// spell list) of their own under "Fighter"/"Rogue". Warlock is deliberately
+// never matched here — Pact Magic is its own pool, see `pactMagicSlots()`.
+const FULL_CASTER_CLASSES = ['Bard', 'Cleric', 'Druid', 'Sorcerer', 'Wizard'];
+const HALF_CASTER_CLASSES = ['Paladin', 'Ranger', 'Artificer'];
+// { class, subclass }: the class ALONE grants nothing — only this exact
+// free-text subclass does, matched the same trimmed/case-insensitive way
+// `findSubclassByName()` in class-features.js matches a character's subclass.
+const THIRD_CASTER_SUBCLASSES = [
+  { className: 'Fighter', subclassName: 'Eldritch Knight' },
+  { className: 'Rogue', subclassName: 'Arcane Trickster' },
+];
+
+// Each class's contribution is floored BEFORE summing — a Paladin 3/Ranger 3
+// multiclass counts as caster level 1+1=2, not floor((3+3)/2)=3. That
+// per-class flooring is RAW, not a simplification.
+function multiclassCasterLevel(rawEntries) {
+  let level = 0;
+  (rawEntries ?? []).forEach(e => {
+    const name = String(e?.name ?? '').trim();
+    const lvl = Math.max(0, parseInt(e?.level, 10) || 0);
+    if (!name || !lvl) return;
+    if (classMatchesAny(name, FULL_CASTER_CLASSES)) {
+      level += lvl;
+    } else if (classMatchesAny(name, HALF_CASTER_CLASSES)) {
+      level += Math.floor(lvl / 2);
+    } else {
+      const third = THIRD_CASTER_SUBCLASSES.find(t => classMatchesAny(name, [t.className]));
+      if (third && classMatchesAny(String(e?.subclass ?? ''), [third.subclassName])) {
+        level += Math.floor(lvl / 3);
+      }
+    }
+  });
+  return level;
+}
+
+// The blended multiclass caster level's slots, off `multiclassSlotsByLevel` —
+// same nearest-level-at-or-below walk as `spellSlotsForClass()`.
+function multiclassSpellSlots(casterLevel) {
+  const lvl = Math.max(0, Math.min(20, casterLevel));
+  for (let l = lvl; l >= 1; l--) {
+    if (DEFAULT_MULTICLASS_SLOTS[l]) return DEFAULT_MULTICLASS_SLOTS[l];
+  }
+  return [0, 0, 0, 0, 0, 0, 0, 0, 0];
+}
+
+// Pact Magic is its own pool, always read off the Warlock entry alone at the
+// Warlock's own level — never blended into `multiclassSpellSlots()`.
+function pactMagicSlots(character) {
+  const entry = classEntriesOf(character).find(e => classMatchesAny(String(e?.name ?? ''), ['Warlock']));
+  if (!entry || !(parseInt(entry.level, 10) > 0)) return null;
+  return spellSlotsForClass('Warlock', entry.level);
 }
 
 // Whether the sheet's own view is offered at all for this character — a
@@ -423,7 +487,9 @@ let spellSheetSig = null;
 
 function spellSheetSignature() {
   const c = state.character || {};
-  return classEntriesOf(c).map(e => `${e.name}:${e.level}`).join('␟');
+  // Subclass is part of the signature — the Eldritch Knight/Arcane Trickster
+  // check in `multiclassCasterLevel()` reads it, same as `classFeaturesSig`.
+  return classEntriesOf(c).map(e => `${e.name}:${e.level}:${e.subclass}`).join('␟');
 }
 
 function renderSpellSheet() {
@@ -443,14 +509,36 @@ function renderSpellSheetContent() {
   if (!slotsBox || !listBox || !pickerBox) return;
 
   const character = state.character;
+  const rawEntries = classEntriesOf(character);
   const entries = spellcastingEntriesOf(character);
 
   slotsBox.textContent = '';
   listBox.textContent = '';
   pickerBox.textContent = '';
 
+  // Slots are drawn from the RAW class list, not `entries` — an Eldritch
+  // Knight/Arcane Trickster contributes a real slot count via
+  // `multiclassCasterLevel()` even though this app has no spell-list data
+  // under "Fighter"/"Rogue" for the Known/Available sections below.
+  const casterLevel = multiclassCasterLevel(rawEntries);
+  const totals = multiclassSpellSlots(casterLevel);
+  const pact = pactMagicSlots(character);
+  const hasTotals = totals.some(n => n > 0);
+  const hasPact = !!pact && pact.some(n => n > 0);
+
+  if (hasTotals) {
+    totals.forEach((count, i) => { if (count > 0) slotsBox.appendChild(spellSlotTile(i + 1, count)); });
+  }
+  if (hasPact) {
+    if (hasTotals) slotsBox.appendChild(spellbookGroupHeading('Pact Magic'));
+    pact.forEach((count, i) => { if (count > 0) slotsBox.appendChild(spellSlotTile(i + 1, count)); });
+  }
+  if (!hasTotals && !hasPact && (entries.length || casterLevel > 0)) {
+    slotsBox.appendChild(spellNote('No spell slots yet — cantrips only.'));
+  }
+
   if (!entries.length) {
-    const names = classEntriesOf(character).map(e => e.name);
+    const names = rawEntries.map(e => e.name);
     const note = names.length
       ? `No known spellcasting class among ${names.map(n => `“${n}”`).join(', ')}.`
       : 'Add a class in Character Setup to see its spells.';
@@ -458,13 +546,6 @@ function renderSpellSheetContent() {
     pickerBox.appendChild(spellNote(note));
     renderSpellbookSettings([], []);
     return;
-  }
-
-  const totals = combinedSpellSlots(entries);
-  if (totals.some(n => n > 0)) {
-    totals.forEach((count, i) => { if (count > 0) slotsBox.appendChild(spellSlotTile(i + 1, count)); });
-  } else {
-    slotsBox.appendChild(spellNote('No spell slots yet — cantrips only.'));
   }
 
   const classRows = spellbookClassRows(entries);
