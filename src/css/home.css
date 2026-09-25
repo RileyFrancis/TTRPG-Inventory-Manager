@@ -141,6 +141,15 @@
   color: var(--text-dim);
 }
 
+/* Player and GM side by side as equals; they stack when the sheet is too
+   narrow for both. */
+.home-welcome-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
 .home-empty {
   /* Also on the paper, so the paper's dimmed ink. */
   color: var(--text-dim);

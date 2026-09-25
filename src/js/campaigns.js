@@ -446,10 +446,13 @@ async function submitCampaignJoin() {
 // =============================================================================
 // WIRING
 // =============================================================================
-document.getElementById('campaign-new-btn').addEventListener('click', () => {
+function startNewCampaign() {
   requireAuth('Creating a campaign needs an account, so your table knows who is running it.',
               () => openCampaignModal('create'));
-});
+}
+document.getElementById('campaign-new-btn').addEventListener('click', startNewCampaign);
+// The welcome's GM door — the same way in as the Campaigns heading's button.
+document.getElementById('home-welcome-campaign-btn').addEventListener('click', startNewCampaign);
 
 document.getElementById('campaign-join-btn').addEventListener('click', () => {
   requireAuth('Joining a campaign needs an account, so your group can tell who is who.',
