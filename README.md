@@ -1,4 +1,4 @@
-# TTRPG Inventory Manager
+# Bag of Holding
 
 A browser-based inventory manager for tabletop RPGs (D&D 5e and similar
 systems). Items have physical shapes that occupy cells in a grid, inspired by
