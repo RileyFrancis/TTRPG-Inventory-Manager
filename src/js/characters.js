@@ -152,6 +152,45 @@ function ensureCharacter() {
   loadActiveCharacterIntoLive();
 }
 
+// The slot ensureCharacter() mints is a placeholder, not a character anyone
+// made — so "no characters" means a roster of nothing but untouched blanks.
+// Judged by content rather than a flag on the slot: commitActiveCharacter()
+// rebuilds the slot wholesale, so a flag would not survive the first save.
+// The active slot is read from the working copy, which is newer than the slot.
+function isUntouchedSlot(slot) {
+  const id = slot.character.id;
+  const live = id === state.activeCharacterId && liveStateIsOwnCharacter();
+  const character = live ? state.character : slot.character;
+  const instances = live ? state.instances : slot.instances;
+  const equipped  = live ? state.equipped  : slot.equipped;
+  const db        = live ? getCustomDb()   : slot.db;
+  if (Object.keys(instances ?? {}).length) return false;
+  if (Object.values(equipped ?? {}).some(Boolean)) return false;
+  if (Object.keys(db ?? {}).length) return false;
+  // Both through the normalizer with one id, so key order and unknown keys agree.
+  const blank = normalizeCharacterMeta({ ...blankCharacterMeta(), id }, id);
+  return JSON.stringify(normalizeCharacterMeta(character, id)) === JSON.stringify(blank);
+}
+
+// A first visit, in effect: nobody made yet and no table to go back to. The
+// home screen greets them rather than showing the placeholder's card.
+function isWelcomeVisit() {
+  if (state.party.active) return false;
+  if (Object.keys(state.campaigns ?? {}).length) return false;
+  return characterList().every(isUntouchedSlot);
+}
+
+// A new character replaces any placeholder rather than joining it —
+// a roster of "Unnamed Hero" plus the one they meant to make is not what they
+// asked for.
+function dropUntouchedSlotsExcept(keepId) {
+  characterList().forEach(slot => {
+    const id = slot.character.id;
+    // Never the active slot — a GM's working copy may still be sitting on it.
+    if (id !== keepId && id !== state.activeCharacterId && isUntouchedSlot(slot)) delete state.characters[id];
+  });
+}
+
 // =============================================================================
 // THE BRIDGE: LIVE STATE ⇄ SLOT
 // =============================================================================
@@ -353,6 +392,13 @@ function renderHomeScreen() {
   // The campaigns above the roster — same page, two questions.
   renderCampaignSection();
 
+  // Nobody made yet: a greeting and one button in place of the roster, whose
+  // only card would be the placeholder.
+  const welcome = isWelcomeVisit();
+  document.getElementById('home-welcome').classList.toggle('hidden', !welcome);
+  document.getElementById('home-roster').classList.toggle('hidden', welcome);
+  if (welcome) return;
+
   const note = document.getElementById('home-note');
   if (canSelectCharacter()) {
     note.classList.add('hidden');
@@ -367,7 +413,9 @@ function renderHomeScreen() {
   }
 
   homeGridEl.innerHTML = '';
-  const list = characterList();
+  // The placeholder is never a card: deleting the last character mints one, and
+  // showing it would look like the delete had not happened.
+  const list = characterList().filter(slot => !isUntouchedSlot(slot));
 
   if (!list.length) {
     const empty = document.createElement('p');
@@ -510,25 +558,16 @@ document.addEventListener('keydown', e => {
 });
 
 // =============================================================================
-// LANDING HERE ON A RETURN VISIT
+// LANDING HERE AT BOOT
 // =============================================================================
-// Firebase restores its session asynchronously, and waiting would mean painting
-// the inventory and yanking it away. So the last known sign-in is remembered
-// here, in this browser, purely to know which screen to open at boot. auth.js
-// clears it the moment Firebase reports nobody is signed in.
-const LAST_SIGNIN_KEY = 'dnd_inventory_last_signin';
+// Every visit starts on the home screen, signed in or not — which character and
+// which table come before the inventory. A first visit gets the welcome in
+// place of the roster (isWelcomeVisit()).
+//
+// Older builds remembered the last sign-in under this key, purely to guess at
+// boot whether to open this page. Nothing reads it now; cleared, not left behind.
+try { localStorage.removeItem('dnd_inventory_last_signin'); } catch { /* private mode */ }
 
-function rememberSignedIn(signedIn) {
-  try {
-    if (signedIn) localStorage.setItem(LAST_SIGNIN_KEY, '1');
-    else localStorage.removeItem(LAST_SIGNIN_KEY);
-  } catch { /* private mode — the boot simply starts on the inventory */ }
-}
-
-function wasSignedInLastVisit() {
-  try { return !!localStorage.getItem(LAST_SIGNIN_KEY); } catch { return false; }
-}
-
-function maybeOpenHomeAtBoot() {
-  if (wasSignedInLastVisit()) openHomeScreen();
-}
+document.getElementById('home-welcome-create-btn').addEventListener('click', () => {
+  openCharModal(null, { isNew: true });
+});

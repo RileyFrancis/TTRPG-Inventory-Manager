@@ -5,6 +5,13 @@ Guidance for Claude Code when working in this repository.
 shapes. This file is the non-obvious rationale per subsystem — the load-bearing
 facts that would cause a silent bug if violated, not a restatement of the code.
 
+## Git and worktrees
+
+- **Never commit or push anything** — not on `main`, not on a branch, not in a
+  worktree. Leave every change as uncommitted, unstaged edits in the working
+  tree; Riley reviews and commits.
+- **Avoid worktrees for this project.** Work directly in the main checkout.
+
 ## Running the App
 
 No build step. Serve the project root over HTTP (needed for `localStorage` and
@@ -198,6 +205,14 @@ character** (another member's sheet, or a GM viewing none). The roster is
 never empty — deleting the last hands back a new one. A **GM's character
 cards aren't selectable** on the home screen; their way back is the campaign
 card.
+
+**Every boot opens the home screen.** Because the roster is never empty, "no
+characters" means *only untouched placeholders* (`isUntouchedSlot()` — judged
+by content, since `commitActiveCharacter()` rebuilds a slot and would drop a
+flag). A placeholder is **never drawn as a card** — otherwise deleting the last
+character would appear not to work — and any new character replaces it. With
+only placeholders and no campaign bookmarks, the page shows a welcome in place
+of the roster.
 
 ### Multiclassing and Character Setup
 

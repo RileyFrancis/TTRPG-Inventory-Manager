@@ -35,6 +35,9 @@ function initAuth() {
 // Every way in lands here — email, Google, a session restored at boot — so this
 // is the only place that has to know what "now signed in" looks like.
 function handleAuthStateChange(user) {
+  // The first answer is Firebase restoring (or not) a session at boot — the
+  // boot already opened the home screen, and the reader may have left it since.
+  const restoredAtBoot = !state.auth.ready;
   state.auth.user = user
     ? { uid: user.uid, email: user.email, displayName: user.displayName }
     : null;
@@ -44,7 +47,6 @@ function handleAuthStateChange(user) {
   renderHomeScreen();                  // the Campaigns section is gated on an account
   renderChat();                        // who may speak just changed
   onAuthUserChanged(state.auth.user);  // cloud-save.js picks it up from here
-  rememberSignedIn(!!user);            // corrects the boot guess about which screen to open
 
   if (!user) return;
 
@@ -62,7 +64,7 @@ function handleAuthStateChange(user) {
 
   // Nothing was waiting on it: an account means a roster, and the roster is
   // where a player starts.
-  openHomeScreen();
+  if (!restoredAtBoot) openHomeScreen();
 }
 
 function isSignedIn() {

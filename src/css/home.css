@@ -108,6 +108,37 @@
   margin-bottom: 20px;
 }
 
+/* ─── WELCOME ────────────────────────────────────────────── */
+/* In place of the roster until a first character exists. A panel, not the
+   bare ground, so it reads as the one thing to do on the page. */
+#home-welcome {
+  text-align: center;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--accent);
+  border-radius: 4px;
+  box-shadow: var(--shadow-soft);
+  padding: 36px 28px 32px;
+  margin-bottom: 44px;
+}
+
+#home-welcome h1 {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  margin-bottom: 12px;
+}
+
+#home-welcome p {
+  max-width: 520px;
+  margin: 0 auto 24px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-dim);
+}
+
 .home-empty {
   /* Also directly on the ground. Dimmed from the ground's ink rather than
      reaching for --text-dim, which is a panel colour. */

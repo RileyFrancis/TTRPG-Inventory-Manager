@@ -86,8 +86,10 @@ document.getElementById('save-char-btn').addEventListener('click', () => {
     const id = createCharacter(fields);
     // Straight into the new character, unless you are the GM — they have no
     // character in play, so creating one only adds it to the roster.
-    if (canSelectCharacter()) { activateCharacter(id); closeHomeScreen(); }
-    else { debouncedSync(); renderHomeScreen(); }
+    // After activateCharacter(), which moves the working copy off the placeholder.
+    if (canSelectCharacter()) { activateCharacter(id); dropUntouchedSlotsExcept(id); closeHomeScreen(); }
+    else { dropUntouchedSlotsExcept(id); renderHomeScreen(); }
+    debouncedSync();
   } else if (charModalTargetId) {
     // A card on the home screen — the slot, which may not be the one on screen.
     updateCharacterMeta(charModalTargetId, fields);

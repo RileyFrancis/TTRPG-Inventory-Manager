@@ -117,6 +117,13 @@ function openSettingsModal() {
 document.getElementById('settings-btn').addEventListener('click', openSettingsModal);
 document.getElementById('home-settings-btn').addEventListener('click', openSettingsModal);
 
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  const modal = document.getElementById('settings-modal');
+  if (modal.classList.contains('hidden')) return;
+  hideModal('settings-modal');
+});
+
 // The info pages REPLACE the settings modal (a backdrop click closes every open
 // modal). Appearance's button is wired in appearance.js instead — this file's
 // listeners run at load time, before appearance.js is parsed.

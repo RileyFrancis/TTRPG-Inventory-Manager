@@ -756,6 +756,17 @@
   </div>
   <div class="home-inner">
 
+    <!-- ===== WELCOME =====
+         Shown in place of the roster until a first character exists — see
+         isWelcomeVisit() in src/js/characters.js. -->
+    <section id="home-welcome" class="hidden">
+      <h1>Welcome, adventurer</h1>
+      <p>Keep every character's pack, sheet and spells in one place — and, with an
+         account, share them with your table. Start by making the character you'll
+         be playing.</p>
+      <button id="home-welcome-create-btn" class="btn-primary"><span class="ico ico-plus lead"></span>Create Your Character</button>
+    </section>
+
     <!-- ===== CAMPAIGNS =====
          Above the roster because it is the larger question: which table comes
          before which character. See src/js/campaigns.js. -->
@@ -769,14 +780,16 @@
     <p id="campaign-note" class="home-note hidden"></p>
     <div id="campaign-card-grid"><!-- rendered by renderCampaignSection() --></div>
 
-    <div class="home-header home-header-later">
-      <h1>Your Characters</h1>
-      <div class="home-header-actions">
-        <button id="home-new-char-btn" class="btn-primary"><span class="ico ico-plus lead"></span>New Character</button>
+    <div id="home-roster">
+      <div class="home-header home-header-later">
+        <h1>Your Characters</h1>
+        <div class="home-header-actions">
+          <button id="home-new-char-btn" class="btn-primary"><span class="ico ico-plus lead"></span>New Character</button>
+        </div>
       </div>
+      <p id="home-note" class="home-note hidden"></p>
+      <div id="home-card-grid"><!-- rendered by renderHomeScreen() --></div>
     </div>
-    <p id="home-note" class="home-note hidden"></p>
-    <div id="home-card-grid"><!-- rendered by renderHomeScreen() --></div>
   </div>
 </div>
 

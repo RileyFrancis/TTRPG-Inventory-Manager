@@ -49,8 +49,7 @@ function init() {
   renderItemList();
   renderEquipPanel();
   syncCharacterViewUI(); // character tabs — solo, that is the one own-tab
-  // A guess before Firebase answers, corrected by auth.js — see maybeOpenHomeAtBoot().
-  maybeOpenHomeAtBoot();
+  openHomeScreen(); // every visit starts on the roster — see characters.js § Landing here at boot
   initFirebase();
   initAuth();       // restores a previous session, which then starts cloud sync
   hideLoadingScreen();
