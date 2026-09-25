@@ -18,9 +18,9 @@
   position: fixed;
   inset: 0;
   z-index: 400; /* under the modal backdrop (500) — the editor opens over it */
-  background:
-    radial-gradient(ellipse at 50% -10%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 60%),
-    var(--bg);
+  /* The same desk the inventory and sheet lie on, with the same torn sheet
+     (`.paper-sheet` on `.home-inner`) laid over it. */
+  background: var(--desk);
   overflow-y: auto;
   display: flex;
   flex-direction: column;  /* the banner across the top, the roster under it */
@@ -58,8 +58,11 @@
 #home-settings-btn { font-size: 15px; line-height: 1; }
 
 .home-inner {
-  width: 100%;
+  /* The `.paper-sheet`'s 62px margin on every side, so the torn edge has room
+     without the sheet overflowing the page sideways. `auto` keeps it centred. */
+  width: calc(100% - 124px);
   max-width: 980px;
+  margin: 62px auto;
   padding: 32px 28px 60px;
 }
 
@@ -88,10 +91,9 @@
   font-size: 28px;
   font-weight: 700;
   letter-spacing: 0.04em;
-  /* On the page ground, not on a panel — so the ground's own ink, and no
-     emboss: that highlight is a lit-surface effect and only muddies a dark
-     one. The accent still leads the page, in the gold rule underneath. */
-  color: var(--on-bg);
+  /* On the paper now, not the dark ground — so the paper's own ink, and no
+     emboss. The accent still leads the page, in the gold rule underneath. */
+  color: var(--text);
 }
 
 .home-header-actions { display: flex; align-items: center; gap: 10px; }
@@ -140,9 +142,8 @@
 }
 
 .home-empty {
-  /* Also directly on the ground. Dimmed from the ground's ink rather than
-     reaching for --text-dim, which is a panel colour. */
-  color: color-mix(in srgb, var(--on-bg) 62%, transparent);
+  /* Also on the paper, so the paper's dimmed ink. */
+  color: var(--text-dim);
   font-size: 13px;
   padding: 40px 0;
   text-align: center;
