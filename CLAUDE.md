@@ -420,6 +420,12 @@ look).
   supplies its own lightness so a custom colour stays legible on either
   background. Both themes are resolved to a finished CSS-property map at
   *pick* time, so a theme switch is just reading strings.
+- **Crit colours dodge the accent.** Dice paint nat 20/1 with `--crit`/
+  `--fumble`, aliases of `--crit-main`/`--fumble-main`; when a custom primary
+  lands too close to one (OKLab distance, or same hue family),
+  `critColorSwaps()` points the alias at `--crit-alt`/`--fumble-alt` in that
+  theme's resolved vars. Never override the `-main`/`-alt` tokens themselves —
+  they're what the check reads.
 - Rarity/coin colours are read from CSS by JS and cached — **any render path
   that inlines a palette colour must be re-run from `rerenderThemedContent()`**
   on a theme or accent change.

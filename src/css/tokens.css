@@ -153,6 +153,19 @@
   --enc-heavy: #a3291f;
   --weight-track: #c9b085;
 
+  /* A natural 20 and a natural 1. Each has a main colour and an alternate, and
+     `--crit`/`--fumble` are what the dice actually paint with. They follow the
+     main colour unless a custom accent lands too close to it to tell apart —
+     then appearance.js points them at the alternate instead (see
+     `critColorSwaps()`). Only the aliases are ever overridden; the four
+     colours underneath are what that check reads, so they stay put. */
+  --crit-main:   var(--enc-ok);
+  --crit-alt:    #1f6f9e;
+  --fumble-main: var(--danger);
+  --fumble-alt:  #8a2c8c;
+  --crit:   var(--crit-main);
+  --fumble: var(--fumble-main);
+
   /* Rarity — deepened so they hold contrast on parchment */
   --rarity-common:    #6d6355;
   --rarity-uncommon:  #2c7d34;
@@ -240,6 +253,13 @@
   --enc-warn:  #e0a020;
   --enc-heavy: #e05545;
   --weight-track: #33291d;
+
+  /* `--crit`/`--fumble` are aliases set once in the light block — they read
+     whichever of these the palette defines. */
+  --crit-main:   var(--enc-ok);
+  --crit-alt:    #4fb8e0;
+  --fumble-main: var(--danger);
+  --fumble-alt:  #d067d6;
 
   --rarity-common:    #b3a894;
   --rarity-uncommon:  #56d95f;

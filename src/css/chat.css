@@ -207,22 +207,22 @@
 /* A natural 20 and a natural 1, recoloured whole — and the detail line says
    which in words, so the colour is never carrying the fact by itself. */
 .chat-roll.crit {
-  background: color-mix(in srgb, var(--enc-ok) 14%, var(--surface));
-  border-color: color-mix(in srgb, var(--enc-ok) 55%, var(--border));
-  border-left-color: var(--enc-ok);
+  background: color-mix(in srgb, var(--crit) 14%, var(--surface));
+  border-color: color-mix(in srgb, var(--crit) 55%, var(--border));
+  border-left-color: var(--crit);
 }
-.chat-msg.own .chat-roll.crit { border-right-color: var(--enc-ok); }
+.chat-msg.own .chat-roll.crit { border-right-color: var(--crit); }
 .chat-roll.crit .chat-roll-total,
-.chat-roll.crit .chat-roll-die { color: var(--enc-ok); }
+.chat-roll.crit .chat-roll-die { color: var(--crit); }
 
 .chat-roll.fumble {
-  background: color-mix(in srgb, var(--danger) 13%, var(--surface));
-  border-color: color-mix(in srgb, var(--danger) 50%, var(--border));
-  border-left-color: var(--danger);
+  background: color-mix(in srgb, var(--fumble) 13%, var(--surface));
+  border-color: color-mix(in srgb, var(--fumble) 50%, var(--border));
+  border-left-color: var(--fumble);
 }
-.chat-msg.own .chat-roll.fumble { border-right-color: var(--danger); }
+.chat-msg.own .chat-roll.fumble { border-right-color: var(--fumble); }
 .chat-roll.fumble .chat-roll-total,
-.chat-roll.fumble .chat-roll-die { color: var(--danger); }
+.chat-roll.fumble .chat-roll-die { color: var(--fumble); }
 
 /* ─── THE COMPOSER ───────────────────────────────────────── */
 #chat-form {

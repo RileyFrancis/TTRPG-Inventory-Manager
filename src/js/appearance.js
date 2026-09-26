@@ -58,7 +58,7 @@ const ACCENT_ROLES = {
 
 // Every property this module may write on <html> — so a reset can REMOVE what it
 // no longer sets and hand the palette back to tokens.css.
-const ACCENT_MANAGED = ['--on-accent'].concat(
+const ACCENT_MANAGED = ['--on-accent', '--crit', '--fumble'].concat(
   Object.values(ACCENT_ROLES).flatMap(r => r.tokens.map(t => t.name))
 );
 
@@ -107,10 +107,8 @@ function relativeLuminance(hex) {
   return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
 }
 
-// The OKLCH hue of an sRGB colour (sRGB → linear → LMS → OKLab → angle). NOT the
-// HSL hue the wheel hands out — the two disagree by tens of degrees. Deriving it
-// from the resolved panel colour keeps the ground matched to the panels.
-function oklchHueOf(hex) {
+// An sRGB colour in OKLab (sRGB → linear → LMS → OKLab), as [L, a, b].
+function oklabOf(hex) {
   const n = parseInt(hex.slice(1), 16);
   const lin = v => { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
   const r = lin((n >> 16) & 255), g = lin((n >> 8) & 255), b = lin(n & 255);
@@ -119,11 +117,40 @@ function oklchHueOf(hex) {
   const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
   const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
 
-  const A = 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s;
-  const B = 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s;
+  return [
+    0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+    1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+    0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s,
+  ];
+}
 
+// The OKLCH hue of an sRGB colour — the angle of its OKLab a/b. NOT the HSL hue
+// the wheel hands out — the two disagree by tens of degrees. Deriving it from
+// the resolved panel colour keeps the ground matched to the panels.
+function oklchHueOf(hex) {
+  const [, A, B] = oklabOf(hex);
   const h = (Math.atan2(B, A) * 180) / Math.PI;
   return h < 0 ? h + 360 : h;
+}
+
+// How different two colours look — straight-line distance in OKLab, where equal
+// steps are roughly equal to the eye whatever the hue. 0 is identical; the
+// palette's own gold sits about 0.11 from the parchment theme's crit red.
+function colorDistance(a, b) {
+  const p = oklabOf(a), q = oklabOf(b);
+  return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
+}
+
+// OKLCH chroma — how far from grey. Below a few hundredths the hue is noise.
+function oklchChromaOf(hex) {
+  const [, A, B] = oklabOf(hex);
+  return Math.hypot(A, B);
+}
+
+// The angle between two colours' OKLCH hues, 0–180.
+function hueGap(a, b) {
+  const d = Math.abs(oklchHueOf(a) - oklchHueOf(b)) % 360;
+  return Math.min(d, 360 - d);
 }
 
 function contrastRatio(a, b) {
@@ -137,6 +164,75 @@ function readableInkOn(hex) {
   const ink = (css.getPropertyValue('--ink') || '#1a1206').trim();
   const paper = (css.getPropertyValue('--paper') || '#fdf6e4').trim();
   return contrastRatio(hex, ink) >= contrastRatio(hex, paper) ? ink : paper;
+}
+
+// =============================================================================
+// CRIT COLOURS
+// =============================================================================
+// A natural 20 and a natural 1 are told apart from an ordinary roll by colour —
+// and an ordinary roll is drawn in the accent. A green or red accent would make
+// a crit look like any other number, so each gets an alternate in tokens.css
+// (`--crit-alt`, `--fumble-alt`), used when the accent is too close to the
+// main colour. "Too close" is either of two things:
+//   - near in OKLab (`colorDistance()`) — the palette's own golds sit at
+//     0.11–0.18 from both, a mid red or green pick at 0.02–0.05; or
+//   - the same hue family, however bright — a vivid green is lighter than the
+//     crit green and clears the distance test, but still reads as "green".
+//     Only judged once the accent has real colour: a near-grey's hue is noise.
+const CRIT_MIN_DISTANCE = 0.08;
+const CRIT_MIN_HUE_GAP = 22;     // degrees of OKLCH hue
+const CRIT_HUE_MIN_CHROMA = 0.06;
+
+// { light: { crit: {main, alt}, fumble: {main, alt} }, dark: {…} } — read once.
+// The palette never changes at runtime, and this is only needed at pick time.
+let critPaletteCache = null;
+
+// Both palettes' crit colours, read out of tokens.css rather than copied here.
+// The dark palette only exists under `[data-theme="dark"]`, so the attribute is
+// flipped just long enough to read each and put straight back — all in one
+// synchronous turn, so nothing ever paints the wrong theme.
+function critPalette() {
+  if (critPaletteCache) return critPaletteCache;
+  const root = document.documentElement;
+  const was = root.getAttribute('data-theme');
+  const out = {};
+  ['light', 'dark'].forEach(theme => {
+    root.setAttribute('data-theme', theme);
+    const css = getComputedStyle(root);
+    const read = name => css.getPropertyValue(name).trim();
+    out[theme] = {
+      crit:   { main: read('--crit-main'),   alt: read('--crit-alt') },
+      fumble: { main: read('--fumble-main'), alt: read('--fumble-alt') },
+    };
+  });
+  if (was === null) root.removeAttribute('data-theme');
+  else root.setAttribute('data-theme', was);
+  critPaletteCache = out;
+  return out;
+}
+
+function tooCloseToAccent(accentHex, hex) {
+  if (colorDistance(accentHex, hex) < CRIT_MIN_DISTANCE) return true;
+  return oklchChromaOf(accentHex) > CRIT_HUE_MIN_CHROMA &&
+         hueGap(accentHex, hex) < CRIT_MIN_HUE_GAP;
+}
+
+// The `--crit`/`--fumble` overrides this accent needs at one theme — empty when
+// the main colours are distinct enough. The alternate is only taken when it
+// is not itself too close, so a pick sitting between the two keeps the main.
+function critColorSwaps(accentHex, theme) {
+  const out = {};
+  const isHex = v => /^#[0-9a-f]{6}$/i.test(v);
+  if (!isHex(accentHex)) return out;
+  const pal = critPalette()[theme];
+  [['crit', '--crit'], ['fumble', '--fumble']].forEach(([key, prop]) => {
+    const { main, alt } = pal[key];
+    if (!isHex(main) || !isHex(alt)) return; // unreadable — leave the default
+    if (tooCloseToAccent(accentHex, main) && !tooCloseToAccent(accentHex, alt)) {
+      out[prop] = `var(${prop}-alt)`;
+    }
+  });
+  return out;
 }
 
 // =============================================================================
@@ -179,6 +275,7 @@ function computeAccentVars(prefs) {
     if (p) {
       Object.assign(out[theme], resolveRoleTokens('primary', p, theme));
       out[theme]['--on-accent'] = readableInkOn(out[theme]['--accent']);
+      Object.assign(out[theme], critColorSwaps(out[theme]['--accent'], theme));
     }
 
     const s = prefs.secondary;

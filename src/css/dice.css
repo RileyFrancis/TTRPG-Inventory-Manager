@@ -253,13 +253,13 @@
    grey-out for an advantage one. `:not(.dropped)` keeps it off the die that
    lost, however good that die was. */
 .roll-flier.settled.crit .roll-flier-total:not(.dropped) {
-  color: var(--enc-ok);
-  text-shadow: 0 0 40px color-mix(in srgb, var(--enc-ok) 62%, transparent),
+  color: var(--crit);
+  text-shadow: 0 0 40px color-mix(in srgb, var(--crit) 62%, transparent),
                0 6px 20px var(--emboss-lo);
 }
 .roll-flier.settled.fumble .roll-flier-total:not(.dropped) {
-  color: var(--danger);
-  text-shadow: 0 0 34px color-mix(in srgb, var(--danger) 50%, transparent),
+  color: var(--fumble);
+  text-shadow: 0 0 34px color-mix(in srgb, var(--fumble) 50%, transparent),
                0 6px 20px var(--emboss-lo);
 }
 
@@ -349,10 +349,10 @@
   white-space: nowrap;
 }
 
-.roll-chip.crit   { border-right-color: var(--enc-ok); }
-.roll-chip.fumble { border-right-color: var(--danger); }
-.roll-chip.crit   .roll-chip-total { color: var(--enc-ok); }
-.roll-chip.fumble .roll-chip-total { color: var(--danger); }
+.roll-chip.crit   { border-right-color: var(--crit); }
+.roll-chip.fumble { border-right-color: var(--fumble); }
+.roll-chip.crit   .roll-chip-total { color: var(--crit); }
+.roll-chip.fumble .roll-chip-total { color: var(--fumble); }
 
 /* ─── SPEECH BUBBLES OVER THE TABS ───────────────────────── */
 /* A fixed layer rather than children of the tabs: #character-tabs scrolls
@@ -424,12 +424,12 @@
   color: var(--text-dim);
 }
 
-.tab-bubble.crit   { border-color: var(--enc-ok); }
-.tab-bubble.fumble { border-color: var(--danger); }
-.tab-bubble.crit::before   { border-color: var(--enc-ok); }
-.tab-bubble.fumble::before { border-color: var(--danger); }
-.tab-bubble.crit   .tab-bubble-total { color: var(--enc-ok); }
-.tab-bubble.fumble .tab-bubble-total { color: var(--danger); }
+.tab-bubble.crit   { border-color: var(--crit); }
+.tab-bubble.fumble { border-color: var(--fumble); }
+.tab-bubble.crit::before   { border-color: var(--crit); }
+.tab-bubble.fumble::before { border-color: var(--fumble); }
+.tab-bubble.crit   .tab-bubble-total { color: var(--crit); }
+.tab-bubble.fumble .tab-bubble-total { color: var(--fumble); }
 
 /* ─── THE ADV / DIS TAG ──────────────────────────────────── */
 /* One pill, four surfaces — the corner chip, the tab bubble, the chat card and
@@ -683,8 +683,8 @@
 .roll-detail-row.dropped { opacity: 0.5; }
 .roll-detail-row.dropped .roll-detail-value { text-decoration: line-through; }
 
-.roll-detail-row.crit   .roll-detail-value { color: var(--enc-ok); }
-.roll-detail-row.fumble .roll-detail-value { color: var(--danger); }
+.roll-detail-row.crit   .roll-detail-value { color: var(--crit); }
+.roll-detail-row.fumble .roll-detail-value { color: var(--fumble); }
 
 .roll-detail-group.total .roll-detail-row { font-size: 12px; }
 .roll-detail-group.total .roll-detail-label {
