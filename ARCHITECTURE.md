@@ -31,6 +31,7 @@ functions/
                         deploy, from the host's environment variables
 tools/
   serve.py              Local dev server: http.server plus the app's routes
+  make-og-image.py      Draws img/og-preview.jpg, the link-preview picture (needs Pillow)
   shape-editor.html     Standalone helper for drawing item shapes
   spell-editor.html     Standalone helper for authoring data/spells.json entries
 ```
