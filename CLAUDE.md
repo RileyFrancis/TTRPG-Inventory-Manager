@@ -232,9 +232,12 @@ must answer those paths with `index.html` (`_redirects` on Pages,
 - A screen change pushes a history entry (Back returns to the roster); a
   Back/Forward, the boot, and a cloud save swapping the active character only
   *replace* it (`applyingRoute` suppresses the pushes inside a popstate).
-- A route that can't be honoured — an id not in this roster, a campaign this
-  tab isn't seated at, a GM asking for a character — falls back to home and the
-  URL is corrected. **A URL never joins a campaign**: that's `enterCampaign()`,
+- **An id not in this roster gets the not-found page** (`state.screen ===
+  'missing'`), and the bad URL stays in the bar like a 404. The roster is
+  local, so "not here" may just mean "not pulled yet" — `applyCloudSave()`
+  retries the route, and the page offers Sign in while signed out. Anything
+  else unhonourable (a campaign this tab isn't seated at, a character while
+  seated) falls back to home and the URL is corrected. **A URL never joins a campaign**: that's `enterCampaign()`,
   async and signed in; a reload of `campaign#…` lands on home to rejoin.
 - Other members' sheets and the Inventory/Sheet/Spells view aren't in the URL.
 

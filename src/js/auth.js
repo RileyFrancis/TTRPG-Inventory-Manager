@@ -45,6 +45,7 @@ function handleAuthStateChange(user) {
 
   updateAuthUI();
   renderHomeScreen();                  // the Campaigns section is gated on an account
+  renderMissingScreen();               // its Sign in button, likewise
   renderChat();                        // who may speak just changed
   onAuthUserChanged(state.auth.user);  // cloud-save.js picks it up from here
 

@@ -367,6 +367,7 @@ function canSelectCharacter() {
 function openHomeScreen() {
   // Somebody else's sheet must not still be the working copy when a card is clicked.
   if (state.party.viewingPlayerId !== null) switchViewToOwn();
+  hideMissingScreen();
   state.screen = 'home';
   homeScreenEl.classList.remove('hidden');
   renderHomeScreen();
@@ -374,6 +375,7 @@ function openHomeScreen() {
 }
 
 function closeHomeScreen() {
+  hideMissingScreen();
   state.screen = 'app';
   closeCardMenu();
   homeScreenEl.classList.add('hidden');

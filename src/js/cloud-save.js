@@ -150,6 +150,7 @@ function applyCloudSave(remote, { force = false } = {}) {
   autoSave(); // keep the local copy in step — NOT debouncedSync(), which would push it back
   renderLiveCharacter(); // the whole working copy was just replaced
   renderHomeScreen();
+  retryMissingRoute();          // the character a character# URL asked for may be here now
   syncRoute({ replace: true }); // the save may name another active character — not a navigation
   setCloudStatus('synced');
 }

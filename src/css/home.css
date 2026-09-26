@@ -14,7 +14,8 @@
 /* ─── HOME SCREEN — THE CHARACTER ROSTER ─────────────────── */
 /* A page in front of the app, not a panel inside it: picking a character is
    what happens before there is an inventory to look at. */
-#home-screen {
+#home-screen,
+#missing-screen {
   position: fixed;
   inset: 0;
   z-index: 400; /* under the modal backdrop (500) — the editor opens over it */
@@ -113,7 +114,8 @@
 /* ─── WELCOME ────────────────────────────────────────────── */
 /* In place of the roster until a first character exists. A panel, not the
    bare ground, so it reads as the one thing to do on the page. */
-#home-welcome {
+#home-welcome,
+#missing-panel {
   text-align: center;
   background: var(--panel);
   border: 1px solid var(--border);
@@ -124,7 +126,8 @@
   margin-bottom: 44px;
 }
 
-#home-welcome h1 {
+#home-welcome h1,
+#missing-panel h1 {
   font-family: var(--font-display);
   font-size: 30px;
   font-weight: 700;
@@ -133,7 +136,8 @@
   margin-bottom: 12px;
 }
 
-#home-welcome p {
+#home-welcome p,
+#missing-panel p {
   max-width: 520px;
   margin: 0 auto 24px;
   font-size: 14px;

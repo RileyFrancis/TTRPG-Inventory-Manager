@@ -794,6 +794,29 @@
   </div>
 </div>
 
+<!-- ===== CHARACTER NOT FOUND =====
+     A character#<id> URL naming nobody in this roster — deleted, another
+     account's, or not yet pulled from the cloud save. See src/js/router.js. -->
+<div id="missing-screen" class="hidden">
+  <div class="home-banner">
+    <span class="home-banner-title">TTRPG Manager</span>
+  </div>
+  <div class="home-inner paper-sheet">
+    <section id="missing-panel">
+      <h1>No such adventurer</h1>
+      <p>The character you're looking for doesn't exist, or you don't have
+         permission to see them. They may have been deleted, or they may belong
+         to another account.</p>
+      <p id="missing-signin-note" class="hidden">If they're yours, sign in and
+         they'll load from your cloud save.</p>
+      <div class="home-welcome-actions">
+        <button id="missing-home-btn" class="btn-primary">Back to your characters</button>
+        <button id="missing-signin-btn" class="btn-sm hidden">Sign in</button>
+      </div>
+    </section>
+  </div>
+</div>
+
 <!-- ===== CHARACTER CARD ⋯ MENU ===== -->
 <div id="char-card-menu" class="hidden">
   <button id="char-card-edit">Edit Character</button>
