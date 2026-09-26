@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+tmp/
 
 # OS cruft
 .DS_Store
