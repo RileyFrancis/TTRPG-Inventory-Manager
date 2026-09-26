@@ -147,7 +147,8 @@ function onDragMove(e) {
   if (pos) {
     const { row: gr, col: gc } = pos;
     const screenPos = getGhostScreenPos(0, 0, gr, gc);
-    const valid = canPlace(shape, gr, gc, drag.instanceId);
+    const valid = canPlace(shape, gr, gc, drag.instanceId) ||
+                  !!stackMergeTarget(drag.instanceId, gr, gc);
     setGhostVisibility(true);
     moveGhost(screenPos.x, screenPos.y, valid);
     highlightCells(shape, gr, gc, valid);
@@ -204,7 +205,21 @@ function onDragEnd(e) {
     const pos = cursorToGridPos(e.clientX, e.clientY, drag.anchorRow, drag.anchorCol);
     if (pos) {
       const { row: gr, col: gc } = pos;
-      if (canPlace(shape, gr, gc, drag.instanceId)) {
+      const target = stackMergeTarget(drag.instanceId, gr, gc);
+      if (target) {
+        // Top up the stack underneath; whatever doesn't fit falls through to
+        // the restore below, back where it came from.
+        const moved = Math.min(stackSizeOf(template) - (target.stackCount ?? 1), inst.stackCount ?? 1);
+        target.stackCount = (target.stackCount ?? 1) + moved;
+        inst.stackCount = (inst.stackCount ?? 1) - moved;
+        if (inst.stackCount <= 0) {
+          for (const s of Object.keys(state.equipped)) {
+            if (state.equipped[s] === inst.id) delete state.equipped[s];
+          }
+          delete state.instances[inst.id];
+          placed = true;
+        }
+      } else if (canPlace(shape, gr, gc, drag.instanceId)) {
         inst.row = gr;
         inst.col = gc;
         inst.containerId = state.activeContainer ?? null;
@@ -215,7 +230,8 @@ function onDragEnd(e) {
   }
 
   if (!placed) {
-    // Restore original position; if dragged from stash, leave unplaced (row stays null)
+    // Restore original position (also the leftover of a partial stack merge);
+    // if dragged from stash, leave unplaced (row stays null)
     inst.row = drag.origRow;
     inst.col = drag.origCol;
     inst.rotation = drag.origRotation;
@@ -235,6 +251,21 @@ function onDragEnd(e) {
   renderAllItems();
   updateWeightDisplay();
   debouncedSync();
+}
+
+// The stack a dragged stack would pour into if dropped at (row, col): another
+// stack of the same item with room left. A stackable shape is always [[1]], so
+// the cell under the anchor is the whole footprint.
+function stackMergeTarget(instanceId, row, col) {
+  const inst = state.instances[instanceId];
+  const template = inst && state.db[inst.templateId];
+  if (!template || !isStackable(template)) return null;
+  const targetId = activeGrid()[row]?.[col];
+  if (!targetId || targetId === instanceId) return null;
+  const target = state.instances[targetId];
+  if (!target || target.templateId !== inst.templateId) return null;
+  if ((target.stackCount ?? 1) >= stackSizeOf(template)) return null;
+  return target;
 }
 
 // Convert cursor position to grid row/col, accounting for anchor offset.
