@@ -12,6 +12,7 @@ as-is. Everything below follows from that.
 ```
 index.html              Static shell — every DOM element referenced by JS, with stable IDs
 VERSION                 The app version, one line — bumped by hand
+_redirects              Cloudflare Pages: /home, /character, /campaign all serve index.html
 .env                    Firebase credentials for local dev (gitignored, optional)
 .env.example            Template for .env
 icons.html              Attribution for the icon set
@@ -29,6 +30,7 @@ functions/
   firebase-env.js       Cloudflare Pages Function: serves the Firebase keys on a
                         deploy, from the host's environment variables
 tools/
+  serve.py              Local dev server: http.server plus the app's routes
   shape-editor.html     Standalone helper for drawing item shapes
   spell-editor.html     Standalone helper for authoring data/spells.json entries
 ```
@@ -83,6 +85,7 @@ In load order.
 | `character-tabs.js` | Per-character tabs, and the sheet/inventory switch |
 | `characters.js` | The account's roster of characters, and the home screen |
 | `campaigns.js` | Campaigns: the bookmark model, entering and leaving, the home section |
+| `router.js` | The address bar: `home` / `character#<id>` / `campaign#<code>`, Back/Forward |
 | `character-sheet.js` | Page one of the 2024 sheet: abilities, skills, combat stats |
 | `class-features.js` | The class registry, and the sheet's Class Features section |
 | `species-traits.js` | The species registry, and the sheet's Species Traits section |

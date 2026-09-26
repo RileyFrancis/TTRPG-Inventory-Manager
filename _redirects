@@ -1,0 +1,10 @@
+# Cloudflare Pages. The app is one page; these paths are that page, shown at a
+# different spot (src/js/router.js). A 200 serves / without changing the URL.
+# Pages already falls back to index.html for unknown paths, but naming them keeps
+# a future 404.html from quietly breaking every reload.
+/home/       /home       301
+/character/  /character  301
+/campaign/   /campaign   301
+/home        /           200
+/character   /           200
+/campaign    /           200

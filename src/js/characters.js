@@ -254,6 +254,7 @@ function activateCharacter(id) {
   // Swapping characters at a table changes who sits in that seat.
   noteActiveCharacterForCampaign();
   debouncedSync();           // saves, and republishes to the party roster
+  syncRoute();               // the character's page is its own URL
 }
 
 function createCharacter(meta) {
@@ -369,12 +370,14 @@ function openHomeScreen() {
   state.screen = 'home';
   homeScreenEl.classList.remove('hidden');
   renderHomeScreen();
+  syncRoute();
 }
 
 function closeHomeScreen() {
   state.screen = 'app';
   closeCardMenu();
   homeScreenEl.classList.add('hidden');
+  syncRoute();
 }
 
 // "Fighter" for one class, "Warlock 5 / Bard 2" for a multiclass — the per-class
@@ -560,9 +563,10 @@ document.addEventListener('keydown', e => {
 // =============================================================================
 // LANDING HERE AT BOOT
 // =============================================================================
-// Every visit starts on the home screen, signed in or not — which character and
-// which table come before the inventory. A first visit gets the welcome in
-// place of the roster (isWelcomeVisit()).
+// A visit starts on the home screen, signed in or not — which character and
+// which table come before the inventory — unless the URL names one of this
+// roster's characters (router.js, applyBootRoute()). A first visit gets the
+// welcome in place of the roster (isWelcomeVisit()).
 //
 // Older builds remembered the last sign-in under this key, purely to guess at
 // boot whether to open this page. Nothing reads it now; cleared, not left behind.

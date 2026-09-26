@@ -29,10 +29,12 @@ space, and so does the loot you were greedy about.
 No build step, no dependencies. Serve the project root over HTTP:
 
 ```bash
-python3 -m http.server 8787
+python3 tools/serve.py 8787
 ```
 
-Then open [http://localhost:8787](http://localhost:8787).
+Then open [http://localhost:8787/home](http://localhost:8787/home).
+(`tools/serve.py` is `python3 -m http.server` that also answers the app's own
+pages — `/home`, `/character#…` — so a reload of one doesn't 404.)
 
 > Opening `index.html` as a `file://` URL mostly works, but party play will not:
 > the browser refuses to let a `file://` page read `.env`.
@@ -90,7 +92,9 @@ On **Cloudflare Pages**, add the seven `FIREBASE_*` keys from `.env.example`
 under Settings → Variables and Secrets, then redeploy. No build command —
 `functions/firebase-env.js` is turned into a Worker automatically, and serves the
 keys to the page at request time. With no variables set the route 404s and the
-site still works, with party play off.
+site still works, with party play off. `_redirects` tells Pages to answer the
+app's pages (`/home`, `/character`, `/campaign`) with `index.html`; any other
+host needs the same rewrite, or a reload of one of those pages 404s.
 
 > **On GitHub Pages**, Jekyll skips files beginning with `.`, which makes
 > `/.env` a 404 and silently disables party play. Add an empty `.nojekyll` file

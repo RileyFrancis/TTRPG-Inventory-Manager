@@ -1683,6 +1683,9 @@
 <!-- After characters.js: the campaign section renders into the same home screen,
      and a campaign's remembered character is one of that roster's slots. -->
 <script src="src/js/campaigns.js"></script>
+<!-- After campaigns.js: the URL is written from which screen, character and
+     campaign are on show. Only its popstate listener runs at load. -->
+<script src="src/js/router.js"></script>
 <script src="src/js/character-sheet.js"></script>
 <!-- Before class-features.js, which reads MD_LIST_RE while parsing
      data/classes.json — and that parse happens at load time, not at render.

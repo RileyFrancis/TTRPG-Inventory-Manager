@@ -463,6 +463,7 @@ function leaveParty() {
   updatePartyUI();
   switchTab('browse');
   renderHomeScreen(); // the campaign card is a Resume again
+  syncRoute();        // off the table: campaign#<code> becomes character#<id>
 }
 
 // Leaving the session is not leaving the campaign. Resigning for good is

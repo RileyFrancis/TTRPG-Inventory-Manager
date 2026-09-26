@@ -18,11 +18,14 @@ No build step. Serve the project root over HTTP (needed for `localStorage` and
 correct MIME types):
 
 ```bash
-python3 -m http.server 8787
-# then open http://localhost:8787
+python3 tools/serve.py 8787
+# then open http://localhost:8787/home
 ```
 
-`file://` works but is not recommended — `.env` and `data/*.csv` may not load.
+`tools/serve.py` is `http.server` plus the app's routes (`/home`,
+`/character`, `/campaign` → `index.html`); plain `python3 -m http.server`
+still loads the app but 404s a reload. `file://` works but is not recommended
+— `.env` and `data/*.csv` may not load, and the router is off there.
 
 ## Architecture
 
@@ -206,13 +209,34 @@ never empty — deleting the last hands back a new one. A **GM's character
 cards aren't selectable** on the home screen; their way back is the campaign
 card.
 
-**Every boot opens the home screen.** Because the roster is never empty, "no
+**A boot opens the home screen** unless the URL names one of this roster's
+characters (see *URLs*). Because the roster is never empty, "no
 characters" means *only untouched placeholders* (`isUntouchedSlot()` — judged
 by content, since `commitActiveCharacter()` rebuilds a slot and would drop a
 flag). A placeholder is **never drawn as a card** — otherwise deleting the last
 character would appear not to work — and any new character replaces it. With
 only placeholders and no campaign bookmarks, the page shows a welcome in place
 of the roster.
+
+### URLs
+
+Still one page — `router.js` writes the address bar *from* state, never the
+other way round: `home`, `character#<charId>` (solo), `campaign#<code>`
+(seated, GM or player — a GM has no character to name). Each is **one path
+segment, written relative**, so every relative asset path still resolves from
+the root and a sub-folder deploy keeps working — never add a second segment
+(`/character/<id>`) without first making every asset path absolute. The host
+must answer those paths with `index.html` (`_redirects` on Pages,
+`tools/serve.py` locally).
+
+- A screen change pushes a history entry (Back returns to the roster); a
+  Back/Forward, the boot, and a cloud save swapping the active character only
+  *replace* it (`applyingRoute` suppresses the pushes inside a popstate).
+- A route that can't be honoured — an id not in this roster, a campaign this
+  tab isn't seated at, a GM asking for a character — falls back to home and the
+  URL is corrected. **A URL never joins a campaign**: that's `enterCampaign()`,
+  async and signed in; a reload of `campaign#…` lands on home to rejoin.
+- Other members' sheets and the Inventory/Sheet/Spells view aren't in the URL.
 
 ### Multiclassing and Character Setup
 

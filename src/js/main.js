@@ -49,7 +49,7 @@ function init() {
   renderItemList();
   renderEquipPanel();
   syncCharacterViewUI(); // character tabs — solo, that is the one own-tab
-  openHomeScreen(); // every visit starts on the roster — see characters.js § Landing here at boot
+  applyBootRoute(); // /home, or the character the URL names — see router.js
   initFirebase();
   initAuth();       // restores a previous session, which then starts cloud sync
   hideLoadingScreen();
